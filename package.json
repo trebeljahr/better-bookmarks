@@ -14,9 +14,14 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/chibat/chrome-extension-typescript-starter.git"
+    "url": "https://github.com/trebeljahr/better-bookmarks.git"
   },
   "dependencies": {
+    "@emotion/react": "^11.10.5",
+    "@emotion/styled": "^11.10.5",
+    "@mui/material": "^5.11.5",
+    "@mui/x-date-pickers": "^5.0.15",
+    "dayjs": "^1.11.7",
     "react": "^17.0.1",
     "react-dom": "^17.0.1"
   },

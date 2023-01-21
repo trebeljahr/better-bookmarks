@@ -1,5 +1,9 @@
+import { Rating, TextField } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
+import { TimePicker } from "@mui/x-date-pickers/TimePicker";
+import { LocalizationProvider } from "@mui/x-date-pickers";
+import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
@@ -30,23 +34,38 @@ const Popup = () => {
     setDescription(currentTab.title || "");
   }, [currentTab]);
 
-  const changeTime = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setNecessaryTime(Number(event.target.value));
-  };
-
   const changeDescription = (event: React.ChangeEvent<HTMLInputElement>) => {
     setDescription(event.target.value);
   };
 
-  const changeRating = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRating(Number(event.target.value));
-  };
-
   return (
     <>
-      <input type="number" onChange={changeRating} value={rating} />
       <input type="text" onChange={changeDescription} value={description} />
-      <input type="number" onChange={changeTime} value={necessaryTime} />
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <TimePicker
+          views={["minutes", "seconds"]}
+          inputFormat="hh:mm:ss"
+          mask="__:__"
+          label="Minutes and seconds"
+          value={necessaryTime}
+          onChange={(next) => {
+            if (!next) return;
+            console.log("next", next);
+            setNecessaryTime(next);
+          }}
+          renderInput={(params) => <TextField {...params} />}
+        />
+      </LocalizationProvider>
+      <Rating
+        name="customized-10"
+        defaultValue={2}
+        max={10}
+        onChange={(_, newValue) => {
+          if (!newValue) return;
+          setRating(newValue);
+        }}
+      />
+
       <button onClick={getCurrentTab}>Bookmark</button>
     </>
   );
