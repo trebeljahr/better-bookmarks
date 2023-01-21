@@ -1,50 +1,53 @@
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 
+async function getCurrentTab() {
+  let queryOptions = { active: true, lastFocusedWindow: true };
+  let [tab] = await chrome.tabs.query(queryOptions);
+  console.log(tab.url);
+  console.log(tab.title);
+  return tab;
+}
+
 const Popup = () => {
-  const [count, setCount] = useState(0);
   const [currentURL, setCurrentURL] = useState<string>();
+  const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab>();
+  const [rating, setRating] = useState<number>(0);
+  const [description, setDescription] = useState<string>("");
+  const [necessaryTime, setNecessaryTime] = useState<number>(0);
 
   useEffect(() => {
-    chrome.action.setBadgeText({ text: count.toString() });
-  }, [count]);
-
-  useEffect(() => {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      setCurrentURL(tabs[0].url);
-    });
+    async function syncTab() {
+      const tab = await getCurrentTab();
+      setCurrentTab(tab);
+    }
+    syncTab();
   }, []);
 
-  const changeBackground = () => {
-    chrome.tabs.query({ active: true, currentWindow: true }, function (tabs) {
-      const tab = tabs[0];
-      if (tab.id) {
-        chrome.tabs.sendMessage(
-          tab.id,
-          {
-            color: "#555555",
-          },
-          (msg) => {
-            console.log("result message:", msg);
-          }
-        );
-      }
-    });
+  useEffect(() => {
+    if (!currentTab) return;
+
+    setDescription(currentTab.title || "");
+  }, [currentTab]);
+
+  const changeTime = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setNecessaryTime(Number(event.target.value));
+  };
+
+  const changeDescription = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setDescription(event.target.value);
+  };
+
+  const changeRating = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRating(Number(event.target.value));
   };
 
   return (
     <>
-      <ul style={{ minWidth: "700px" }}>
-        <li>Current URL: {currentURL}</li>
-        <li>Current Time: {new Date().toLocaleTimeString()}</li>
-      </ul>
-      <button
-        onClick={() => setCount(count + 1)}
-        style={{ marginRight: "5px" }}
-      >
-        count up
-      </button>
-      <button onClick={changeBackground}>change background</button>
+      <input type="number" onChange={changeRating} value={rating} />
+      <input type="text" onChange={changeDescription} value={description} />
+      <input type="number" onChange={changeTime} value={necessaryTime} />
+      <button onClick={getCurrentTab}>Bookmark</button>
     </>
   );
 };
