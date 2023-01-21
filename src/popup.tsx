@@ -40,13 +40,18 @@ const Popup = () => {
 
   return (
     <>
-      <input type="text" onChange={changeDescription} value={description} />
+      <TextField
+        label="Title"
+        value={description}
+        onChange={changeDescription}
+      />
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <TimePicker
-          views={["minutes", "seconds"]}
-          inputFormat="hh:mm:ss"
+          ampm={false}
+          views={["hours", "minutes"]}
+          inputFormat="hh:mm"
           mask="__:__"
-          label="Minutes and seconds"
+          label="Hours and Minutes"
           value={necessaryTime}
           onChange={(next) => {
             if (!next) return;
@@ -58,7 +63,7 @@ const Popup = () => {
       </LocalizationProvider>
       <Rating
         name="customized-10"
-        defaultValue={2}
+        defaultValue={5}
         max={10}
         onChange={(_, newValue) => {
           if (!newValue) return;

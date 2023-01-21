@@ -7,8 +7,6 @@ const Options = () => {
   const [like, setLike] = useState<boolean>(false);
 
   useEffect(() => {
-    // Restores select box and checkbox state using the preferences
-    // stored in chrome.storage.
     chrome.storage.sync.get(
       {
         favoriteColor: "red",
@@ -42,7 +40,8 @@ const Options = () => {
   return (
     <>
       <div>
-        Favorite color: <select
+        Favorite color:{" "}
+        <select
           value={color}
           onChange={(event) => setColor(event.target.value)}
         >
