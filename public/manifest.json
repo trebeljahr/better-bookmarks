@@ -16,8 +16,8 @@
   "commands": {
     "_execute_action": {
       "suggested_key": {
-        "default": "Ctrl+Shift+S",
-        "mac": "MacCtrl+Shift+S"
+        "default": "Ctrl+Shift+X",
+        "mac": "MacCtrl+Shift+X"
       }
     }
   },
