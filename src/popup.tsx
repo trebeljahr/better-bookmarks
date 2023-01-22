@@ -1,4 +1,4 @@
-import { IconButton, Paper, Rating, TextField } from "@mui/material";
+import { IconButton, Paper, Rating, Stack, TextField } from "@mui/material";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
@@ -93,43 +93,45 @@ const Popup = () => {
         m: 0,
       }}
     >
-      <TextField
-        label="Title"
-        value={description}
-        onChange={changeDescription}
-      />
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <TimePicker
-          ampm={false}
-          views={["hours", "minutes"]}
-          inputFormat="HH:mm"
-          mask="__:__"
-          label="Hours and Minutes"
-          value={necessaryTime}
-          onChange={(next) => {
-            if (!next) return;
-            setNecessaryTime(next);
-          }}
-          renderInput={(params) => <TextField {...params} />}
+      <Stack spacing={2}>
+        <TextField
+          label="Title"
+          value={description}
+          onChange={changeDescription}
         />
-      </LocalizationProvider>
-      <Rating
-        name="customized-10"
-        defaultValue={5}
-        max={10}
-        onChange={(_, newValue) => {
-          if (!newValue) return;
-          setRating(newValue);
-        }}
-      />
+        <LocalizationProvider dateAdapter={AdapterDayjs}>
+          <TimePicker
+            ampm={false}
+            views={["hours", "minutes"]}
+            inputFormat="HH:mm"
+            mask="__:__"
+            label="Hours and Minutes"
+            value={necessaryTime}
+            onChange={(next) => {
+              if (!next) return;
+              setNecessaryTime(next);
+            }}
+            renderInput={(params) => <TextField {...params} />}
+          />
+        </LocalizationProvider>
+        <Rating
+          name="customized-10"
+          defaultValue={5}
+          max={10}
+          onChange={(_, newValue) => {
+            if (!newValue) return;
+            setRating(newValue);
+          }}
+        />
 
-      {/* <IconButton aria-label="add" size="small">
+        {/* <IconButton aria-label="add" size="small">
         <AddBoxIcon fontSize="inherit" />
       </IconButton> */}
 
-      {/* <ChipsArray /> */}
-      <Tags />
-      <button onClick={saveBookmark}>Bookmark</button>
+        {/* <ChipsArray /> */}
+        <Tags />
+        <button onClick={saveBookmark}>Bookmark</button>
+      </Stack>
     </Paper>
   );
 };

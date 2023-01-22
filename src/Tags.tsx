@@ -1,9 +1,16 @@
 import * as React from "react";
 import Checkbox from "@mui/material/Checkbox";
 import TextField from "@mui/material/TextField";
-import Autocomplete from "@mui/material/Autocomplete";
+import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
+
+interface FilmOptionType {
+  inputValue?: string;
+  title: string;
+}
+
+const filter = createFilterOptions<FilmOptionType>();
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
@@ -13,9 +20,32 @@ export default function Tags() {
     <Autocomplete
       multiple
       id="checkboxes-tags-demo"
-      options={top100Films}
+      options={options}
       disableCloseOnSelect
-      getOptionLabel={(option) => option.title}
+      filterOptions={(options, params) => {
+        const filtered = filter(options, params);
+
+        const { inputValue } = params;
+        const isExisting = options.some(
+          (option) => inputValue === option.title
+        );
+        if (inputValue !== "" && !isExisting) {
+          filtered.push({
+            inputValue,
+            title: `Add "${inputValue}"`,
+          });
+        }
+        return filtered;
+      }}
+      getOptionLabel={(option) => {
+        if (typeof option === "string") {
+          return option;
+        }
+        if (option.inputValue) {
+          return option.inputValue;
+        }
+        return option.title;
+      }}
       renderOption={(props, option, { selected }) => (
         <li {...props}>
           <Checkbox
@@ -35,52 +65,37 @@ export default function Tags() {
   );
 }
 
-const top100Films = [
-  { title: "The Shawshank Redemption", year: 1994 },
-  { title: "The Godfather", year: 1972 },
-  { title: "The Godfather: Part II", year: 1974 },
-  { title: "The Dark Knight", year: 2008 },
-  { title: "12 Angry Men", year: 1957 },
-  { title: "Schindler's List", year: 1993 },
-  { title: "Pulp Fiction", year: 1994 },
-  {
-    title: "The Lord of the Rings: The Return of the King",
-    year: 2003,
-  },
-  { title: "The Good, the Bad and the Ugly", year: 1966 },
-  { title: "Fight Club", year: 1999 },
-  {
-    title: "The Lord of the Rings: The Fellowship of the Ring",
-    year: 2001,
-  },
-  {
-    title: "Star Wars: Episode V - The Empire Strikes Back",
-    year: 1980,
-  },
-  { title: "Forrest Gump", year: 1994 },
-  { title: "Inception", year: 2010 },
-  {
-    title: "The Lord of the Rings: The Two Towers",
-    year: 2002,
-  },
-  { title: "One Flew Over the Cuckoo's Nest", year: 1975 },
-  { title: "Goodfellas", year: 1990 },
-  { title: "The Matrix", year: 1999 },
-  { title: "Seven Samurai", year: 1954 },
-  {
-    title: "Star Wars: Episode IV - A New Hope",
-    year: 1977,
-  },
-  { title: "City of God", year: 2002 },
-  { title: "Se7en", year: 1995 },
-  { title: "The Silence of the Lambs", year: 1991 },
-  { title: "It's a Wonderful Life", year: 1946 },
-  { title: "Life Is Beautiful", year: 1997 },
-  { title: "The Usual Suspects", year: 1995 },
-  { title: "Léon: The Professional", year: 1994 },
-  { title: "Spirited Away", year: 2001 },
-  { title: "Saving Private Ryan", year: 1998 },
-  { title: "Once Upon a Time in the West", year: 1968 },
-  { title: "American History X", year: 1998 },
-  { title: "Interstellar", year: 2014 },
+const options: readonly FilmOptionType[] = [
+  { title: "The Shawshank Redemption" },
+  { title: "The Godfather" },
+  { title: "The Godfather: Part II" },
+  { title: "The Dark Knight" },
+  { title: "12 Angry Men" },
+  { title: "Schindler's List" },
+  { title: "Pulp Fiction" },
+  { title: "The Lord of the Rings: The Return of the King" },
+  { title: "The Good, the Bad and the Ugly" },
+  { title: "Fight Club" },
+  { title: "The Lord of the Rings: The Fellowship of the Ring" },
+  { title: "Star Wars: Episode V - The Empire Strikes Back" },
+  { title: "Forrest Gump" },
+  { title: "Inception" },
+  { title: "The Lord of the Rings: The Two Towers" },
+  { title: "One Flew Over the Cuckoo's Nest" },
+  { title: "Goodfellas" },
+  { title: "The Matrix" },
+  { title: "Seven Samurai" },
+  { title: "Star Wars: Episode IV - A New Hope" },
+  { title: "City of God" },
+  { title: "Se7en" },
+  { title: "The Silence of the Lambs" },
+  { title: "It's a Wonderful Life" },
+  { title: "Life Is Beautiful" },
+  { title: "The Usual Suspects" },
+  { title: "Léon: The Professional" },
+  { title: "Spirited Away" },
+  { title: "Saving Private Ryan" },
+  { title: "Once Upon a Time in the West" },
+  { title: "American History X" },
+  { title: "Interstellar" },
 ];
