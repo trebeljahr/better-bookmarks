@@ -1,12 +1,9 @@
-import { IconButton, Paper, Rating, Stack, TextField } from "@mui/material";
-import React, { useEffect, useState } from "react";
-import ReactDOM from "react-dom";
-import { TimePicker } from "@mui/x-date-pickers/TimePicker";
+import { Rating, Stack, TextField } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import ChipsArray from "./ChipsArray";
-import AddBoxIcon from "@mui/icons-material/AddBox";
-import Tags from "./Tags";
+import { TimePicker } from "@mui/x-date-pickers/TimePicker";
+import React, { useEffect, useState } from "react";
+import Tags, { FilmOptionType } from "./Tags";
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
@@ -22,7 +19,7 @@ type Bookmark = {
   rating: number;
   necessaryTime: number;
   timestamp: number;
-  tags: string[];
+  tags: FilmOptionType[];
 };
 
 const Popup = () => {
@@ -30,7 +27,7 @@ const Popup = () => {
   const [rating, setRating] = useState<number>(0);
   const [description, setDescription] = useState<string>("");
   const [necessaryTime, setNecessaryTime] = useState<number>(0);
-  const [tags, setTags] = useState<string[]>([]);
+  const [tags, setTags] = useState<FilmOptionType[]>([]);
 
   useEffect(() => {
     async function syncTab() {
@@ -55,7 +52,7 @@ const Popup = () => {
 
       setRating(bookmark.rating);
       setNecessaryTime(bookmark.necessaryTime);
-      setTags(bookmark.tags);
+      // setTags(bookmark.tags);
     }
 
     syncStorage();
@@ -83,62 +80,39 @@ const Popup = () => {
   };
 
   return (
-    <Paper
-      sx={{
-        display: "flex",
-        justifyContent: "center",
-        flexWrap: "wrap",
-        listStyle: "none",
-        p: 0.5,
-        m: 0,
-      }}
-    >
-      <Stack spacing={2}>
-        <TextField
-          label="Title"
-          value={description}
-          onChange={changeDescription}
-        />
-        <LocalizationProvider dateAdapter={AdapterDayjs}>
-          <TimePicker
-            ampm={false}
-            views={["hours", "minutes"]}
-            inputFormat="HH:mm"
-            mask="__:__"
-            label="Hours and Minutes"
-            value={necessaryTime}
-            onChange={(next) => {
-              if (!next) return;
-              setNecessaryTime(next);
-            }}
-            renderInput={(params) => <TextField {...params} />}
-          />
-        </LocalizationProvider>
-        <Rating
-          name="customized-10"
-          defaultValue={5}
-          max={10}
-          onChange={(_, newValue) => {
-            if (!newValue) return;
-            setRating(newValue);
+    <Stack spacing={2}>
+      <TextField
+        label="Title"
+        value={description}
+        onChange={changeDescription}
+      />
+      <LocalizationProvider dateAdapter={AdapterDayjs}>
+        <TimePicker
+          ampm={false}
+          views={["hours", "minutes"]}
+          inputFormat="HH:mm"
+          mask="__:__"
+          label="Hours and Minutes"
+          value={necessaryTime}
+          onChange={(next) => {
+            if (!next) return;
+            setNecessaryTime(next);
           }}
+          renderInput={(params) => <TextField {...params} />}
         />
+      </LocalizationProvider>
+      <Rating
+        name="customized-10"
+        defaultValue={5}
+        max={10}
+        onChange={(_, newValue) => {
+          if (!newValue) return;
+          setRating(newValue);
+        }}
+      />
 
-        {/* <IconButton aria-label="add" size="small">
-        <AddBoxIcon fontSize="inherit" />
-      </IconButton> */}
-
-        {/* <ChipsArray /> */}
-        <Tags />
-        <button onClick={saveBookmark}>Bookmark</button>
-      </Stack>
-    </Paper>
+      <Tags tags={tags} setTags={setTags} />
+      <button onClick={saveBookmark}>Bookmark</button>
+    </Stack>
   );
 };
-
-ReactDOM.render(
-  <React.StrictMode>
-    <Popup />
-  </React.StrictMode>,
-  document.getElementById("root")
-);

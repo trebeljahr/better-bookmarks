@@ -5,7 +5,7 @@ import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 
-interface FilmOptionType {
+export interface FilmOptionType {
   inputValue?: string;
   title: string;
 }
@@ -15,12 +15,21 @@ const filter = createFilterOptions<FilmOptionType>();
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
 
-export default function Tags() {
+type Props = {
+  tags: FilmOptionType[];
+  setTags: (newValue: FilmOptionType[]) => void;
+};
+
+export default function Tags({ tags, setTags }: Props) {
   return (
     <Autocomplete
       multiple
       id="checkboxes-tags-demo"
       options={options}
+      value={tags}
+      onChange={(_, newValue) => {
+        setTags(newValue);
+      }}
       disableCloseOnSelect
       filterOptions={(options, params) => {
         const filtered = filter(options, params);
@@ -59,43 +68,65 @@ export default function Tags() {
       )}
       style={{ width: 500 }}
       renderInput={(params) => (
-        <TextField {...params} label="Checkboxes" placeholder="Favorites" />
+        <TextField {...params} label="Tags" placeholder="Enter Tags here..." />
       )}
     />
   );
 }
 
 const options: readonly FilmOptionType[] = [
-  { title: "The Shawshank Redemption" },
-  { title: "The Godfather" },
-  { title: "The Godfather: Part II" },
-  { title: "The Dark Knight" },
-  { title: "12 Angry Men" },
-  { title: "Schindler's List" },
-  { title: "Pulp Fiction" },
-  { title: "The Lord of the Rings: The Return of the King" },
-  { title: "The Good, the Bad and the Ugly" },
-  { title: "Fight Club" },
-  { title: "The Lord of the Rings: The Fellowship of the Ring" },
-  { title: "Star Wars: Episode V - The Empire Strikes Back" },
-  { title: "Forrest Gump" },
-  { title: "Inception" },
-  { title: "The Lord of the Rings: The Two Towers" },
-  { title: "One Flew Over the Cuckoo's Nest" },
-  { title: "Goodfellas" },
-  { title: "The Matrix" },
-  { title: "Seven Samurai" },
-  { title: "Star Wars: Episode IV - A New Hope" },
-  { title: "City of God" },
-  { title: "Se7en" },
-  { title: "The Silence of the Lambs" },
-  { title: "It's a Wonderful Life" },
-  { title: "Life Is Beautiful" },
-  { title: "The Usual Suspects" },
-  { title: "Léon: The Professional" },
-  { title: "Spirited Away" },
-  { title: "Saving Private Ryan" },
-  { title: "Once Upon a Time in the West" },
-  { title: "American History X" },
-  { title: "Interstellar" },
+  { title: "Biochemistry" },
+  { title: "Programming" },
+  { title: "Web Dev" },
+  { title: "Philosophy" },
+  { title: "Psychology" },
+  { title: "Politics" },
+  { title: "Neuroscience" },
+  { title: "Engineering" },
+  { title: "Electronics" },
+  { title: "Hardware" },
+  { title: "Arduino" },
+  { title: "Game Development" },
+  { title: "Personal Development" },
+  { title: "Productivity" },
+  { title: "AI" },
+  { title: "Hacking" },
+  { title: "Finances" },
+  { title: "Design" },
+  { title: "Art" },
+  { title: "Traveling" },
+  { title: "Mathematics" },
+  { title: "Music" },
+  { title: "Piano" },
+  { title: "Go" },
+  { title: "Ruby" },
+  { title: "Haskell" },
+  { title: "C" },
+  { title: "Python" },
+  { title: "Clojure" },
+  { title: "Rust" },
+  { title: "Forth" },
+  { title: "JS/TS" },
+  { title: "Algorithms" },
+  { title: "Compilers" },
+  { title: "Crypto" },
+  { title: "Linux" },
+  { title: "Terminal" },
+  { title: "Graphics" },
+  { title: "3D" },
+  { title: "three-js" },
+  { title: "DevOps" },
+  { title: "Mobile Development" },
+  { title: "Desktop Development" },
+  { title: "Favorite Articles" },
+  { title: "Writing" },
+  { title: "Content Marketing" },
+  { title: "SEO" },
+  { title: "Freediving" },
+  { title: "Videos" },
+  { title: "Online Shop" },
+  { title: "Brain" },
+  { title: "Neuroplasticity" },
+  { title: "Meditation" },
+  { title: "Wisdom" },
 ];
