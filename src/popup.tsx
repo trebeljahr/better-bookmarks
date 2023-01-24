@@ -1,9 +1,11 @@
-import { Rating, Stack, TextField } from "@mui/material";
+import { Fab, Rating, Stack, TextField } from "@mui/material";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import React, { useEffect, useState } from "react";
 import Tags, { FilmOptionType } from "./Tags";
+import ReactDOM from "react-dom";
+import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
@@ -76,7 +78,7 @@ const Popup = () => {
     // chrome.runtime.sendMessage(bookmark);
     await chrome.storage.local.set({ [bookmark.url]: bookmark });
 
-    window.close();
+    // window.close();
   };
 
   return (
@@ -86,7 +88,7 @@ const Popup = () => {
         value={description}
         onChange={changeDescription}
       />
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
+      {/* <LocalizationProvider dateAdapter={AdapterDayjs}>
         <TimePicker
           ampm={false}
           views={["hours", "minutes"]}
@@ -100,7 +102,7 @@ const Popup = () => {
           }}
           renderInput={(params) => <TextField {...params} />}
         />
-      </LocalizationProvider>
+      </LocalizationProvider> */}
       <Rating
         name="customized-10"
         defaultValue={5}
@@ -112,7 +114,27 @@ const Popup = () => {
       />
 
       <Tags tags={tags} setTags={setTags} />
-      <button onClick={saveBookmark}>Bookmark</button>
+      {/* <button onClick={saveBookmark}>Bookmark</button> */}
+      <Fab
+        variant="extended"
+        size="small"
+        color="primary"
+        aria-label="add"
+        onClick={saveBookmark}
+      >
+        <BookmarkAddIcon sx={{ mr: 1 }} />
+        Bookmark
+      </Fab>
+      <a href="/overview.html" target="_blank" rel="noopener">
+        {chrome.runtime.id}
+      </a>
     </Stack>
   );
 };
+
+ReactDOM.render(
+  <React.StrictMode>
+    <Popup />
+  </React.StrictMode>,
+  document.getElementById("root")
+);

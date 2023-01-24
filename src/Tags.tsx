@@ -17,7 +17,7 @@ const checkedIcon = <CheckBoxIcon fontSize="small" />;
 
 type Props = {
   tags: FilmOptionType[];
-  setTags: (newValue: FilmOptionType[]) => void;
+  setTags: React.Dispatch<React.SetStateAction<FilmOptionType[]>>;
 };
 
 export default function Tags({ tags, setTags }: Props) {
