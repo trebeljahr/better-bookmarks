@@ -15,7 +15,7 @@ async function getCurrentTab() {
   return tab;
 }
 
-type Bookmark = {
+export type Bookmark = {
   url: string;
   description: string;
   rating: number;
