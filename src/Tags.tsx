@@ -5,19 +5,19 @@ import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
 import CheckBoxIcon from "@mui/icons-material/CheckBox";
 
-export interface FilmOptionType {
+export interface TagType {
   inputValue?: string;
   title: string;
 }
 
-const filter = createFilterOptions<FilmOptionType>();
+const filter = createFilterOptions<TagType>();
 
 const icon = <CheckBoxOutlineBlankIcon fontSize="small" />;
 const checkedIcon = <CheckBoxIcon fontSize="small" />;
 
 type Props = {
-  tags: FilmOptionType[];
-  setTags: React.Dispatch<React.SetStateAction<FilmOptionType[]>>;
+  tags: TagType[];
+  setTags: React.Dispatch<React.SetStateAction<TagType[]>>;
 };
 
 export default function Tags({ tags, setTags }: Props) {
@@ -74,7 +74,7 @@ export default function Tags({ tags, setTags }: Props) {
   );
 }
 
-const options: readonly FilmOptionType[] = [
+const options: readonly TagType[] = [
   { title: "Biochemistry" },
   { title: "Programming" },
   { title: "Web Dev" },

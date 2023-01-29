@@ -3,7 +3,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import React, { useEffect, useState } from "react";
-import Tags, { FilmOptionType } from "./Tags";
+import Tags, { TagType } from "./Tags";
 import ReactDOM from "react-dom";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 
@@ -21,7 +21,7 @@ export type Bookmark = {
   rating: number;
   necessaryTime: number;
   timestamp: number;
-  tags: FilmOptionType[];
+  tags: TagType[];
 };
 
 const Popup = () => {
@@ -29,7 +29,7 @@ const Popup = () => {
   const [rating, setRating] = useState<number>(0);
   const [description, setDescription] = useState<string>("");
   const [necessaryTime, setNecessaryTime] = useState<number>(0);
-  const [tags, setTags] = useState<FilmOptionType[]>([]);
+  const [tags, setTags] = useState<TagType[]>([]);
 
   useEffect(() => {
     async function syncTab() {
@@ -88,21 +88,7 @@ const Popup = () => {
         value={description}
         onChange={changeDescription}
       />
-      {/* <LocalizationProvider dateAdapter={AdapterDayjs}>
-        <TimePicker
-          ampm={false}
-          views={["hours", "minutes"]}
-          inputFormat="HH:mm"
-          mask="__:__"
-          label="Hours and Minutes"
-          value={necessaryTime}
-          onChange={(next) => {
-            if (!next) return;
-            setNecessaryTime(next);
-          }}
-          renderInput={(params) => <TextField {...params} />}
-        />
-      </LocalizationProvider> */}
+
       <Rating
         name="customized-10"
         defaultValue={5}

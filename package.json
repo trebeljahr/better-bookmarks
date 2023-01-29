@@ -24,7 +24,8 @@
     "@mui/x-date-pickers": "^5.0.15",
     "dayjs": "^1.11.7",
     "react": "^17.0.1",
-    "react-dom": "^17.0.1"
+    "react-dom": "^17.0.1",
+    "use-chrome-storage": "^1.0.8"
   },
   "devDependencies": {
     "@types/chrome": "0.0.158",

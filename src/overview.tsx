@@ -1,10 +1,22 @@
+import EditIcon from "@mui/icons-material/Edit";
+import StarIcon from "@mui/icons-material/Star";
+import {
+  IconButton,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Rating,
+  Stack,
+  TextField,
+} from "@mui/material";
+import Avatar from "@mui/material/Avatar";
 import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { Bookmark } from "./popup";
-import TreeView from "@mui/lab/TreeView";
-import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
-import ArrowRightIcon from "@mui/icons-material/ArrowRight";
-import TreeItem from "@mui/lab/TreeItem";
+import Tags, { TagType } from "./Tags";
+import ClearIcon from "@mui/icons-material/Clear";
+import { useChromeStorageLocal } from "use-chrome-storage";
 
 const Overview = () => {
   const [bookmarks, setBookmarks] = useState<Record<string, Bookmark>>({});
@@ -22,27 +34,88 @@ const Overview = () => {
     console.log(bookmarks);
   }, [bookmarks]);
 
+  const [editing, setEditing] = useState<Bookmark | null>(null);
+
+  const toggleEditing = (key: string) => {
+    if (key === editing?.url) {
+      setEditing(null);
+    }
+
+    setEditing(bookmarks[key]);
+  };
+
   return (
     <>
       <h1>All the Bookmarks</h1>
-      <TreeView
-        aria-label="gmail"
-        defaultExpanded={["3"]}
-        defaultCollapseIcon={<ArrowDropDownIcon />}
-        defaultExpandIcon={<ArrowRightIcon />}
-        defaultEndIcon={<div style={{ width: 24 }} />}
-        sx={{ height: 264, flexGrow: 1, maxWidth: 400, overflowY: "auto" }}
-      >
+      <List dense={false}>
         {Object.keys(bookmarks).map((key) => {
           const bookmark = bookmarks[key];
           return (
-            <TreeItem key={key} nodeId={key} label={bookmark.description} />
+            <ListItem
+              secondaryAction={
+                <IconButton
+                  edge="end"
+                  aria-label="delete"
+                  onClick={() => toggleEditing(key)}
+                >
+                  {editing?.url === key ? <ClearIcon /> : <EditIcon />}
+                </IconButton>
+              }
+            >
+              <ListItemAvatar>
+                <Avatar>
+                  <StarIcon />
+                </Avatar>
+              </ListItemAvatar>
+              <ListItemText primary={bookmark.description} />
+            </ListItem>
           );
         })}
-      </TreeView>
+      </List>
+      {editing && <EditBookmark url={editing.url} />}
     </>
   );
 };
+
+function EditBookmark({ url }: { url: string }) {
+  const [value, setValue, isPersistent, error] = useChromeStorageLocal(url) as [
+    Bookmark,
+    (next: Bookmark) => void,
+    boolean,
+    string
+  ];
+
+  console.log(value);
+
+  if (!value) return null;
+
+  return (
+    <Stack spacing={2}>
+      <TextField
+        label="Title"
+        value={value.description}
+        onChange={(ev) => {
+          setValue({ ...value, description: ev.target.value });
+        }}
+      />
+      <Rating
+        name="customized-10"
+        max={10}
+        value={value.rating}
+        onChange={(_, newValue) => {
+          if (!newValue) return;
+          setValue({ ...value, rating: newValue });
+        }}
+      />
+      <Tags
+        tags={value.tags}
+        setTags={(newTags) => {
+          setValue({ ...value, tags: newTags as TagType[] });
+        }}
+      />
+    </Stack>
+  );
+}
 
 ReactDOM.render(
   <React.StrictMode>
