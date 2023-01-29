@@ -18,17 +18,46 @@ import Tags, { TagType } from "./Tags";
 import ClearIcon from "@mui/icons-material/Clear";
 import { useChromeStorageLocal } from "use-chrome-storage";
 
-const Overview = () => {
+export const useBookmarks = () => {
   const [bookmarks, setBookmarks] = useState<Record<string, Bookmark>>({});
 
   useEffect(() => {
     async function getBookmarks() {
       const fetchedBookmarks = await chrome.storage.local.get(null);
       setBookmarks(fetchedBookmarks);
+
+      chrome.storage.onChanged.addListener((changes, areaName) => {
+        if (areaName !== "local") return;
+
+        console.log({ changes });
+
+        setBookmarks((oldState) => {
+          const newState = Object.keys(changes).reduce(
+            (acc, key) => {
+              console.log({ acc });
+              const newBookmark = changes[key].newValue as Bookmark;
+              return { ...acc, [key]: newBookmark };
+            },
+            { ...oldState }
+          );
+
+          console.log({ newState });
+          return newState;
+        });
+
+        // if (!changes.bookmarks) return;
+        // setBookmarks(changes.bookmarks as Record<string, Bookmark>);
+      });
     }
 
     getBookmarks();
   }, []);
+
+  return { bookmarks };
+};
+
+const Overview = () => {
+  const { bookmarks } = useBookmarks();
 
   useEffect(() => {
     console.log(bookmarks);
@@ -36,9 +65,11 @@ const Overview = () => {
 
   const [editing, setEditing] = useState<Bookmark | null>(null);
 
-  const toggleEditing = (key: string) => {
+  const toggleEditing = async (key: string) => {
     if (key === editing?.url) {
+      await chrome.storage.local.set({ [key]: editing });
       setEditing(null);
+      return;
     }
 
     setEditing(bookmarks[key]);
@@ -72,18 +103,40 @@ const Overview = () => {
           );
         })}
       </List>
-      {editing && <EditBookmark url={editing.url} />}
+      {editing && <EditBookmark value={editing} setValue={setEditing} />}
     </>
   );
 };
 
-function EditBookmark({ url }: { url: string }) {
-  const [value, setValue, isPersistent, error] = useChromeStorageLocal(url) as [
-    Bookmark,
-    (next: Bookmark) => void,
-    boolean,
-    string
-  ];
+// function useChromeStorage<T>() {
+//   const [value, setValue] = useState<T | null>("bookmarks");
+
+//   useEffect(() => {
+//     async function getStorage() {
+//       const result = await chrome.storage.local.get("bookmarks");
+//       setValue(result as T);
+//     }
+
+//     getStorage();
+//   }, []);
+
+//   async function setStorage(next: T) {
+//     await chrome.storage.local.set({ [key]: next });
+//     setValue(next);
+//   }
+
+//   return [value, setStorage] as [T | null, (next: T) => void];
+// }
+
+function EditBookmark({
+  value,
+  setValue,
+}: {
+  value: Bookmark;
+  setValue: (value: Bookmark) => void;
+}) {
+  // console.log(url);
+  // const [value, setValue] = useState<Bookmark>({});
 
   console.log(value);
 

@@ -6,6 +6,7 @@ import React, { useEffect, useState } from "react";
 import Tags, { TagType } from "./Tags";
 import ReactDOM from "react-dom";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
+import { useBookmarks } from "./overview";
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
@@ -54,7 +55,7 @@ const Popup = () => {
 
       setRating(bookmark.rating);
       setNecessaryTime(bookmark.necessaryTime);
-      // setTags(bookmark.tags);
+      setTags(bookmark.tags);
     }
 
     syncStorage();
@@ -75,7 +76,6 @@ const Popup = () => {
     };
     console.log(bookmark);
 
-    // chrome.runtime.sendMessage(bookmark);
     await chrome.storage.local.set({ [bookmark.url]: bookmark });
 
     // window.close();
