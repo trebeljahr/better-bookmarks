@@ -8,6 +8,7 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  Stack,
 } from "@mui/material";
 import Avatar from "@mui/material/Avatar";
 import React, { useEffect, useMemo, useRef, useState } from "react";
@@ -117,7 +118,7 @@ const Overview = () => {
   }
 
   return (
-    <>
+    <Stack spacing={2}>
       <h1>All the Bookmarks</h1>
       <a
         style={{ display: "none" }}
@@ -125,6 +126,7 @@ const Overview = () => {
         href="#"
         ref={downloadLink}
       ></a>
+
       <Fab
         variant="extended"
         size="small"
@@ -176,7 +178,7 @@ const Overview = () => {
             );
           })}
       </List>
-    </>
+    </Stack>
   );
 };
 

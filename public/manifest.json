@@ -11,10 +11,10 @@
 
   "action": {
     "default_icon": {
-      "16": "logo16.png",
-      "32": "logo32.png",
-      "48": "logo48.png",
-      "128": "logo128.png"
+      "16": "/empty16.png",
+      "32": "/empty32.png",
+      "48": "/empty48.png",
+      "128": "/empty128.png"
     },
     "default_popup": "popup.html"
   },

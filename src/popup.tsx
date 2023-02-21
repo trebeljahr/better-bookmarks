@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import Tags from "./Tags";
 import ReactDOM from "react-dom";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
+import DeleteIcon from "@mui/icons-material/Delete";
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
@@ -72,18 +73,42 @@ const Popup = () => {
     };
     console.log(bookmark);
 
+    console.log("Saving bookmark to local storage");
+
     await chrome.storage.local.set({ [bookmark.url]: bookmark });
 
+    console.log("Setting icon");
+
     const alreadyAddedIcon = {
-      "16": "full16.png",
-      "32": "full32.png",
-      "48": "full48.png",
-      "128": "full128.png",
+      "16": "/full16.png",
+      "32": "/full32.png",
+      "48": "/full48.png",
+      "128": "/full128.png",
     };
 
-    chrome.action.setIcon({ path: alreadyAddedIcon });
+    chrome.action.setIcon({ path: alreadyAddedIcon }, () => {
+      console.log("Icon set successfully");
+    });
 
-    window.close();
+    // window.close();
+  };
+
+  const deleteBookmark = async () => {
+    if (!currentTab?.url) return;
+
+    await chrome.storage.local.remove(currentTab.url);
+    console.log("Setting icon");
+
+    const alreadyAddedIcon = {
+      "16": "/empty16.png",
+      "32": "/empty32.png",
+      "48": "/empty48.png",
+      "128": "/empty128.png",
+    };
+
+    chrome.action.setIcon({ path: alreadyAddedIcon }, () => {
+      console.log("Icon set successfully");
+    });
   };
 
   useEffect(() => {
@@ -120,9 +145,27 @@ const Popup = () => {
         <BookmarkAddIcon sx={{ mr: 1 }} />
         Bookmark
       </Fab>
+
+      <Fab
+        variant="extended"
+        size="small"
+        color="secondary"
+        aria-label="delete"
+        onClick={deleteBookmark}
+      >
+        <DeleteIcon sx={{ mr: 1 }} />
+        Bookmark
+      </Fab>
       <a href="/overview.html" target="_blank" rel="noopener">
         Bookmark Overview
       </a>
     </Stack>
   );
 };
+
+ReactDOM.render(
+  <React.StrictMode>
+    <Popup />
+  </React.StrictMode>,
+  document.getElementById("root")
+);

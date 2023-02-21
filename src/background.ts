@@ -8,16 +8,16 @@ async function setIconToCorrectVersion(tabId: number) {
     console.log(result);
 
     const notYetAddedIcon = {
-      "16": "logo16.png",
-      "32": "logo32.png",
-      "48": "logo48.png",
-      "128": "logo128.png",
+      "16": "/empty16.png",
+      "32": "/empty32.png",
+      "48": "/empty48.png",
+      "128": "/empty128.png",
     };
     const alreadyAddedIcon = {
-      "16": "full16.png",
-      "32": "full32.png",
-      "48": "full48.png",
-      "128": "full128.png",
+      "16": "/full16.png",
+      "32": "/full32.png",
+      "48": "/full48.png",
+      "128": "/full128.png",
     };
     if (tab.url in result) {
       chrome.action.setIcon({ path: alreadyAddedIcon });
