@@ -10,7 +10,12 @@
   },
 
   "action": {
-    "default_icon": "icon.png",
+    "default_icon": {
+      "16": "starEmpty.png",
+      "32": "starEmpty.png",
+      "48": "starEmpty.png",
+      "128": "starEmpty.png"
+    },
     "default_popup": "popup.html"
   },
   "commands": {

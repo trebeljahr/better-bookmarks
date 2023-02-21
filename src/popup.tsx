@@ -1,12 +1,8 @@
 import { Fab, Rating, Stack, TextField } from "@mui/material";
-import { LocalizationProvider } from "@mui/x-date-pickers";
-import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
-import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import React, { useEffect, useState } from "react";
-import Tags, { TagAutocompleteType } from "./Tags";
+import Tags from "./Tags";
 import ReactDOM from "react-dom";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
-import { useBookmarks } from "./overview";
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
@@ -77,8 +73,10 @@ const Popup = () => {
     console.log(bookmark);
 
     await chrome.storage.local.set({ [bookmark.url]: bookmark });
+    const alreadyAddedIcon = "/starFull.png";
+    chrome.action.setIcon({ path: alreadyAddedIcon });
 
-    // window.close();
+    window.close();
   };
 
   useEffect(() => {
