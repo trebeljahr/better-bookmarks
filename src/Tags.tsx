@@ -39,8 +39,9 @@ export default function Tags({
       value={tags.map((tag) => ({ title: tag, inputValue: "" }))}
       // onChange={() => {}}
       onChange={(_, newValue) => {
-        console.log(newValue);
-        setTags(newValue.map((tag) => tag.title));
+        console.log({ newValue });
+
+        setTags(newValue.map((tag) => tag.inputValue || tag.title));
       }}
       isOptionEqualToValue={(option, value) => option.title === value.title}
       disableCloseOnSelect
