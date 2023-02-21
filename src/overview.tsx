@@ -2,6 +2,7 @@ import ClearIcon from "@mui/icons-material/Clear";
 import EditIcon from "@mui/icons-material/Edit";
 import StarIcon from "@mui/icons-material/Star";
 import {
+  Fab,
   IconButton,
   List,
   ListItem,
@@ -9,7 +10,7 @@ import {
   ListItemText,
 } from "@mui/material";
 import Avatar from "@mui/material/Avatar";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { EditBookmark } from "./EditBookmark";
 import { Bookmark } from "./popup";
@@ -101,9 +102,38 @@ const Overview = () => {
     setEditing(newValue);
   }
 
+  const downloadLink = useRef<HTMLAnchorElement>(null);
+
+  async function exportBookmarks() {
+    const result = await chrome.storage.local.get(null);
+    const json = JSON.stringify(result);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    console.log(url);
+
+    if (!downloadLink.current) return;
+    downloadLink.current.href = url;
+    downloadLink.current.click();
+  }
+
   return (
     <>
       <h1>All the Bookmarks</h1>
+      <a
+        style={{ display: "none" }}
+        download="bookmarks.json"
+        href="#"
+        ref={downloadLink}
+      ></a>
+      <Fab
+        variant="extended"
+        size="small"
+        color="primary"
+        aria-label="add"
+        onClick={exportBookmarks}
+      >
+        Export as JSON
+      </Fab>
       <Tags setTags={setTags} tags={tags} possibleOptions={tagsFromBookmarks} />
       <List dense={false}>
         {Object.keys(bookmarks)
@@ -118,6 +148,7 @@ const Overview = () => {
             const bookmark = bookmarks[key];
             return (
               <ListItem
+                key={key}
                 secondaryAction={
                   <IconButton
                     edge="end"
