@@ -1,11 +1,8 @@
 async function setIconToCorrectVersion(tabId: number) {
   const tab = await chrome.tabs.get(tabId);
-  console.log(chrome);
 
   if (tab.url) {
-    console.log(tab.url);
     const result = await chrome.storage.local.get(tab.url);
-    console.log(result);
 
     const notYetAddedIcon = {
       "16": "/empty16.png",

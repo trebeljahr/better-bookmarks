@@ -33,7 +33,6 @@ export function EditBookmark({ value, setValue, possibleTags = [] }: Props) {
       <Tags
         tags={value.tags}
         setTags={(newTags) => {
-          console.log(newTags);
           setValue({ ...value, tags: newTags as string[] });
         }}
         possibleOptions={possibleTags}

@@ -16,8 +16,6 @@ import { theme } from "./MaterialTheme";
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
   let [tab] = await chrome.tabs.query(queryOptions);
-  console.log(tab.url);
-  console.log(tab.title);
   return tab;
 }
 
@@ -79,13 +77,7 @@ const Popup = () => {
       timestamp: Date.now(),
       tags,
     };
-    console.log(bookmark);
-
-    console.log("Saving bookmark to local storage");
-
     await chrome.storage.local.set({ [bookmark.url]: bookmark });
-
-    console.log("Setting icon");
 
     const alreadyAddedIcon = {
       "16": "/full16.png",
@@ -94,9 +86,7 @@ const Popup = () => {
       "128": "/full128.png",
     };
 
-    chrome.action.setIcon({ path: alreadyAddedIcon }, () => {
-      console.log("Icon set successfully");
-    });
+    chrome.action.setIcon({ path: alreadyAddedIcon });
 
     // window.close();
   };
@@ -105,7 +95,6 @@ const Popup = () => {
     if (!currentTab?.url) return;
 
     await chrome.storage.local.remove(currentTab.url);
-    console.log("Setting icon");
 
     const alreadyAddedIcon = {
       "16": "/empty16.png",
@@ -114,14 +103,8 @@ const Popup = () => {
       "128": "/empty128.png",
     };
 
-    chrome.action.setIcon({ path: alreadyAddedIcon }, () => {
-      console.log("Icon set successfully");
-    });
+    chrome.action.setIcon({ path: alreadyAddedIcon });
   };
-
-  useEffect(() => {
-    console.log({ tags });
-  }, [tags]);
 
   return (
     <Stack spacing={2}>

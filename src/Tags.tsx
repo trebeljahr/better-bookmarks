@@ -30,7 +30,6 @@ export default function Tags({
     ...new Set([...possibleOptions, ...hardcodedOptions]),
   ].map((option) => ({ title: option, inputValue: "" }));
 
-  console.log({ provided: tags });
   return (
     <Autocomplete
       multiple
@@ -39,8 +38,6 @@ export default function Tags({
       value={tags.map((tag) => ({ title: tag, inputValue: "" }))}
       // onChange={() => {}}
       onChange={(_, newValue) => {
-        console.log({ newValue });
-
         setTags(newValue.map((tag) => tag.inputValue || tag.title));
       }}
       isOptionEqualToValue={(option, value) => option.title === value.title}
@@ -70,9 +67,6 @@ export default function Tags({
         return option.title;
       }}
       renderOption={(props, option, state) => {
-        // console.log(state);
-        // console.log(option);
-
         const { selected } = state;
         return (
           <li {...props}>

@@ -30,24 +30,17 @@ export const useBookmarks = () => {
       chrome.storage.onChanged.addListener((changes, areaName) => {
         if (areaName !== "local") return;
 
-        console.log({ changes });
-
         setBookmarks((oldState) => {
           const newState = Object.keys(changes).reduce(
             (acc, key) => {
-              console.log({ acc });
               const newBookmark = changes[key].newValue as Bookmark;
               return { ...acc, [key]: newBookmark };
             },
             { ...oldState }
           );
 
-          console.log({ newState });
           return newState;
         });
-
-        // if (!changes.bookmarks) return;
-        // setBookmarks(changes.bookmarks as Record<string, Bookmark>);
       });
     }
 
@@ -66,8 +59,6 @@ function getTagsFromBookmarks(bookmarks: Record<string, Bookmark>) {
 
   const dedupedTags = [...new Set(allTags)];
 
-  console.log(dedupedTags);
-
   return dedupedTags;
 }
 
@@ -75,15 +66,10 @@ const Overview = () => {
   const { bookmarks } = useBookmarks();
   const [tags, setTags] = useState<string[]>([]);
 
-  useEffect(() => {
-    console.log(bookmarks);
-  }, [bookmarks]);
-
   const [editing, setEditing] = useState<Bookmark | null>(null);
 
   const toggleEditing = async (key: string) => {
     if (key === editing?.url) {
-      console.log(editing);
       await chrome.storage.local.set({ [key]: editing });
       setEditing(null);
       return;
@@ -95,10 +81,6 @@ const Overview = () => {
   const tagsFromBookmarks = useMemo(() => {
     return getTagsFromBookmarks(bookmarks);
   }, [bookmarks]);
-
-  useEffect(() => {
-    console.log({ tags });
-  }, [tags]);
 
   async function handleEditing(newValue: Bookmark) {
     const key = newValue?.url;
@@ -115,7 +97,6 @@ const Overview = () => {
     const json = JSON.stringify(result);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-    console.log(url);
 
     if (!downloadLink.current) return;
     downloadLink.current.href = url;
@@ -147,11 +128,7 @@ const Overview = () => {
           .filter((key) => {
             const bookmark = bookmarks[key];
             if (tags.length === 0) return true;
-            const hasAllTags = tags.every((tag) =>
-              bookmark?.tags.includes(tag)
-            );
-            console.log({ hasAllTags });
-            return hasAllTags;
+            return tags.every((tag) => bookmark?.tags.includes(tag));
           })
           .map((key) => {
             const bookmark = bookmarks[key];
