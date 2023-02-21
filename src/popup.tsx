@@ -3,7 +3,7 @@ import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDayjs } from "@mui/x-date-pickers/AdapterDayjs";
 import { TimePicker } from "@mui/x-date-pickers/TimePicker";
 import React, { useEffect, useState } from "react";
-import Tags, { TagType } from "./Tags";
+import Tags, { TagAutocompleteType } from "./Tags";
 import ReactDOM from "react-dom";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import { useBookmarks } from "./overview";
@@ -22,7 +22,7 @@ export type Bookmark = {
   rating: number;
   necessaryTime: number;
   timestamp: number;
-  tags: TagType[];
+  tags: string[];
 };
 
 const Popup = () => {
@@ -30,7 +30,7 @@ const Popup = () => {
   const [rating, setRating] = useState<number>(0);
   const [description, setDescription] = useState<string>("");
   const [necessaryTime, setNecessaryTime] = useState<number>(0);
-  const [tags, setTags] = useState<TagType[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
     async function syncTab() {
@@ -81,6 +81,10 @@ const Popup = () => {
     // window.close();
   };
 
+  useEffect(() => {
+    console.log({ tags });
+  }, [tags]);
+
   return (
     <Stack spacing={2}>
       <TextField
@@ -99,7 +103,7 @@ const Popup = () => {
         }}
       />
 
-      <Tags tags={tags} setTags={setTags} />
+      <Tags setTags={setTags} />
       {/* <button onClick={saveBookmark}>Bookmark</button> */}
       <Fab
         variant="extended"
@@ -112,7 +116,7 @@ const Popup = () => {
         Bookmark
       </Fab>
       <a href="/overview.html" target="_blank" rel="noopener">
-        {chrome.runtime.id}
+        Bookmark Overview
       </a>
     </Stack>
   );

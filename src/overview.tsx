@@ -11,12 +11,11 @@ import {
   TextField,
 } from "@mui/material";
 import Avatar from "@mui/material/Avatar";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import ReactDOM from "react-dom";
 import { Bookmark } from "./popup";
-import Tags, { TagType } from "./Tags";
+import Tags, { TagAutocompleteType } from "./Tags";
 import ClearIcon from "@mui/icons-material/Clear";
-import { useChromeStorageLocal } from "use-chrome-storage";
 
 export const useBookmarks = () => {
   const [bookmarks, setBookmarks] = useState<Record<string, Bookmark>>({});
@@ -56,8 +55,20 @@ export const useBookmarks = () => {
   return { bookmarks };
 };
 
+function getTagsFromBookmarks(bookmarks: Record<string, Bookmark>) {
+  const allTags = Object.values(bookmarks).reduce((acc, bookmark) => {
+    return [...acc, ...bookmark.tags];
+  }, [] as string[]);
+
+  console.log(allTags);
+
+  const dedupedTags = [...new Set(allTags)];
+  return dedupedTags;
+}
+
 const Overview = () => {
   const { bookmarks } = useBookmarks();
+  const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
     console.log(bookmarks);
@@ -67,6 +78,7 @@ const Overview = () => {
 
   const toggleEditing = async (key: string) => {
     if (key === editing?.url) {
+      console.log(editing);
       await chrome.storage.local.set({ [key]: editing });
       setEditing(null);
       return;
@@ -75,9 +87,26 @@ const Overview = () => {
     setEditing(bookmarks[key]);
   };
 
+  const tagsFromBookmarks = useMemo(() => {
+    return getTagsFromBookmarks(bookmarks);
+  }, [bookmarks]);
+
+  useEffect(() => {
+    console.log({ tags });
+  }, [tags]);
+
+  async function handleEditing(newValue: Bookmark) {
+    const key = newValue?.url;
+    if (key) {
+      await chrome.storage.local.set({ [key]: newValue });
+    }
+    setEditing(newValue);
+  }
+
   return (
     <>
       <h1>All the Bookmarks</h1>
+      <Tags setTags={setTags} tags={tags} />
       <List dense={false}>
         {Object.keys(bookmarks).map((key) => {
           const bookmark = bookmarks[key];
@@ -103,7 +132,7 @@ const Overview = () => {
           );
         })}
       </List>
-      {editing && <EditBookmark value={editing} setValue={setEditing} />}
+      {editing && <EditBookmark value={editing} setValue={handleEditing} />}
     </>
   );
 };
@@ -163,7 +192,8 @@ function EditBookmark({
       <Tags
         tags={value.tags}
         setTags={(newTags) => {
-          setValue({ ...value, tags: newTags as TagType[] });
+          console.log(newTags);
+          setValue({ ...value, tags: newTags as string[] });
         }}
       />
     </Stack>
