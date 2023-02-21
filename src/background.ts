@@ -7,8 +7,18 @@ async function setIconToCorrectVersion(tabId: number) {
     const result = await chrome.storage.local.get(tab.url);
     console.log(result);
 
-    const notYetAddedIcon = "/starEmpty.png";
-    const alreadyAddedIcon = "/starFull.png";
+    const notYetAddedIcon = {
+      "16": "logo16.png",
+      "32": "logo32.png",
+      "48": "logo48.png",
+      "128": "logo128.png",
+    };
+    const alreadyAddedIcon = {
+      "16": "full16.png",
+      "32": "full32.png",
+      "48": "full48.png",
+      "128": "full128.png",
+    };
     if (tab.url in result) {
       chrome.action.setIcon({ path: alreadyAddedIcon });
     } else {

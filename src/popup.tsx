@@ -73,7 +73,14 @@ const Popup = () => {
     console.log(bookmark);
 
     await chrome.storage.local.set({ [bookmark.url]: bookmark });
-    const alreadyAddedIcon = "/starFull.png";
+
+    const alreadyAddedIcon = {
+      "16": "full16.png",
+      "32": "full32.png",
+      "48": "full48.png",
+      "128": "full128.png",
+    };
+
     chrome.action.setIcon({ path: alreadyAddedIcon });
 
     window.close();
@@ -119,10 +126,3 @@ const Popup = () => {
     </Stack>
   );
 };
-
-ReactDOM.render(
-  <React.StrictMode>
-    <Popup />
-  </React.StrictMode>,
-  document.getElementById("root")
-);
