@@ -34,6 +34,7 @@ const Popup = () => {
   const [description, setDescription] = useState<string>("");
   const [necessaryTime, setNecessaryTime] = useState<number>(0);
   const [tags, setTags] = useState<string[]>([]);
+  const [timestamp, setTimestamp] = useState<number>(() => Date.now());
 
   useEffect(() => {
     async function syncTab() {
@@ -68,13 +69,17 @@ const Popup = () => {
     setDescription(event.target.value);
   };
 
+  useEffect(() => {
+    saveBookmark();
+  }, [description, rating, necessaryTime, tags]);
+
   const saveBookmark = async () => {
     const bookmark: Bookmark = {
       url: currentTab?.url || "",
       description,
       rating,
       necessaryTime,
-      timestamp: Date.now(),
+      timestamp,
       tags,
     };
     await chrome.storage.local.set({ [bookmark.url]: bookmark });
