@@ -9,11 +9,13 @@ import {
   ListItemAvatar,
   ListItemText,
   Stack,
+  ThemeProvider,
 } from "@mui/material";
 import Avatar from "@mui/material/Avatar";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { EditBookmark } from "./EditBookmark";
+import { theme } from "./MaterialTheme";
 import { Bookmark } from "./popup";
 import Tags from "./Tags";
 
@@ -57,12 +59,15 @@ export const useBookmarks = () => {
 
 function getTagsFromBookmarks(bookmarks: Record<string, Bookmark>) {
   const allTags = Object.values(bookmarks).reduce((acc, bookmark) => {
+    if (!bookmark?.tags) return acc;
+
     return [...acc, ...bookmark.tags];
   }, [] as string[]);
 
-  console.log(allTags);
-
   const dedupedTags = [...new Set(allTags)];
+
+  console.log(dedupedTags);
+
   return dedupedTags;
 }
 
@@ -142,38 +147,42 @@ const Overview = () => {
           .filter((key) => {
             const bookmark = bookmarks[key];
             if (tags.length === 0) return true;
-            const hasAllTags = tags.every((tag) => bookmark.tags.includes(tag));
+            const hasAllTags = tags.every((tag) =>
+              bookmark?.tags.includes(tag)
+            );
             console.log({ hasAllTags });
             return hasAllTags;
           })
           .map((key) => {
             const bookmark = bookmarks[key];
+            if (!bookmark) return null;
             return (
-              <ListItem
-                key={key}
-                secondaryAction={
-                  <IconButton
-                    edge="end"
-                    aria-label="delete"
-                    onClick={() => toggleEditing(key)}
-                  >
-                    {editing?.url === key ? <ClearIcon /> : <EditIcon />}
-                  </IconButton>
-                }
-              >
-                <ListItemAvatar>
-                  <Avatar>
-                    <StarIcon />
-                  </Avatar>
-                </ListItemAvatar>
-                <ListItemText primary={bookmark.description} />
-                {editing && editing?.url === key && (
-                  <EditBookmark
-                    value={editing}
-                    setValue={handleEditing}
-                    possibleTags={tagsFromBookmarks}
-                  />
-                )}
+              <ListItem key={key}>
+                <Stack spacing={2}>
+                  <Stack direction="row">
+                    <ListItemAvatar>
+                      <Avatar>
+                        <StarIcon />
+                      </Avatar>
+                    </ListItemAvatar>
+                    <ListItemText primary={bookmark.description} />
+                    <IconButton
+                      edge="end"
+                      aria-label="delete"
+                      onClick={() => toggleEditing(key)}
+                    >
+                      {editing?.url === key ? <ClearIcon /> : <EditIcon />}
+                    </IconButton>
+                  </Stack>
+
+                  {editing && editing?.url === key && (
+                    <EditBookmark
+                      value={editing}
+                      setValue={handleEditing}
+                      possibleTags={tagsFromBookmarks}
+                    />
+                  )}
+                </Stack>
               </ListItem>
             );
           })}
@@ -184,7 +193,9 @@ const Overview = () => {
 
 ReactDOM.render(
   <React.StrictMode>
-    <Overview />
+    <ThemeProvider theme={theme}>
+      <Overview />
+    </ThemeProvider>
   </React.StrictMode>,
   document.getElementById("root")
 );

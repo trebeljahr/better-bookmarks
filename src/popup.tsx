@@ -1,9 +1,17 @@
-import { Fab, Rating, Stack, TextField } from "@mui/material";
+import {
+  Fab,
+  Link,
+  Rating,
+  Stack,
+  TextField,
+  ThemeProvider,
+} from "@mui/material";
 import React, { useEffect, useState } from "react";
 import Tags from "./Tags";
 import ReactDOM from "react-dom";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { theme } from "./MaterialTheme";
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
@@ -52,7 +60,7 @@ const Popup = () => {
 
       setRating(bookmark.rating);
       setNecessaryTime(bookmark.necessaryTime);
-      setTags(bookmark.tags);
+      setTags(bookmark?.tags);
     }
 
     syncStorage();
@@ -135,37 +143,41 @@ const Popup = () => {
 
       <Tags setTags={setTags} tags={tags} />
       {/* <button onClick={saveBookmark}>Bookmark</button> */}
-      <Fab
-        variant="extended"
-        size="small"
-        color="primary"
-        aria-label="add"
-        onClick={saveBookmark}
-      >
-        <BookmarkAddIcon sx={{ mr: 1 }} />
-        Bookmark
-      </Fab>
 
-      <Fab
-        variant="extended"
-        size="small"
-        color="secondary"
-        aria-label="delete"
-        onClick={deleteBookmark}
-      >
-        <DeleteIcon sx={{ mr: 1 }} />
-        Bookmark
-      </Fab>
-      <a href="/overview.html" target="_blank" rel="noopener">
+      <Stack direction="row" spacing={2} justifyContent="flex-end">
+        <Fab
+          variant="extended"
+          size="small"
+          color="primary"
+          aria-label="add"
+          onClick={saveBookmark}
+        >
+          <BookmarkAddIcon sx={{ mr: 1 }} />
+          Save Bookmark
+        </Fab>
+        <Fab
+          variant="circular"
+          size="small"
+          color="secondary"
+          aria-label="delete"
+          onClick={deleteBookmark}
+        >
+          <DeleteIcon />
+        </Fab>
+      </Stack>
+
+      <Link href="/overview.html" target="_blank" rel="noopener">
         Bookmark Overview
-      </a>
+      </Link>
     </Stack>
   );
 };
 
 ReactDOM.render(
   <React.StrictMode>
-    <Popup />
+    <ThemeProvider theme={theme}>
+      <Popup />
+    </ThemeProvider>
   </React.StrictMode>,
   document.getElementById("root")
 );

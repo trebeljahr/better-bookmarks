@@ -10,11 +10,6 @@ type Props = {
 };
 
 export function EditBookmark({ value, setValue, possibleTags = [] }: Props) {
-  // console.log(url);
-  // const [value, setValue] = useState<Bookmark>({});
-
-  console.log(value);
-
   if (!value) return null;
 
   return (
