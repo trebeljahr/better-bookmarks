@@ -7,26 +7,18 @@ import {
   ThemeProvider,
 } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import Tags from "./Tags";
+import Tags from "./components/Tags";
 import ReactDOM from "react-dom";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
-import { theme } from "./MaterialTheme";
+import { theme } from "./components/MaterialTheme";
+import { Bookmark } from "./hooks/useBookmarks";
 
 async function getCurrentTab() {
   let queryOptions = { active: true, lastFocusedWindow: true };
   let [tab] = await chrome.tabs.query(queryOptions);
   return tab;
 }
-
-export type Bookmark = {
-  url: string;
-  description: string;
-  rating: number;
-  necessaryTime: number;
-  timestamp: number;
-  tags: string[];
-};
 
 const Popup = () => {
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab>();
@@ -46,9 +38,9 @@ const Popup = () => {
 
   useEffect(() => {
     async function syncStorage() {
-      if (!currentTab) return;
+      if (!currentTab || !currentTab.title) return;
 
-      setDescription(currentTab.title || "");
+      setDescription(currentTab.title);
 
       if (!currentTab.url) return;
 

@@ -1,6 +1,6 @@
 import { Rating, Stack, TextField } from "@mui/material";
 import React from "react";
-import { Bookmark } from "./popup";
+import { Bookmark } from "../hooks/useBookmarks";
 import Tags from "./Tags";
 
 type Props = {

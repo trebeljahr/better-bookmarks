@@ -11,44 +11,14 @@ import {
   Stack,
   ThemeProvider,
 } from "@mui/material";
+import DeleteIcon from "@mui/icons-material/Delete";
 import Avatar from "@mui/material/Avatar";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import { EditBookmark } from "./EditBookmark";
-import { theme } from "./MaterialTheme";
-import { Bookmark } from "./popup";
-import Tags from "./Tags";
-
-export const useBookmarks = () => {
-  const [bookmarks, setBookmarks] = useState<Record<string, Bookmark>>({});
-
-  useEffect(() => {
-    async function getBookmarks() {
-      const fetchedBookmarks = await chrome.storage.local.get(null);
-      setBookmarks(fetchedBookmarks);
-
-      chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName !== "local") return;
-
-        setBookmarks((oldState) => {
-          const newState = Object.keys(changes).reduce(
-            (acc, key) => {
-              const newBookmark = changes[key].newValue as Bookmark;
-              return { ...acc, [key]: newBookmark };
-            },
-            { ...oldState }
-          );
-
-          return newState;
-        });
-      });
-    }
-
-    getBookmarks();
-  }, []);
-
-  return { bookmarks };
-};
+import { EditBookmark } from "./components/EditBookmark";
+import { Bookmark, useBookmarks } from "./hooks/useBookmarks";
+import { theme } from "./components/MaterialTheme";
+import Tags from "./components/Tags";
 
 function getTagsFromBookmarks(bookmarks: Record<string, Bookmark>) {
   const allTags = Object.values(bookmarks).reduce((acc, bookmark) => {
@@ -103,6 +73,10 @@ const Overview = () => {
     downloadLink.current.click();
   }
 
+  const deleteBookmark = async (key: string) => {
+    await chrome.storage.local.remove(key);
+  };
+
   return (
     <Stack spacing={2}>
       <h1>All the Bookmarks</h1>
@@ -150,6 +124,16 @@ const Overview = () => {
                     >
                       {editing?.url === key ? <ClearIcon /> : <EditIcon />}
                     </IconButton>
+
+                    <Fab
+                      variant="circular"
+                      size="small"
+                      color="secondary"
+                      aria-label="delete"
+                      onClick={() => deleteBookmark(key)}
+                    >
+                      <DeleteIcon />
+                    </Fab>
                   </Stack>
 
                   {editing && editing?.url === key && (

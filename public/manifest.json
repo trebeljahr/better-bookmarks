@@ -5,10 +5,6 @@
   "description": "Better Bookmarks is a Chrome extension that allows you to save your bookmarks in a more organized way.",
   "version": "1.0",
 
-  "options_ui": {
-    "page": "options.html"
-  },
-
   "action": {
     "default_icon": {
       "16": "/empty16.png",
