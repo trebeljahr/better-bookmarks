@@ -8,7 +8,9 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  Rating,
   Stack,
+  TextField,
   ThemeProvider,
 } from "@mui/material";
 import DeleteIcon from "@mui/icons-material/Delete";
@@ -35,6 +37,10 @@ function getTagsFromBookmarks(bookmarks: Record<string, Bookmark>) {
 const Overview = () => {
   const { bookmarks } = useBookmarks();
   const [tags, setTags] = useState<string[]>([]);
+  const [rating, setRating] = useState<number | null>(null);
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [useFilterRating, setUseFilterRating] = useState<boolean>(false);
 
   const [editing, setEditing] = useState<Bookmark | null>(null);
 
@@ -96,13 +102,71 @@ const Overview = () => {
       >
         Export as JSON
       </Fab>
+
+      <TextField
+        label="Title"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
+
+      <TextField
+        label="URL"
+        value={url}
+        onChange={(e) => setUrl(e.target.value)}
+      />
+
+      <Rating
+        name="customized-10"
+        value={rating}
+        max={10}
+        onChange={(_, newValue) => {
+          if (newValue === null) {
+            setUseFilterRating(false);
+          }
+          setUseFilterRating(true);
+          setRating(newValue);
+        }}
+      />
+      {useFilterRating && (
+        <Fab
+          variant="circular"
+          size="small"
+          color={"secondary"}
+          aria-label="stop filtering by rating"
+          onClick={() => {
+            setUseFilterRating(false);
+            setRating(null);
+          }}
+        >
+          <DeleteIcon />
+        </Fab>
+      )}
+
       <Tags setTags={setTags} tags={tags} possibleOptions={tagsFromBookmarks} />
       <List dense={false}>
         {Object.keys(bookmarks)
           .filter((key) => {
             const bookmark = bookmarks[key];
-            if (tags.length === 0) return true;
-            return tags.every((tag) => bookmark?.tags.includes(tag));
+            const tagsMatch =
+              tags.length === 0 ||
+              tags.every((tag) => bookmark?.tags.includes(tag));
+
+            const ratingMatches =
+              !useFilterRating || !rating || bookmark?.rating === rating;
+            const descriptionMatches =
+              !description || bookmark?.description.includes(description);
+            const urlMatches = !url || bookmark?.url.includes(url);
+
+            const isEditing = editing?.url === key;
+
+            const filtersMatch =
+              tagsMatch && ratingMatches && descriptionMatches && urlMatches;
+
+            if (isEditing || filtersMatch) {
+              return true;
+            }
+
+            return false;
           })
           .map((key) => {
             const bookmark = bookmarks[key];

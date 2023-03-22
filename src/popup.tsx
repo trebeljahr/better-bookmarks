@@ -22,7 +22,7 @@ async function getCurrentTab() {
 
 const Popup = () => {
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab>();
-  const [rating, setRating] = useState<number>(0);
+  const [rating, setRating] = useState<number>(5);
   const [description, setDescription] = useState<string>("");
   const [necessaryTime, setNecessaryTime] = useState<number>(0);
   const [tags, setTags] = useState<string[]>([]);
@@ -47,6 +47,7 @@ const Popup = () => {
       const result = await chrome.storage.local.get(currentTab.url);
       const bookmark = result[currentTab.url] as Bookmark;
 
+      console.log(bookmark);
       if (!bookmark) return;
 
       setRating(bookmark.rating);
@@ -74,6 +75,8 @@ const Popup = () => {
       timestamp,
       tags,
     };
+    if (!bookmark.url) return;
+
     await chrome.storage.local.set({ [bookmark.url]: bookmark });
 
     const alreadyAddedIcon = {
@@ -84,8 +87,6 @@ const Popup = () => {
     };
 
     chrome.action.setIcon({ path: alreadyAddedIcon });
-
-    // window.close();
   };
 
   const deleteBookmark = async () => {
@@ -93,14 +94,19 @@ const Popup = () => {
 
     await chrome.storage.local.remove(currentTab.url);
 
-    const alreadyAddedIcon = {
+    const notAddedIcon = {
       "16": "/empty16.png",
       "32": "/empty32.png",
       "48": "/empty48.png",
       "128": "/empty128.png",
     };
 
-    chrome.action.setIcon({ path: alreadyAddedIcon });
+    chrome.action.setIcon({ path: notAddedIcon }, window.close);
+  };
+
+  const saveAndExit = () => {
+    saveBookmark();
+    window.close();
   };
 
   return (
@@ -113,7 +119,7 @@ const Popup = () => {
 
       <Rating
         name="customized-10"
-        defaultValue={5}
+        value={rating}
         max={10}
         onChange={(_, newValue) => {
           if (!newValue) return;
@@ -130,7 +136,7 @@ const Popup = () => {
           size="small"
           color="primary"
           aria-label="add"
-          onClick={saveBookmark}
+          onClick={saveAndExit}
         >
           <BookmarkAddIcon sx={{ mr: 1 }} />
           Save Bookmark
