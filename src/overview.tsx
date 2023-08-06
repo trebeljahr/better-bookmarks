@@ -114,12 +114,7 @@ async function logTree(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
 }
 
 function getTagsFromBookmarks(bookmarks: Record<string, Bookmark>) {
-  const allTags = Object.values(bookmarks).reduce((acc, bookmark) => {
-    if (!bookmark?.tags) return acc;
-
-    return [...acc, ...bookmark.tags];
-  }, [] as string[]);
-
+  const allTags = Object.values(bookmarks).flatMap((bookmark) => bookmark.tags);
   const dedupedTags = [...new Set(allTags)];
 
   return dedupedTags;
@@ -145,9 +140,10 @@ const Overview = () => {
     setEditing(bookmarks[key]);
   };
 
-  const tagsFromBookmarks = useMemo(() => {
-    return getTagsFromBookmarks(bookmarks);
-  }, [bookmarks]);
+  const tagsFromBookmarks = useMemo(
+    () => getTagsFromBookmarks(bookmarks),
+    [bookmarks]
+  );
 
   async function handleEditing(newValue: Bookmark) {
     const key = newValue?.url;
@@ -175,23 +171,8 @@ const Overview = () => {
   };
 
   const handleUpload = async () => {
-    // const input = document.createElement("input");
-    // input.type = "file";
-    // input.accept = "application/json";
-
     let bookmarksTree = await chrome.bookmarks.getTree();
     logTree(bookmarksTree[0]);
-
-    // input.onchange = async () => {
-    //   if (!input.files) return;
-    //   const file = input.files[0];
-    //   const text = await file.text();
-    //   const json = JSON.parse(text);
-    //   console.log(json);
-    //   // await chrome.storage.local.set(json);
-    // };
-    // input.click();
-    // input.remove();
   };
 
   const filteredBookmarks = Object.keys(bookmarks)
@@ -221,6 +202,8 @@ const Overview = () => {
     })
     .map((key) => bookmarks[key]);
 
+  console.log(filteredBookmarks.length);
+
   const renderRow = (props: ListChildComponentProps) => {
     const { index, style } = props;
     const bookmark = filteredBookmarks[index];
@@ -236,13 +219,15 @@ const Overview = () => {
               </Avatar>
             </ListItemAvatar>
             <ListItemText primary={bookmark.description} />
-            <IconButton
-              edge="end"
-              aria-label="delete"
-              onClick={() => toggleEditing(bookmark.url)}
-            >
-              {editing?.url === bookmark.url ? <ClearIcon /> : <EditIcon />}
-            </IconButton>
+            {editing?.url !== bookmark.url && (
+              <IconButton
+                edge="end"
+                aria-label="delete"
+                onClick={() => toggleEditing(bookmark.url)}
+              >
+                <EditIcon />
+              </IconButton>
+            )}
 
             <Fab
               variant="circular"
@@ -254,14 +239,6 @@ const Overview = () => {
               <DeleteIcon />
             </Fab>
           </Stack>
-
-          {editing && editing?.url === bookmark.url && (
-            <EditBookmark
-              value={editing}
-              setValue={handleEditing}
-              possibleTags={tagsFromBookmarks}
-            />
-          )}
         </Stack>
       </ListItem>
     );
@@ -330,17 +307,25 @@ const Overview = () => {
       )}
 
       <Tags setTags={setTags} tags={tags} possibleOptions={tagsFromBookmarks} />
-      <List dense={false}>
-        <FixedSizeList
-          height={400}
-          width={360}
-          itemSize={46}
-          itemCount={200}
-          overscanCount={5}
-        >
-          {renderRow}
-        </FixedSizeList>
-      </List>
+
+      {editing && (
+        <EditBookmark
+          value={editing}
+          setValue={handleEditing}
+          possibleTags={tagsFromBookmarks}
+          toggleEditing={toggleEditing}
+        />
+      )}
+
+      <FixedSizeList
+        height={400}
+        width={window.innerWidth}
+        itemSize={46}
+        itemCount={filteredBookmarks.length}
+        overscanCount={5}
+      >
+        {renderRow}
+      </FixedSizeList>
     </Stack>
   );
 };

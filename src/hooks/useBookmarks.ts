@@ -21,15 +21,22 @@ export const useBookmarks = () => {
         if (areaName !== "local") return;
 
         setBookmarks((oldState) => {
-          const newState = Object.keys(changes).reduce(
-            (acc, key) => {
-              const newBookmark = changes[key].newValue as Bookmark;
-              return { ...acc, [key]: newBookmark };
-            },
-            { ...oldState }
-          );
+          const oldStateCopy = JSON.parse(JSON.stringify(oldState));
+          console.log(Object.keys(oldStateCopy).length);
 
-          return newState;
+          Object.entries(changes).forEach(([key, { newValue }]) => {
+            console.log("key", key);
+            console.log("newValue", newValue);
+
+            oldStateCopy[key] = newValue;
+
+            if (newValue === undefined) {
+              delete oldStateCopy[key];
+            }
+          });
+
+          console.log(Object.keys(oldStateCopy).length);
+          return oldStateCopy;
         });
       });
     }
