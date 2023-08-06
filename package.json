@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "webpack --config webpack/webpack.dev.js --watch",
     "build": "webpack --config webpack/webpack.prod.js",
-    "clean": "rimraf dist",
+    "clean": "rimraf dist && rm -rf node_modules && rm package-lock.json && npm i",
     "style": "prettier --write \"src/**/*.{ts,tsx}\""
   },
   "author": "",
@@ -25,12 +25,14 @@
     "dayjs": "^1.11.7",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
+    "react-window": "^1.8.9",
     "use-chrome-storage": "^1.0.8"
   },
   "devDependencies": {
     "@types/chrome": "0.0.158",
     "@types/react": "^17.0.0",
     "@types/react-dom": "^17.0.0",
+    "@types/react-window": "^1.8.5",
     "copy-webpack-plugin": "^9.0.1",
     "prettier": "^2.2.1",
     "rimraf": "^3.0.2 ",

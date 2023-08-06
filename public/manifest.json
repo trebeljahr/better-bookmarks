@@ -25,7 +25,7 @@
   "content_scripts": [
     {
       "matches": ["<all_urls>"],
-      "js": ["js/vendor.js", "js/content_script.js"]
+      "js": ["js/vendor.js"]
     }
   ],
 
@@ -33,7 +33,7 @@
     "service_worker": "js/background.js"
   },
 
-  "permissions": ["storage", "tabs"],
+  "permissions": ["storage", "tabs", "bookmarks"],
 
   "host_permissions": ["activeTab"]
 }
