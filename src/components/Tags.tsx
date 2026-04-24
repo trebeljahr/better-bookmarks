@@ -1,9 +1,9 @@
-import * as React from "react";
+import CheckBoxIcon from "@mui/icons-material/CheckBox";
+import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
+import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
 import Checkbox from "@mui/material/Checkbox";
 import TextField from "@mui/material/TextField";
-import Autocomplete, { createFilterOptions } from "@mui/material/Autocomplete";
-import CheckBoxOutlineBlankIcon from "@mui/icons-material/CheckBoxOutlineBlank";
-import CheckBoxIcon from "@mui/icons-material/CheckBox";
+import type * as React from "react";
 
 export interface TagAutocompleteType {
   inputValue?: string;
@@ -21,11 +21,7 @@ type Props = {
   tags?: string[];
 };
 
-export default function Tags({
-  tags = [],
-  setTags,
-  possibleOptions = [],
-}: Props) {
+export default function Tags({ tags = [], setTags, possibleOptions = [] }: Props) {
   const combinedOptions: TagAutocompleteType[] = [
     ...new Set([...possibleOptions, ...hardcodedOptions]),
   ].map((option) => ({ title: option, inputValue: "" }));
@@ -46,9 +42,7 @@ export default function Tags({
         const filtered = filter(options, params);
 
         const { inputValue } = params;
-        const isExisting = options.some(
-          (option) => inputValue === option.title
-        );
+        const isExisting = options.some((option) => inputValue === option.title);
         if (inputValue !== "" && !isExisting) {
           filtered.push({
             inputValue,

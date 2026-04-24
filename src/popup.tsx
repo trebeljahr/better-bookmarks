@@ -1,22 +1,15 @@
-import {
-  Fab,
-  Link,
-  Rating,
-  Stack,
-  TextField,
-  ThemeProvider,
-} from "@mui/material";
-import React, { useEffect, useState } from "react";
-import Tags from "./components/Tags";
-import ReactDOM from "react-dom";
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
+import { Fab, Link, Rating, Stack, TextField, ThemeProvider } from "@mui/material";
+import React, { useEffect, useState } from "react";
+import ReactDOM from "react-dom";
 import { theme } from "./components/MaterialTheme";
-import { Bookmark } from "./hooks/useBookmarks";
+import Tags from "./components/Tags";
+import type { Bookmark } from "./hooks/useBookmarks";
 
 async function getCurrentTab() {
-  let queryOptions = { active: true, lastFocusedWindow: true };
-  let [tab] = await chrome.tabs.query(queryOptions);
+  const queryOptions = { active: true, lastFocusedWindow: true };
+  const [tab] = await chrome.tabs.query(queryOptions);
   return tab;
 }
 
@@ -111,11 +104,7 @@ const Popup = () => {
 
   return (
     <Stack spacing={2}>
-      <TextField
-        label="Title"
-        value={description}
-        onChange={changeDescription}
-      />
+      <TextField label="Title" value={description} onChange={changeDescription} />
 
       <Rating
         name="customized-10"
@@ -131,13 +120,7 @@ const Popup = () => {
       {/* <button onClick={saveBookmark}>Bookmark</button> */}
 
       <Stack direction="row" spacing={2} justifyContent="flex-end">
-        <Fab
-          variant="extended"
-          size="small"
-          color="primary"
-          aria-label="add"
-          onClick={saveAndExit}
-        >
+        <Fab variant="extended" size="small" color="primary" aria-label="add" onClick={saveAndExit}>
           <BookmarkAddIcon sx={{ mr: 1 }} />
           Save Bookmark
         </Fab>
@@ -165,5 +148,5 @@ ReactDOM.render(
       <Popup />
     </ThemeProvider>
   </React.StrictMode>,
-  document.getElementById("root")
+  document.getElementById("root"),
 );

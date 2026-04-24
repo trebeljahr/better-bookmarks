@@ -1,4 +1,3 @@
-import ClearIcon from "@mui/icons-material/Clear";
 import DeleteIcon from "@mui/icons-material/Delete";
 import EditIcon from "@mui/icons-material/Edit";
 import StarIcon from "@mui/icons-material/Star";
@@ -7,7 +6,6 @@ import {
   Button,
   Fab,
   IconButton,
-  List,
   ListItem,
   ListItemAvatar,
   ListItemText,
@@ -19,17 +17,15 @@ import {
 import Avatar from "@mui/material/Avatar";
 import React, { useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
-import { FixedSizeList, ListChildComponentProps } from "react-window";
+import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { EditBookmark } from "./components/EditBookmark";
 import { theme } from "./components/MaterialTheme";
 import Tags from "./components/Tags";
-import { Bookmark, useBookmarks } from "./hooks/useBookmarks";
+import { type Bookmark, useBookmarks } from "./hooks/useBookmarks";
 
 type BookmarksById = Record<string, chrome.bookmarks.BookmarkTreeNode>;
 
-function recursivelyFlattenBookmarks(
-  bookmarkItem: chrome.bookmarks.BookmarkTreeNode
-) {
+function recursivelyFlattenBookmarks(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
   const bookmarksById: BookmarksById = {};
 
   function recurse(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
@@ -44,13 +40,7 @@ function recursivelyFlattenBookmarks(
   return bookmarksById;
 }
 
-const utmParams = [
-  "utm_source",
-  "utm_medium",
-  "utm_campaign",
-  "utm_term",
-  "utm_content",
-];
+const utmParams = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
 
 async function logTree(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
   const bookmarks = recursivelyFlattenBookmarks(bookmarkItem);
@@ -59,10 +49,7 @@ async function logTree(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
     const tags = [];
     if (singleItem.parentId) {
       let currentBookmark = bookmarks[singleItem.parentId];
-      while (
-        currentBookmark.title !== "Bookmarks Bar" &&
-        currentBookmark.parentId
-      ) {
+      while (currentBookmark.title !== "Bookmarks Bar" && currentBookmark.parentId) {
         tags.push(currentBookmark.title);
         currentBookmark = bookmarks[currentBookmark.parentId];
       }
@@ -84,9 +71,7 @@ async function logTree(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
       return {
         title: bookmark.title,
         tags: bookmark.tags,
-        url: refineUrls(
-          bookmark as chrome.bookmarks.BookmarkTreeNode & { url: string }
-        ),
+        url: refineUrls(bookmark as chrome.bookmarks.BookmarkTreeNode & { url: string }),
         description: bookmark.title,
         rating: 5,
         necessaryTime: 10,
@@ -104,9 +89,7 @@ async function logTree(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
 
   await chrome.storage.local.set(withRefinedUrls);
 
-  function refineUrls(
-    bookmark: chrome.bookmarks.BookmarkTreeNode & { url: string }
-  ) {
+  function refineUrls(bookmark: chrome.bookmarks.BookmarkTreeNode & { url: string }) {
     const url = new URL(bookmark.url);
     utmParams.forEach((param) => url.searchParams.delete(param));
     return url.toString();
@@ -140,10 +123,7 @@ const Overview = () => {
     setEditing(bookmarks[key]);
   };
 
-  const tagsFromBookmarks = useMemo(
-    () => getTagsFromBookmarks(bookmarks),
-    [bookmarks]
-  );
+  const tagsFromBookmarks = useMemo(() => getTagsFromBookmarks(bookmarks), [bookmarks]);
 
   async function handleEditing(newValue: Bookmark) {
     const key = newValue?.url;
@@ -171,7 +151,7 @@ const Overview = () => {
   };
 
   const handleUpload = async () => {
-    let bookmarksTree = await chrome.bookmarks.getTree();
+    const bookmarksTree = await chrome.bookmarks.getTree();
     logTree(bookmarksTree[0]);
   };
 
@@ -180,19 +160,15 @@ const Overview = () => {
       const bookmark = bookmarks[key];
       if (!bookmark) return false;
 
-      const tagsMatch =
-        tags.length === 0 || tags.every((tag) => bookmark?.tags.includes(tag));
+      const tagsMatch = tags.length === 0 || tags.every((tag) => bookmark?.tags.includes(tag));
 
-      const ratingMatches =
-        !useFilterRating || !rating || bookmark?.rating === rating;
-      const descriptionMatches =
-        !description || bookmark?.description.includes(description);
+      const ratingMatches = !useFilterRating || !rating || bookmark?.rating === rating;
+      const descriptionMatches = !description || bookmark?.description.includes(description);
       const urlMatches = !url || bookmark?.url.includes(url);
 
       const isEditing = editing?.url === key;
 
-      const filtersMatch =
-        tagsMatch && ratingMatches && descriptionMatches && urlMatches;
+      const filtersMatch = tagsMatch && ratingMatches && descriptionMatches && urlMatches;
 
       if (isEditing || filtersMatch) {
         return true;
@@ -250,12 +226,7 @@ const Overview = () => {
       <Button onClick={handleUpload}>
         <UploadIcon />
       </Button>
-      <a
-        style={{ display: "none" }}
-        download="bookmarks.json"
-        href="#"
-        ref={downloadLink}
-      ></a>
+      <a style={{ display: "none" }} download="bookmarks.json" href="#" ref={downloadLink}></a>
 
       <Fab
         variant="extended"
@@ -273,11 +244,7 @@ const Overview = () => {
         onChange={(e) => setDescription(e.target.value)}
       />
 
-      <TextField
-        label="URL"
-        value={url}
-        onChange={(e) => setUrl(e.target.value)}
-      />
+      <TextField label="URL" value={url} onChange={(e) => setUrl(e.target.value)} />
 
       <Rating
         name="customized-10"
@@ -336,5 +303,5 @@ ReactDOM.render(
       <Overview />
     </ThemeProvider>
   </React.StrictMode>,
-  document.getElementById("root")
+  document.getElementById("root"),
 );

@@ -1,6 +1,6 @@
-import * as React from "react";
-import { styled } from "@mui/material/styles";
 import Chip from "@mui/material/Chip";
+import { styled } from "@mui/material/styles";
+import * as React from "react";
 
 interface ChipData {
   key: number;
@@ -21,9 +21,7 @@ export default function ChipsArray() {
   ]);
 
   const handleDelete = (chipToDelete: ChipData) => () => {
-    setChipData((chips) =>
-      chips.filter((chip) => chip.key !== chipToDelete.key)
-    );
+    setChipData((chips) => chips.filter((chip) => chip.key !== chipToDelete.key));
   };
 
   return (

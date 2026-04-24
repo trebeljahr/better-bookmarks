@@ -1,9 +1,7 @@
-import { IconButton, Rating, Stack, TextField } from "@mui/material";
-import React from "react";
-import { Bookmark } from "../hooks/useBookmarks";
-import Tags from "./Tags";
-import DeleteIcon from "@mui/icons-material/Delete";
 import SaveIcon from "@mui/icons-material/Save";
+import { IconButton, Rating, Stack, TextField } from "@mui/material";
+import type { Bookmark } from "../hooks/useBookmarks";
+import Tags from "./Tags";
 
 type Props = {
   value: Bookmark;
@@ -12,12 +10,7 @@ type Props = {
   toggleEditing: (url: string) => void;
 };
 
-export function EditBookmark({
-  value,
-  setValue,
-  possibleTags = [],
-  toggleEditing,
-}: Props) {
+export function EditBookmark({ value, setValue, possibleTags = [], toggleEditing }: Props) {
   if (!value) return null;
 
   return (
@@ -45,11 +38,7 @@ export function EditBookmark({
         }}
         possibleOptions={possibleTags}
       />
-      <IconButton
-        edge="end"
-        aria-label="delete"
-        onClick={() => toggleEditing(value.url)}
-      >
+      <IconButton edge="end" aria-label="delete" onClick={() => toggleEditing(value.url)}>
         {/* <DeleteIcon /> */}
         <SaveIcon />
       </IconButton>
