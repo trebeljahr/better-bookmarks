@@ -1,13 +1,13 @@
 {
   "name": "better-bookmarks",
   "version": "1.0.0",
+  "packageManager": "pnpm@10.33.2",
   "description": "better-bookmarks",
   "main": "index.js",
   "scripts": {
     "dev": "webpack --config webpack/webpack.dev.js --watch",
     "build": "webpack --config webpack/webpack.prod.js",
     "clean": "rimraf dist && rm -rf node_modules && rm package-lock.json && npm i",
-    "style": "prettier --write \"src/**/*.{ts,tsx}\"",
     "format": "biome format --write .",
     "lint": "biome lint .",
     "check": "biome check --write .",
@@ -38,7 +38,6 @@
     "@types/react-dom": "^17.0.0",
     "@types/react-window": "^1.8.5",
     "copy-webpack-plugin": "^9.0.1",
-    "prettier": "^2.2.1",
     "rimraf": "^3.0.2 ",
     "ts-jest": "^27.0.5",
     "ts-loader": "^8.0.0",
@@ -51,6 +50,8 @@
     "lint-staged": "^16.4.0"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx,json,jsonc,css}": ["biome check --write --no-errors-on-unmatched"]
+    "*.{js,jsx,ts,tsx,json,jsonc,css}": [
+      "biome check --write --no-errors-on-unmatched"
+    ]
   }
 }
