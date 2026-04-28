@@ -19,7 +19,7 @@ const Popup = () => {
   const [description, setDescription] = useState<string>("");
   const [necessaryTime, setNecessaryTime] = useState<number>(0);
   const [tags, setTags] = useState<string[]>([]);
-  const [timestamp, setTimestamp] = useState<number>(() => Date.now());
+  const [timestamp, _setTimestamp] = useState<number>(() => Date.now());
 
   useEffect(() => {
     async function syncTab() {
@@ -31,7 +31,7 @@ const Popup = () => {
 
   useEffect(() => {
     async function syncStorage() {
-      if (!currentTab || !currentTab.title) return;
+      if (!currentTab?.title) return;
 
       setDescription(currentTab.title);
 
@@ -57,7 +57,7 @@ const Popup = () => {
 
   useEffect(() => {
     saveBookmark();
-  }, [description, rating, necessaryTime, tags]);
+  }, [saveBookmark]);
 
   const saveBookmark = async () => {
     const bookmark: Bookmark = {

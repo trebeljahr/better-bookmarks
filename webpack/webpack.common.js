@@ -1,5 +1,5 @@
-const webpack = require("webpack");
-const path = require("path");
+const _webpack = require("webpack");
+const path = require("node:path");
 const CopyPlugin = require("copy-webpack-plugin");
 const srcDir = path.join(__dirname, "..", "src");
 
