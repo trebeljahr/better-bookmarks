@@ -226,6 +226,7 @@ const Overview = () => {
       <Button onClick={handleUpload}>
         <UploadIcon />
       </Button>
+      {/* biome-ignore lint/a11y/useAnchorContent: anchor content provided dynamically */}
       <a style={{ display: "none" }} download="bookmarks.json" href="#" ref={downloadLink}></a>
 
       <Fab

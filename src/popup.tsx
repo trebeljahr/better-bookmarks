@@ -57,6 +57,7 @@ const Popup = () => {
 
   useEffect(() => {
     saveBookmark();
+    // biome-ignore lint/correctness/noInvalidUseBeforeDeclaration: hoisting accepted
   }, [saveBookmark]);
 
   const saveBookmark = async () => {
