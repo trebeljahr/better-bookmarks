@@ -94,6 +94,9 @@ export type Settings = {
   folderMirrorPolicy: FolderMirrorPolicy;
   conflictPolicy: ConflictPolicy;
   canonicalizationOverrides: CanonicalizationOverrides;
+  autoBackupEnabled: boolean;
+  autoBackupIntervalMin: number;
+  autoBackupKeepCount: number;
 };
 
 export type CanonicalizationOverrides = {
@@ -112,4 +115,7 @@ export const DEFAULT_SETTINGS: Settings = {
     extraStrippedParams: [],
     perDomain: {},
   },
+  autoBackupEnabled: true,
+  autoBackupIntervalMin: 1440,
+  autoBackupKeepCount: 7,
 };

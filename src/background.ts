@@ -1,3 +1,5 @@
+import { BACKUP_ALARM_NAME, installBackupAlarm, runBackupOnce } from "./core/backup";
+import { installOmnibox } from "./core/omnibox";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "./core/search";
 import { getBookmarkByRawUrl } from "./core/storage/bookmarks";
 import { startSync } from "./core/sync";
@@ -44,3 +46,15 @@ wireSearchIndexer();
 ensureSearchIndexInitialized().catch((err) =>
   console.error("ensureSearchIndexInitialized failed", err),
 );
+
+// Auto-backup alarm. The listener runs on the periodic alarm; install()
+// registers/refreshes the alarm based on current settings.
+chrome.alarms.onAlarm.addListener((alarm) => {
+  if (alarm.name === BACKUP_ALARM_NAME) {
+    runBackupOnce().catch((err) => console.error("auto-backup failed", err));
+  }
+});
+installBackupAlarm().catch((err) => console.error("installBackupAlarm failed", err));
+
+// Omnibox: register `bb` keyword listeners.
+installOmnibox();

@@ -33,7 +33,9 @@
     "service_worker": "js/background.js"
   },
 
-  "permissions": ["storage", "tabs", "bookmarks"],
+  "omnibox": { "keyword": "bb" },
+
+  "permissions": ["storage", "tabs", "bookmarks", "downloads", "alarms"],
 
   "host_permissions": ["activeTab"]
 }
