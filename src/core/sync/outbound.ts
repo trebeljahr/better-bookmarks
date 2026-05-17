@@ -103,7 +103,7 @@ async function ensureDefaultFolder(): Promise<string> {
   if (cachedId) {
     try {
       const node = await chrome.bookmarks.get(cachedId);
-      if (node && node[0]) return cachedId;
+      if (node?.[0]) return cachedId;
     } catch {
       // fall through
     }

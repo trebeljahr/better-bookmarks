@@ -24,7 +24,7 @@ export function ancestorFolderNames(
 ): string[] {
   const names: string[] = [];
   let cursor = startId ? byId[startId] : undefined;
-  while (cursor && cursor.parentId) {
+  while (cursor?.parentId) {
     if (cursor.title && !SYNTHETIC_ROOT_TITLES.has(cursor.title)) {
       names.push(cursor.title);
     }

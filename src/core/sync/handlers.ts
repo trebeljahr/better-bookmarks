@@ -127,7 +127,7 @@ export async function handleChanged(node: InboundChanged, now = Date.now()): Pro
   if (echoed) return;
 
   const mapping = await getMappingByChromeId(node.id);
-  if (!mapping || !mapping.bookmarkId) return;
+  if (!mapping?.bookmarkId) return;
 
   const db = getDB();
   const bookmark = await db.bookmarks.get(mapping.bookmarkId);

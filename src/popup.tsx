@@ -7,11 +7,17 @@ import { theme } from "./components/MaterialTheme";
 import Tags from "./components/Tags";
 import { canonicalize } from "./core/canonicalizer";
 import { migrateLegacyStore } from "./core/migration/legacyToV1";
+import { wireSearchIndexer } from "./core/search";
 import {
   deleteBookmark as deleteBookmarkRecord,
   getBookmarkByRawUrl,
   upsertBookmark,
 } from "./core/storage/bookmarks";
+
+// Wire the search indexer to Dexie hooks in this popup context, so a save
+// here populates postings immediately (popup may close before the service
+// worker's hook fires for the same write).
+wireSearchIndexer();
 
 async function getCurrentTab() {
   const queryOptions = { active: true, lastFocusedWindow: true };

@@ -1,3 +1,4 @@
+import { ensureSearchIndexInitialized, wireSearchIndexer } from "./core/search";
 import { getBookmarkByRawUrl } from "./core/storage/bookmarks";
 import { startSync } from "./core/sync";
 
@@ -37,3 +38,9 @@ chrome.tabs.onUpdated.addListener((tabId) => {
 // Boot sync: register Chrome bookmarks listeners + run initial import +
 // reconcile drift. Idempotent.
 startSync().catch((err) => console.error("startSync failed", err));
+
+// Boot search index: subscribe to live bookmark changes + backfill if empty.
+wireSearchIndexer();
+ensureSearchIndexInitialized().catch((err) =>
+  console.error("ensureSearchIndexInitialized failed", err),
+);

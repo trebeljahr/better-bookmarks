@@ -9,3 +9,8 @@
 export { indexBookmark, reindexAll, removeBookmark } from "./indexer";
 export { parseQuery, type Query, type RatingFilter, type RatingOp } from "./query";
 export { runQuery, type SearchOptions, search } from "./runner";
+export {
+  ensureSearchIndexInitialized,
+  resetSearchWiringForTests,
+  wireSearchIndexer,
+} from "./wire";
