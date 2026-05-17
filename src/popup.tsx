@@ -1,11 +1,17 @@
 import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
 import DeleteIcon from "@mui/icons-material/Delete";
 import { Fab, Link, Rating, Stack, TextField, ThemeProvider } from "@mui/material";
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import { theme } from "./components/MaterialTheme";
 import Tags from "./components/Tags";
-import type { Bookmark } from "./hooks/useBookmarks";
+import { canonicalize } from "./core/canonicalizer";
+import { migrateLegacyStore } from "./core/migration/legacyToV1";
+import {
+  deleteBookmark as deleteBookmarkRecord,
+  getBookmarkByRawUrl,
+  upsertBookmark,
+} from "./core/storage/bookmarks";
 
 async function getCurrentTab() {
   const queryOptions = { active: true, lastFocusedWindow: true };
@@ -13,93 +19,88 @@ async function getCurrentTab() {
   return tab;
 }
 
+const NOT_ADDED_ICON = {
+  "16": "/empty16.png",
+  "32": "/empty32.png",
+  "48": "/empty48.png",
+  "128": "/empty128.png",
+};
+
+const ADDED_ICON = {
+  "16": "/full16.png",
+  "32": "/full32.png",
+  "48": "/full48.png",
+  "128": "/full128.png",
+};
+
 const Popup = () => {
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab>();
   const [rating, setRating] = useState<number>(5);
   const [description, setDescription] = useState<string>("");
   const [necessaryTime, setNecessaryTime] = useState<number>(0);
   const [tags, setTags] = useState<string[]>([]);
-  const [timestamp, _setTimestamp] = useState<number>(() => Date.now());
+  const [existingId, setExistingId] = useState<string | null>(null);
 
   useEffect(() => {
     async function syncTab() {
+      try {
+        await migrateLegacyStore();
+      } catch (err) {
+        console.error("legacy migration failed", err);
+      }
       const tab = await getCurrentTab();
       setCurrentTab(tab);
+
+      if (!tab?.url) return;
+      const existing = await getBookmarkByRawUrl(tab.url);
+      if (existing) {
+        setExistingId(existing.id);
+        setDescription(existing.title || existing.description || tab.title || "");
+        setRating(existing.rating ?? 5);
+        setNecessaryTime(existing.necessaryTime ?? 0);
+        setTags(existing.tags);
+      } else {
+        setDescription(tab.title ?? "");
+      }
     }
     syncTab();
   }, []);
-
-  useEffect(() => {
-    async function syncStorage() {
-      if (!currentTab?.title) return;
-
-      setDescription(currentTab.title);
-
-      if (!currentTab.url) return;
-
-      const result = await chrome.storage.local.get(currentTab.url);
-      const bookmark = result[currentTab.url] as Bookmark;
-
-      console.log(bookmark);
-      if (!bookmark) return;
-
-      setRating(bookmark.rating);
-      setNecessaryTime(bookmark.necessaryTime);
-      setTags(bookmark?.tags);
-    }
-
-    syncStorage();
-  }, [currentTab]);
 
   const changeDescription = (event: React.ChangeEvent<HTMLInputElement>) => {
     setDescription(event.target.value);
   };
 
-  useEffect(() => {
-    saveBookmark();
-    // biome-ignore lint/correctness/noInvalidUseBeforeDeclaration: hoisting accepted
-  }, [saveBookmark]);
-
-  const saveBookmark = async () => {
-    const bookmark: Bookmark = {
-      url: currentTab?.url || "",
+  const saveBookmark = useCallback(async () => {
+    if (!currentTab?.url) return;
+    const c = canonicalize(currentTab.url);
+    if (!c.ok) return;
+    const result = await upsertBookmark({
+      rawUrl: currentTab.url,
+      title: description,
       description,
       rating,
       necessaryTime,
-      timestamp,
       tags,
-    };
-    if (!bookmark.url) return;
-
-    await chrome.storage.local.set({ [bookmark.url]: bookmark });
-
-    const alreadyAddedIcon = {
-      "16": "/full16.png",
-      "32": "/full32.png",
-      "48": "/full48.png",
-      "128": "/full128.png",
-    };
-
-    chrome.action.setIcon({ path: alreadyAddedIcon });
-  };
+      capturedFrom: "popup",
+    });
+    if (result.ok) {
+      setExistingId(result.bookmark.id);
+      chrome.action.setIcon({ path: ADDED_ICON });
+    }
+  }, [currentTab, description, rating, necessaryTime, tags]);
 
   const deleteBookmark = async () => {
-    if (!currentTab?.url) return;
-
-    await chrome.storage.local.remove(currentTab.url);
-
-    const notAddedIcon = {
-      "16": "/empty16.png",
-      "32": "/empty32.png",
-      "48": "/empty48.png",
-      "128": "/empty128.png",
-    };
-
-    chrome.action.setIcon({ path: notAddedIcon }, window.close);
+    if (!existingId) {
+      window.close();
+      return;
+    }
+    await deleteBookmarkRecord(existingId);
+    setExistingId(null);
+    chrome.action.setIcon({ path: NOT_ADDED_ICON }, window.close);
   };
 
-  const saveAndExit = () => {
-    saveBookmark();
+  const saveAndExit = async () => {
+    await saveBookmark();
     window.close();
   };
 
@@ -118,7 +119,6 @@ const Popup = () => {
       />
 
       <Tags setTags={setTags} tags={tags} />
-      {/* <button onClick={saveBookmark}>Bookmark</button> */}
 
       <Stack direction="row" spacing={2} justifyContent="flex-end">
         <Fab variant="extended" size="small" color="primary" aria-label="add" onClick={saveAndExit}>

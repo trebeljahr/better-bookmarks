@@ -7,7 +7,7 @@ type Props = {
   value: Bookmark;
   setValue: (value: Bookmark) => void;
   possibleTags: string[];
-  toggleEditing: (url: string) => void;
+  toggleEditing: (id: string) => void;
 };
 
 export function EditBookmark({ value, setValue, possibleTags = [], toggleEditing }: Props) {
@@ -17,17 +17,17 @@ export function EditBookmark({ value, setValue, possibleTags = [], toggleEditing
     <Stack spacing={2}>
       <TextField
         label="Title"
-        value={value.description}
+        value={value.title}
         onChange={(ev) => {
-          setValue({ ...value, description: ev.target.value });
+          setValue({ ...value, title: ev.target.value });
         }}
       />
       <Rating
         name="customized-10"
         max={10}
-        value={value.rating}
+        value={value.rating ?? 0}
         onChange={(_, newValue) => {
-          if (!newValue) return;
+          if (newValue === null) return;
           setValue({ ...value, rating: newValue });
         }}
       />
@@ -38,8 +38,7 @@ export function EditBookmark({ value, setValue, possibleTags = [], toggleEditing
         }}
         possibleOptions={possibleTags}
       />
-      <IconButton edge="end" aria-label="delete" onClick={() => toggleEditing(value.url)}>
-        {/* <DeleteIcon /> */}
+      <IconButton edge="end" aria-label="save" onClick={() => toggleEditing(value.id)}>
         <SaveIcon />
       </IconButton>
     </Stack>

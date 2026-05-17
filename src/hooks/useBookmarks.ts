@@ -1,48 +1,61 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { migrateLegacyStore } from "../core/migration/legacyToV1";
+import { listBookmarks } from "../core/storage/bookmarks";
+import { getDB } from "../core/storage/db";
+import type { Bookmark as BookmarkRecord } from "../shared/types";
 
-export type Bookmark = {
-  url: string;
-  description: string;
-  rating: number;
-  necessaryTime: number;
-  timestamp: number;
-  tags: string[];
-};
+export type Bookmark = BookmarkRecord;
 
 export const useBookmarks = () => {
-  const [bookmarks, setBookmarks] = useState<Record<string, Bookmark>>({});
+  const [bookmarks, setBookmarks] = useState<BookmarkRecord[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
-    async function getBookmarks() {
-      const fetchedBookmarks = await chrome.storage.local.get(null);
-      setBookmarks(fetchedBookmarks);
+    let mounted = true;
+    let unsubscribe: (() => void) | null = null;
 
-      chrome.storage.onChanged.addListener((changes, areaName) => {
-        if (areaName !== "local") return;
+    async function load() {
+      try {
+        await migrateLegacyStore();
+      } catch (err) {
+        console.error("legacy migration failed", err);
+      }
+      const initial = await listBookmarks();
+      if (!mounted) return;
+      setBookmarks(initial);
+      setLoading(false);
 
-        setBookmarks((oldState) => {
-          const oldStateCopy = JSON.parse(JSON.stringify(oldState));
-          console.log(Object.keys(oldStateCopy).length);
-
-          Object.entries(changes).forEach(([key, { newValue }]) => {
-            console.log("key", key);
-            console.log("newValue", newValue);
-
-            oldStateCopy[key] = newValue;
-
-            if (newValue === undefined) {
-              delete oldStateCopy[key];
-            }
-          });
-
-          console.log(Object.keys(oldStateCopy).length);
-          return oldStateCopy;
-        });
+      const db = getDB();
+      const refresh = async () => {
+        const next = await listBookmarks();
+        if (mounted) setBookmarks(next);
+      };
+      db.bookmarks.hook("creating", () => {
+        queueMicrotask(refresh);
       });
+      db.bookmarks.hook("updating", () => {
+        queueMicrotask(refresh);
+      });
+      db.bookmarks.hook("deleting", () => {
+        queueMicrotask(refresh);
+      });
+      unsubscribe = () => {
+        // Dexie has no public off() for hooks; fine for component lifetime.
+      };
     }
 
-    getBookmarks();
+    load();
+    return () => {
+      mounted = false;
+      unsubscribe?.();
+    };
   }, []);
 
-  return { bookmarks };
+  const bookmarksByCanonical = useMemo(() => {
+    const map: Record<string, BookmarkRecord> = {};
+    for (const b of bookmarks) map[b.canonicalUrl] = b;
+    return map;
+  }, [bookmarks]);
+
+  return { bookmarks, bookmarksByCanonical, loading };
 };

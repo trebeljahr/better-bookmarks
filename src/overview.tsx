@@ -13,6 +13,7 @@ import {
   Stack,
   TextField,
   ThemeProvider,
+  Typography,
 } from "@mui/material";
 import Avatar from "@mui/material/Avatar";
 import React, { useMemo, useRef, useState } from "react";
@@ -21,114 +22,95 @@ import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { EditBookmark } from "./components/EditBookmark";
 import { theme } from "./components/MaterialTheme";
 import Tags from "./components/Tags";
+import { canonicalize } from "./core/canonicalizer";
+import {
+  deleteBookmark as deleteBookmarkRecord,
+  listBookmarks,
+  updateBookmark,
+  upsertBookmark,
+} from "./core/storage/bookmarks";
 import { type Bookmark, useBookmarks } from "./hooks/useBookmarks";
 
 type BookmarksById = Record<string, chrome.bookmarks.BookmarkTreeNode>;
 
 function recursivelyFlattenBookmarks(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
   const bookmarksById: BookmarksById = {};
-
-  function recurse(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
-    bookmarksById[bookmarkItem.id] = bookmarkItem;
-    bookmarkItem.children?.forEach((child) => {
-      recurse(child);
-    });
+  function recurse(node: chrome.bookmarks.BookmarkTreeNode) {
+    bookmarksById[node.id] = node;
+    node.children?.forEach(recurse);
   }
-
   recurse(bookmarkItem);
-
   return bookmarksById;
 }
 
-const utmParams = ["utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content"];
-
-async function logTree(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
-  const bookmarks = recursivelyFlattenBookmarks(bookmarkItem);
-
-  function createTags(singleItem: chrome.bookmarks.BookmarkTreeNode) {
-    const tags = [];
-    if (singleItem.parentId) {
-      let currentBookmark = bookmarks[singleItem.parentId];
-      while (currentBookmark.title !== "Bookmarks Bar" && currentBookmark.parentId) {
-        tags.push(currentBookmark.title);
-        currentBookmark = bookmarks[currentBookmark.parentId];
-      }
+async function importChromeTree(tree: chrome.bookmarks.BookmarkTreeNode): Promise<number> {
+  const all = recursivelyFlattenBookmarks(tree);
+  function tagsFor(item: chrome.bookmarks.BookmarkTreeNode): string[] {
+    const tags: string[] = [];
+    let current = item.parentId ? all[item.parentId] : undefined;
+    while (current && current.title !== "Bookmarks Bar" && current.parentId) {
+      if (current.title) tags.push(current.title);
+      current = current.parentId ? all[current.parentId] : undefined;
     }
-
     return tags;
   }
-
-  const withTags = Object.values(bookmarks).map((bookmark) => {
-    return {
-      ...bookmark,
-      tags: createTags(bookmark),
-    };
-  });
-
-  const withRefinedUrls: Record<string, Bookmark> = withTags
-    .filter((bookmark) => bookmark.url)
-    .map((bookmark) => {
-      return {
-        title: bookmark.title,
-        tags: bookmark.tags,
-        url: refineUrls(bookmark as chrome.bookmarks.BookmarkTreeNode & { url: string }),
-        description: bookmark.title,
-        rating: 5,
-        necessaryTime: 10,
-        timestamp: bookmark.dateAdded || Date.now(),
-      };
-    })
-    .reduce((agg, bookmark) => {
-      return {
-        ...agg,
-        [bookmark.url]: bookmark,
-      };
-    }, {});
-
-  console.log(withRefinedUrls);
-
-  await chrome.storage.local.set(withRefinedUrls);
-
-  function refineUrls(bookmark: chrome.bookmarks.BookmarkTreeNode & { url: string }) {
-    const url = new URL(bookmark.url);
-    utmParams.forEach((param) => url.searchParams.delete(param));
-    return url.toString();
+  let imported = 0;
+  for (const node of Object.values(all)) {
+    if (!node.url) continue;
+    const c = canonicalize(node.url);
+    if (!c.ok) continue;
+    await upsertBookmark({
+      rawUrl: node.url,
+      title: node.title,
+      description: node.title,
+      tags: tagsFor(node),
+      capturedFrom: "chrome-import",
+    });
+    imported += 1;
   }
+  return imported;
 }
 
-function getTagsFromBookmarks(bookmarks: Record<string, Bookmark>) {
-  const allTags = Object.values(bookmarks).flatMap((bookmark) => bookmark.tags);
-  const dedupedTags = [...new Set(allTags)];
-
-  return dedupedTags;
+function getTagsFromBookmarks(bookmarks: Bookmark[]): string[] {
+  const all = new Set<string>();
+  for (const b of bookmarks) for (const t of b.tags) all.add(t);
+  return Array.from(all).sort();
 }
 
 const Overview = () => {
-  const { bookmarks } = useBookmarks();
+  const { bookmarks, loading } = useBookmarks();
   const [tags, setTags] = useState<string[]>([]);
   const [rating, setRating] = useState<number | null>(null);
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [useFilterRating, setUseFilterRating] = useState<boolean>(false);
-
+  const [importStatus, setImportStatus] = useState<string>("");
   const [editing, setEditing] = useState<Bookmark | null>(null);
 
-  const toggleEditing = async (key: string) => {
-    if (key === editing?.url) {
-      await chrome.storage.local.set({ [key]: editing });
+  const toggleEditing = async (id: string) => {
+    if (id === editing?.id) {
+      await updateBookmark(editing.id, {
+        title: editing.title,
+        description: editing.description,
+        rating: editing.rating,
+        tags: editing.tags,
+      });
       setEditing(null);
       return;
     }
-
-    setEditing(bookmarks[key]);
+    setEditing(bookmarks.find((b) => b.id === id) ?? null);
   };
 
   const tagsFromBookmarks = useMemo(() => getTagsFromBookmarks(bookmarks), [bookmarks]);
 
   async function handleEditing(newValue: Bookmark) {
-    const key = newValue?.url;
-    if (key) {
-      await chrome.storage.local.set({ [key]: newValue });
+    if (newValue?.id) {
+      await updateBookmark(newValue.id, {
+        title: newValue.title,
+        description: newValue.description,
+        rating: newValue.rating,
+        tags: newValue.tags,
+      });
     }
     setEditing(newValue);
   }
@@ -136,57 +118,44 @@ const Overview = () => {
   const downloadLink = useRef<HTMLAnchorElement>(null);
 
   async function exportBookmarks() {
-    const result = await chrome.storage.local.get(null);
-    const json = JSON.stringify(result);
+    const all = await listBookmarks();
+    const json = JSON.stringify(all, null, 2);
     const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-
+    const objectUrl = URL.createObjectURL(blob);
     if (!downloadLink.current) return;
-    downloadLink.current.href = url;
+    downloadLink.current.href = objectUrl;
     downloadLink.current.click();
   }
 
-  const deleteBookmark = async (key: string) => {
-    await chrome.storage.local.remove(key);
+  const deleteBookmark = async (id: string) => {
+    await deleteBookmarkRecord(id);
   };
 
   const handleUpload = async () => {
-    const bookmarksTree = await chrome.bookmarks.getTree();
-    logTree(bookmarksTree[0]);
+    setImportStatus("importing…");
+    const tree = await chrome.bookmarks.getTree();
+    const count = await importChromeTree(tree[0]);
+    setImportStatus(`imported ${count} bookmarks`);
   };
 
-  const filteredBookmarks = Object.keys(bookmarks)
-    .filter((key) => {
-      const bookmark = bookmarks[key];
-      if (!bookmark) return false;
-
-      const tagsMatch = tags.length === 0 || tags.every((tag) => bookmark?.tags.includes(tag));
-
-      const ratingMatches = !useFilterRating || !rating || bookmark?.rating === rating;
-      const descriptionMatches = !description || bookmark?.description.includes(description);
-      const urlMatches = !url || bookmark?.url.includes(url);
-
-      const isEditing = editing?.url === key;
-
-      const filtersMatch = tagsMatch && ratingMatches && descriptionMatches && urlMatches;
-
-      if (isEditing || filtersMatch) {
-        return true;
-      }
-
-      return false;
-    })
-    .map((key) => bookmarks[key]);
-
-  console.log(filteredBookmarks.length);
+  const filteredBookmarks = bookmarks.filter((bookmark) => {
+    const tagsMatch = tags.length === 0 || tags.every((tag) => bookmark.tags.includes(tag));
+    const ratingMatches = !useFilterRating || !rating || bookmark.rating === rating;
+    const descriptionMatches =
+      !description ||
+      bookmark.title.toLowerCase().includes(description.toLowerCase()) ||
+      bookmark.description.toLowerCase().includes(description.toLowerCase());
+    const urlMatches = !url || bookmark.canonicalUrl.toLowerCase().includes(url.toLowerCase());
+    const isEditing = editing?.id === bookmark.id;
+    return isEditing || (tagsMatch && ratingMatches && descriptionMatches && urlMatches);
+  });
 
   const renderRow = (props: ListChildComponentProps) => {
     const { index, style } = props;
     const bookmark = filteredBookmarks[index];
     if (!bookmark) return null;
-
     return (
-      <ListItem style={style} key={index} component="div" disablePadding>
+      <ListItem style={style} key={bookmark.id} component="div" disablePadding>
         <Stack spacing={2}>
           <Stack direction="row">
             <ListItemAvatar>
@@ -194,23 +163,21 @@ const Overview = () => {
                 <StarIcon />
               </Avatar>
             </ListItemAvatar>
-            <ListItemText primary={bookmark.description} />
-            {editing?.url !== bookmark.url && (
-              <IconButton
-                edge="end"
-                aria-label="delete"
-                onClick={() => toggleEditing(bookmark.url)}
-              >
+            <ListItemText
+              primary={bookmark.title || bookmark.description}
+              secondary={bookmark.canonicalUrl}
+            />
+            {editing?.id !== bookmark.id && (
+              <IconButton edge="end" aria-label="edit" onClick={() => toggleEditing(bookmark.id)}>
                 <EditIcon />
               </IconButton>
             )}
-
             <Fab
               variant="circular"
               size="small"
               color="secondary"
               aria-label="delete"
-              onClick={() => deleteBookmark(bookmark.url)}
+              onClick={() => deleteBookmark(bookmark.id)}
             >
               <DeleteIcon />
             </Fab>
@@ -223,8 +190,14 @@ const Overview = () => {
   return (
     <Stack spacing={2}>
       <h1>All the Bookmarks</h1>
+      <Typography variant="body2">
+        {loading
+          ? "loading…"
+          : `${bookmarks.length} bookmarks (filtered: ${filteredBookmarks.length})`}
+      </Typography>
+      {importStatus && <Typography variant="body2">{importStatus}</Typography>}
       <Button onClick={handleUpload}>
-        <UploadIcon />
+        <UploadIcon /> Import from Chrome
       </Button>
       {/* biome-ignore lint/a11y/useAnchorContent: anchor content provided dynamically */}
       <a style={{ display: "none" }} download="bookmarks.json" href="#" ref={downloadLink}></a>
@@ -288,7 +261,7 @@ const Overview = () => {
       <FixedSizeList
         height={400}
         width={window.innerWidth}
-        itemSize={46}
+        itemSize={70}
         itemCount={filteredBookmarks.length}
         overscanCount={5}
       >
