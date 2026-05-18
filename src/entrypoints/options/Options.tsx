@@ -1,27 +1,23 @@
 /**
  * Options / settings page.
- *
- * Drives chrome.storage.local-backed Settings via core/storage/settings.ts.
- * Shows live stats from the local Dexie store at the top so the user can
- * sanity-check the data layer alongside their preferences.
  */
 
-import BackupIcon from "@mui/icons-material/Backup";
-import {
-  Box,
-  Button,
-  Chip,
-  Divider,
-  FormControlLabel,
-  MenuItem,
-  Paper,
-  Stack,
-  Switch,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { CloudUpload } from "lucide-react";
 import type * as React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { runBackupOnce } from "@/core/backup";
 import { countBookmarks } from "@/core/storage/bookmarks";
 import { getDB } from "@/core/storage/db";
@@ -108,9 +104,9 @@ export const Options = () => {
 
   if (!settings) {
     return (
-      <Box sx={{ p: 4 }}>
-        <Typography>Loading…</Typography>
-      </Box>
+      <div className="p-6">
+        <p>Loading…</p>
+      </div>
     );
   }
 
@@ -150,42 +146,37 @@ export const Options = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 760, mx: "auto", p: { xs: 2, sm: 4 } }}>
-      <Typography variant="h4" gutterBottom>
-        Settings
-      </Typography>
-      <Typography variant="body2" color="text.secondary" gutterBottom>
+    <div className="mx-auto max-w-[760px] p-4 sm:p-8">
+      <h1 className="mb-1 text-2xl font-semibold">Settings</h1>
+      <p className="mb-4 text-sm text-muted-foreground">
         All changes save automatically. Settings live in chrome.storage.local; bookmark data lives
         in IndexedDB.
-      </Typography>
+      </p>
 
       {stats && (
-        <Paper variant="outlined" sx={{ p: 2, mt: 2 }}>
-          <Typography variant="subtitle2" gutterBottom>
-            Local store
-          </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap">
-            <Chip size="small" variant="outlined" label={`${stats.bookmarks} bookmarks`} />
-            <Chip size="small" variant="outlined" label={`${stats.tags} tags`} />
-            <Chip size="small" variant="outlined" label={`${stats.edges} edges`} />
-            <Chip size="small" variant="outlined" label={`${stats.postings} search postings`} />
-            <Chip size="small" variant="outlined" label={`${stats.mappings} Chrome mappings`} />
-          </Stack>
-        </Paper>
+        <div className="mt-4 rounded-md border bg-card p-3">
+          <p className="mb-2 text-sm font-medium">Local store</p>
+          <div className="flex flex-wrap gap-1.5">
+            <Badge variant="outline">{stats.bookmarks} bookmarks</Badge>
+            <Badge variant="outline">{stats.tags} tags</Badge>
+            <Badge variant="outline">{stats.edges} edges</Badge>
+            <Badge variant="outline">{stats.postings} search postings</Badge>
+            <Badge variant="outline">{stats.mappings} Chrome mappings</Badge>
+          </div>
+        </div>
       )}
 
-      <Divider sx={{ my: 3 }} />
+      <Separator className="my-6" />
 
       <Section title="Sync">
-        <FormControlLabel
-          control={
-            <Switch
-              checked={settings.syncEnabled}
-              onChange={(_, v) => update({ syncEnabled: v })}
-            />
-          }
-          label="Sync with chrome.bookmarks (both directions)"
-        />
+        <div className="flex items-center gap-2">
+          <Switch
+            id="syncEnabled"
+            checked={settings.syncEnabled}
+            onCheckedChange={(v) => update({ syncEnabled: v })}
+          />
+          <Label htmlFor="syncEnabled">Sync with chrome.bookmarks (both directions)</Label>
+        </div>
         <SelectField
           label="Conflict policy"
           value={settings.conflictPolicy}
@@ -201,119 +192,120 @@ export const Options = () => {
       </Section>
 
       <Section title="Capture defaults">
-        <Stack direction="row" spacing={2}>
-          <TextField
+        <div className="grid grid-cols-3 gap-2">
+          <NumberField
+            id="defaultRating"
             label="Default rating"
-            type="number"
-            inputProps={{ min: 0, max: 10 }}
+            min={0}
+            max={10}
             value={settings.defaultRating}
-            onChange={(e) => update({ defaultRating: Number(e.target.value) })}
-            sx={{ flex: 1 }}
+            onChange={(n) => update({ defaultRating: n })}
           />
-          <TextField
+          <NumberField
+            id="defaultTime"
             label="Default time (min)"
-            type="number"
-            inputProps={{ min: 0 }}
+            min={0}
             value={settings.defaultNecessaryTime}
-            onChange={(e) => update({ defaultNecessaryTime: Number(e.target.value) })}
-            sx={{ flex: 1 }}
+            onChange={(n) => update({ defaultNecessaryTime: n })}
           />
-          <TextField
-            select
-            label="Default status"
-            value={settings.defaultStatus}
-            onChange={(e) => update({ defaultStatus: e.target.value as ReadStatus })}
-            sx={{ flex: 1 }}
-          >
-            {STATUS_OPTIONS.map((s) => (
-              <MenuItem key={s} value={s}>
-                {s}
-              </MenuItem>
-            ))}
-          </TextField>
-        </Stack>
+          <div className="flex flex-col gap-1.5">
+            <Label>Default status</Label>
+            <Select
+              value={settings.defaultStatus}
+              onValueChange={(v) => update({ defaultStatus: v as ReadStatus })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       </Section>
 
       <Section title="URL canonicalization">
-        <TextField
-          fullWidth
-          label="Extra tracking params to strip (comma- or space-separated)"
-          value={extraStrippedDraft}
-          onChange={(e) => setExtraStrippedDraft(e.target.value)}
-          onBlur={handleExtraStrippedBlur}
-          placeholder="e.g. ck_subscriber_id, custom_ref"
-          helperText="In addition to the shipped tracking-param blacklist (utm_*, fbclid, gclid, ...)."
-        />
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="extraStripped">
+            Extra tracking params to strip (comma- or space-separated)
+          </Label>
+          <Input
+            id="extraStripped"
+            value={extraStrippedDraft}
+            onChange={(e) => setExtraStrippedDraft(e.target.value)}
+            onBlur={handleExtraStrippedBlur}
+            placeholder="e.g. ck_subscriber_id, custom_ref"
+          />
+          <p className="text-xs text-muted-foreground">
+            In addition to the shipped tracking-param blacklist (utm_*, fbclid, gclid, …).
+          </p>
+        </div>
       </Section>
 
       <Section title="Auto-backup">
-        <FormControlLabel
-          control={
-            <Switch
-              checked={settings.autoBackupEnabled}
-              onChange={(_, v) => update({ autoBackupEnabled: v })}
-            />
-          }
-          label="Periodic JSON snapshot to ~/Downloads"
-        />
-        <Stack direction="row" spacing={2}>
-          <TextField
+        <div className="flex items-center gap-2">
+          <Switch
+            id="autoBackupEnabled"
+            checked={settings.autoBackupEnabled}
+            onCheckedChange={(v) => update({ autoBackupEnabled: v })}
+          />
+          <Label htmlFor="autoBackupEnabled">Periodic JSON snapshot to ~/Downloads</Label>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <NumberField
+            id="autoBackupIntervalMin"
             label="Interval (minutes)"
-            type="number"
-            inputProps={{ min: 5 }}
+            min={5}
             value={settings.autoBackupIntervalMin}
-            onChange={(e) => update({ autoBackupIntervalMin: Math.max(5, Number(e.target.value)) })}
-            sx={{ flex: 1 }}
             disabled={!settings.autoBackupEnabled}
-            helperText="Default 1440 = once a day."
+            onChange={(n) => update({ autoBackupIntervalMin: Math.max(5, n) })}
+            help="Default 1440 = once a day."
           />
-          <TextField
+          <NumberField
+            id="autoBackupKeepCount"
             label="Keep N most recent"
-            type="number"
-            inputProps={{ min: 1 }}
+            min={1}
             value={settings.autoBackupKeepCount}
-            onChange={(e) => update({ autoBackupKeepCount: Math.max(1, Number(e.target.value)) })}
-            sx={{ flex: 1 }}
             disabled={!settings.autoBackupEnabled}
+            onChange={(n) => update({ autoBackupKeepCount: Math.max(1, n) })}
           />
-        </Stack>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Button variant="outlined" startIcon={<BackupIcon />} onClick={handleBackupNow}>
-            Back up now
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleBackupNow}>
+            <CloudUpload /> Back up now
           </Button>
-          {backupStatus && (
-            <Typography variant="caption" color="text.secondary">
-              {backupStatus}
-            </Typography>
-          )}
-        </Stack>
+          {backupStatus && <span className="text-xs text-muted-foreground">{backupStatus}</span>}
+        </div>
       </Section>
 
-      <Divider sx={{ my: 3 }} />
+      <Separator className="my-6" />
 
-      <Stack direction="row" spacing={1} alignItems="center">
-        <Button variant="text" color="error" onClick={handleReset}>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" onClick={handleReset} className="text-destructive">
           Reset to defaults
         </Button>
-        <Box sx={{ flex: 1 }} />
+        <div className="flex-1" />
         {savedAt && (
-          <Typography variant="caption" color="text.secondary">
+          <span className="text-xs text-muted-foreground">
             saved {new Date(savedAt).toLocaleTimeString()}
-          </Typography>
+          </span>
         )}
-      </Stack>
-    </Box>
+      </div>
+    </div>
   );
 };
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <Box sx={{ mt: 3 }}>
-      <Typography variant="h6" gutterBottom>
-        {title}
-      </Typography>
-      <Stack spacing={2}>{children}</Stack>
-    </Box>
+    <section className="mt-6">
+      <h2 className="mb-3 text-lg font-medium">{title}</h2>
+      <div className="flex flex-col gap-3">{children}</div>
+    </section>
   );
 }
 
@@ -332,20 +324,58 @@ function SelectField<T extends string>({
 }) {
   const opt = options.find((o) => o.value === value);
   return (
-    <TextField
-      select
-      label={label}
-      value={value}
-      onChange={(e) => onChange(e.target.value as T)}
-      helperText={opt?.help}
-      fullWidth
-    >
-      {options.map((o) => (
-        <MenuItem key={o.value} value={o.value}>
-          {o.label}
-        </MenuItem>
-      ))}
-    </TextField>
+    <div className="flex flex-col gap-1.5">
+      <Label>{label}</Label>
+      <Select value={value} onValueChange={(v) => onChange(v as T)}>
+        <SelectTrigger>
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value}>
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {opt?.help && <p className="text-xs text-muted-foreground">{opt.help}</p>}
+    </div>
+  );
+}
+
+function NumberField({
+  id,
+  label,
+  value,
+  onChange,
+  min,
+  max,
+  disabled,
+  help,
+}: {
+  id: string;
+  label: string;
+  value: number;
+  onChange: (n: number) => void;
+  min?: number;
+  max?: number;
+  disabled?: boolean;
+  help?: string;
+}) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <Label htmlFor={id}>{label}</Label>
+      <Input
+        id={id}
+        type="number"
+        min={min}
+        max={max}
+        disabled={disabled}
+        value={value}
+        onChange={(e) => onChange(Number(e.target.value))}
+      />
+      {help && <p className="text-xs text-muted-foreground">{help}</p>}
+    </div>
   );
 }
 

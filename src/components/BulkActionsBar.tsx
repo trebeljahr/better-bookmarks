@@ -1,30 +1,21 @@
 /**
  * BulkActionsBar — appears above the result list when 1+ bookmarks are
  * selected via the row checkboxes.
- *
- * Operations:
- *   - Add tag to all selected (auto-complete from the existing tag set)
- *   - Mark status (unread / reading / read / archived)
- *   - Delete all selected (with confirm)
  */
 
-import CheckIcon from "@mui/icons-material/Check";
-import DeleteIcon from "@mui/icons-material/Delete";
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Chip,
-  IconButton,
-  MenuItem,
-  Paper,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Check, Tag as TagIcon, Trash2, X } from "lucide-react";
 import { useState } from "react";
-import type { ReadStatus } from "../shared/types";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { ReadStatus } from "@/shared/types";
 
 type Props = {
   selectedCount: number;
@@ -39,93 +30,90 @@ const STATUS_OPTIONS: ReadonlyArray<ReadStatus> = ["unread", "reading", "read", 
 
 export function BulkActionsBar({
   selectedCount,
-  possibleTags,
+  possibleTags: _possibleTags,
   onClear,
   onAddTag,
   onSetStatus,
   onDelete,
 }: Props) {
-  const [tagDraft, setTagDraft] = useState<string | null>(null);
+  const [tagDraft, setTagDraft] = useState("");
 
   const handleSubmitTag = () => {
-    if (!tagDraft) return;
-    onAddTag(tagDraft.trim());
-    setTagDraft(null);
+    const t = tagDraft.trim();
+    if (!t) return;
+    onAddTag(t);
+    setTagDraft("");
   };
 
   return (
-    <Paper variant="outlined" sx={{ p: 1.5 }}>
-      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-        <Chip
-          label={`${selectedCount} selected`}
-          color="primary"
-          onDelete={onClear}
-          variant="filled"
-          sx={{ mr: 1 }}
-        />
-        <Autocomplete
-          freeSolo
-          size="small"
-          options={possibleTags}
+    <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-2.5 shadow-xs">
+      <Badge variant="default" className="gap-1 pr-1">
+        {selectedCount} selected
+        <button
+          type="button"
+          onClick={onClear}
+          aria-label="clear selection"
+          className="rounded-sm opacity-80 hover:opacity-100"
+        >
+          <X className="size-3" />
+        </button>
+      </Badge>
+
+      <div className="flex items-center gap-1">
+        <Input
           value={tagDraft}
-          onChange={(_, v) => setTagDraft(typeof v === "string" ? v : null)}
-          onInputChange={(_, v) => setTagDraft(v)}
-          sx={{ width: 220 }}
-          renderInput={(params) => (
-            <TextField {...params} placeholder="Add tag…" aria-label="add tag to selected" />
-          )}
-        />
-        <IconButton
-          color="primary"
-          onClick={handleSubmitTag}
-          disabled={!tagDraft}
-          aria-label="apply tag"
-        >
-          <CheckIcon />
-        </IconButton>
-
-        <Box sx={{ width: 12 }} />
-
-        <TextField
-          select
-          size="small"
-          label="Set status"
-          defaultValue=""
-          onChange={(e) => {
-            const v = e.target.value as ReadStatus | "";
-            if (v) onSetStatus(v);
-          }}
-          sx={{ width: 160 }}
-        >
-          <MenuItem value="" disabled>
-            choose
-          </MenuItem>
-          {STATUS_OPTIONS.map((s) => (
-            <MenuItem key={s} value={s}>
-              {s}
-            </MenuItem>
-          ))}
-        </TextField>
-
-        <Box sx={{ flex: 1, minWidth: 16 }} />
-
-        <Button
-          variant="text"
-          color="error"
-          startIcon={<DeleteIcon />}
-          onClick={() => {
-            if (confirm(`Delete ${selectedCount} bookmarks? This cannot be undone.`)) {
-              onDelete();
+          onChange={(e) => setTagDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              handleSubmitTag();
             }
           }}
+          placeholder="Add tag…"
+          className="h-8 w-44"
+          aria-label="add tag to selected"
+        />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          onClick={handleSubmitTag}
+          disabled={!tagDraft.trim()}
+          aria-label="apply tag"
         >
-          Delete
+          <Check />
         </Button>
-        <Typography variant="caption" color="text.secondary" sx={{ ml: 1 }}>
-          <LocalOfferIcon fontSize="inherit" sx={{ verticalAlign: "middle", mr: 0.5 }} />
-          tag adds to existing tags
-        </Typography>
-      </Stack>
-    </Paper>
+      </div>
+
+      <Select onValueChange={(v) => onSetStatus(v as ReadStatus)}>
+        <SelectTrigger size="sm" className="w-36">
+          <SelectValue placeholder="Set status…" />
+        </SelectTrigger>
+        <SelectContent>
+          {STATUS_OPTIONS.map((s) => (
+            <SelectItem key={s} value={s}>
+              {s}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <div className="flex-1" />
+
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => {
+          if (confirm(`Delete ${selectedCount} bookmarks? This cannot be undone.`)) {
+            onDelete();
+          }
+        }}
+        className="text-destructive hover:text-destructive"
+      >
+        <Trash2 /> Delete
+      </Button>
+      <span className="ml-1 inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <TagIcon className="size-3" /> tag adds to existing tags
+      </span>
+    </div>
   );
 }

@@ -1,35 +1,25 @@
 /**
  * Side panel view — slimmed-down overview for a narrow column.
  *
- * Reuses SearchBar, the result list, and the BookmarkDetail Drawer from
+ * Reuses SearchBar, the result list, and the BookmarkDetail Sheet from
  * the full overview, but drops the tag-manager and bulk-actions surfaces
  * which want the wider tab layout.
  */
 
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import StarIcon from "@mui/icons-material/Star";
-import {
-  Box,
-  Chip,
-  Drawer,
-  IconButton,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Stack,
-  Typography,
-} from "@mui/material";
-import Avatar from "@mui/material/Avatar";
+import { ExternalLink, Pencil, Star, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { SearchBar } from "@/components/SearchBar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
 import { deleteBookmark as deleteBookmarkRecord, updateBookmark } from "@/core/storage/bookmarks";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useSearch } from "@/hooks/useSearch";
+import { cn } from "@/lib/utils";
 
 wireSearchIndexer();
 ensureSearchIndexInitialized().catch((err) =>
@@ -82,99 +72,73 @@ export const SidePanel = () => {
     const { index, style } = props;
     const bookmark = displayed[index];
     if (!bookmark) return null;
+    const ratingHigh = bookmark.rating && bookmark.rating >= 8;
     return (
-      <ListItem
-        style={style}
-        key={bookmark.id}
-        component="div"
-        disablePadding
-        sx={{ pl: 0.5 }}
-        secondaryAction={
-          <Stack direction="row" spacing={0.25}>
-            <IconButton
-              aria-label="open"
-              component="a"
+      <div style={style} key={bookmark.id} className="flex items-center gap-1.5 pl-1 pr-1">
+        <Avatar className="size-7 shrink-0">
+          <AvatarFallback className={cn(ratingHigh && "bg-amber-200 text-amber-900")}>
+            <Star className={cn("size-3.5", ratingHigh && "fill-amber-600")} />
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm">{bookmark.title || bookmark.canonicalUrl}</p>
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="truncate text-xs text-muted-foreground">{bookmark.domain}</span>
+            {bookmark.tags.slice(0, 2).map((t) => (
+              <Badge key={t} variant="outline" className="text-[10px]">
+                {t}
+              </Badge>
+            ))}
+            {bookmark.tags.length > 2 && (
+              <span className="text-xs text-muted-foreground/70">+{bookmark.tags.length - 2}</span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center">
+          <Button variant="ghost" size="icon-xs" asChild aria-label="open">
+            <a
               href={bookmark.originalUrl}
               target="_blank"
               rel="noopener noreferrer"
-              size="small"
               onClick={(e) => e.stopPropagation()}
             >
-              <OpenInNewIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              aria-label="edit"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedId(bookmark.id);
-              }}
-              size="small"
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              aria-label="delete"
-              color="error"
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteBookmarkRecord(bookmark.id);
-              }}
-              size="small"
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        }
-      >
-        <ListItemAvatar sx={{ minWidth: 40 }}>
-          <Avatar
-            sx={{
-              width: 28,
-              height: 28,
-              bgcolor: bookmark.rating && bookmark.rating >= 8 ? "warning.main" : undefined,
+              <ExternalLink />
+            </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="edit"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedId(bookmark.id);
             }}
           >
-            <StarIcon fontSize="small" />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText
-          primary={
-            <Typography variant="body2" noWrap>
-              {bookmark.title || bookmark.canonicalUrl}
-            </Typography>
-          }
-          secondary={
-            <Stack
-              direction="row"
-              spacing={0.5}
-              alignItems="center"
-              component="span"
-              sx={{ flexWrap: "wrap" }}
-            >
-              <Typography variant="caption" color="text.secondary" component="span" noWrap>
-                {bookmark.domain}
-              </Typography>
-              {bookmark.tags.slice(0, 2).map((t) => (
-                <Chip key={t} label={t} size="small" variant="outlined" component="span" />
-              ))}
-              {bookmark.tags.length > 2 && (
-                <Typography variant="caption" color="text.disabled" component="span">
-                  +{bookmark.tags.length - 2}
-                </Typography>
-              )}
-            </Stack>
-          }
-        />
-      </ListItem>
+            <Pencil />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-xs"
+            aria-label="delete"
+            className="text-destructive hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteBookmarkRecord(bookmark.id);
+            }}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      </div>
     );
   };
 
   return (
-    <Stack spacing={1.5} sx={{ p: 1.5, height: "100vh", boxSizing: "border-box" }}>
-      <Typography variant="h6">Better Bookmarks</Typography>
-      <Typography variant="caption" color="text.secondary">
+    <div className="box-border flex h-screen flex-col gap-2 p-3">
+      <h1 className="text-base font-semibold">Better Bookmarks</h1>
+      <p className="text-xs text-muted-foreground">
         {loading ? "loading…" : `${bookmarks.length} total · ${displayed.length} showing`}
-      </Typography>
+      </p>
 
       <SearchBar
         query={query}
@@ -183,36 +147,33 @@ export const SidePanel = () => {
         parseError={parseError}
       />
 
-      <Box sx={{ flex: 1, border: 1, borderColor: "divider", borderRadius: 1, minHeight: 0 }}>
+      <div className="min-h-0 flex-1 rounded-md border">
         <FixedSizeList
           ref={listRef}
           height={Math.max(200, window.innerHeight - 180)}
           width="100%"
-          itemSize={64}
+          itemSize={56}
           itemCount={displayed.length}
           overscanCount={5}
         >
           {renderRow}
         </FixedSizeList>
-      </Box>
+      </div>
 
-      <Drawer
-        anchor="right"
-        open={selected !== null}
-        onClose={() => setSelectedId(null)}
-        PaperProps={{ sx: { maxWidth: "100vw" } }}
-      >
-        {selected && (
-          <BookmarkDetail
-            bookmark={selected}
-            allBookmarks={bookmarks}
-            possibleTags={tagsFromBookmarks}
-            onSave={handleSaveDetail}
-            onDelete={handleDeleteDetail}
-            onClose={() => setSelectedId(null)}
-          />
-        )}
-      </Drawer>
-    </Stack>
+      <Sheet open={selected !== null} onOpenChange={(o) => !o && setSelectedId(null)}>
+        <SheetContent side="right" className="max-w-[100vw] sm:max-w-[600px]">
+          {selected && (
+            <BookmarkDetail
+              bookmark={selected}
+              allBookmarks={bookmarks}
+              possibleTags={tagsFromBookmarks}
+              onSave={handleSaveDetail}
+              onDelete={handleDeleteDetail}
+              onClose={() => setSelectedId(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 };

@@ -1,32 +1,26 @@
 /**
  * TagManager — manage every tag in the store: rename, merge, delete,
  * recolor, and re-parent.
- *
- * Renders inside a Drawer in the overview. The Tag schema carries
- * color, parentName, and description; this surface exposes the
- * destructive ops (rename + merge + delete) alongside the curation
- * ops (color + hierarchy).
  */
 
-import CallMergeIcon from "@mui/icons-material/CallMerge";
-import CheckIcon from "@mui/icons-material/Check";
-import CloseIcon from "@mui/icons-material/Close";
-import DeleteIcon from "@mui/icons-material/Delete";
-import EditIcon from "@mui/icons-material/Edit";
-import {
-  Autocomplete,
-  Box,
-  Button,
-  Chip,
-  Divider,
-  IconButton,
-  Popover,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { Check, GitMerge, Pencil, Trash2, X } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { Tag } from "../shared/types";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
+import type { Tag } from "@/shared/types";
 
 type Props = {
   tags: Tag[];
@@ -42,8 +36,6 @@ type Props = {
 
 type Mode = { kind: "rename"; name: string; draft: string } | { kind: "merge"; from: string };
 
-// Material-ish palette suggestions. Twelve named hues a user can
-// pick at a glance, plus an explicit "clear" affordance.
 const PRESET_COLORS: { hex: string; name: string }[] = [
   { hex: "#ef5350", name: "Red" },
   { hex: "#ec407a", name: "Pink" },
@@ -105,86 +97,58 @@ function ancestorChainOf(name: string, tags: Tag[]): Tag[] {
   return chain;
 }
 
-type ColorPickerProps = {
+function ColorPickerContent({
+  current,
+  onPick,
+}: {
   current: string | null;
-  anchorEl: HTMLElement | null;
-  onClose: () => void;
   onPick: (color: string | null) => void;
-};
-
-function ColorPickerPopover({ current, anchorEl, onClose, onPick }: ColorPickerProps) {
+}) {
   const [hex, setHex] = useState(current ?? "");
   const validHex = HEX_RE.test(hex);
   return (
-    <Popover
-      open={Boolean(anchorEl)}
-      anchorEl={anchorEl}
-      onClose={onClose}
-      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
-    >
-      <Box sx={{ p: 2, width: 240 }}>
-        <Typography variant="caption" color="text.secondary">
-          Preset
-        </Typography>
-        <Box
-          sx={{
-            display: "grid",
-            gridTemplateColumns: "repeat(6, 1fr)",
-            gap: 1,
-            mt: 1,
-            mb: 2,
-          }}
-        >
-          {PRESET_COLORS.map((c) => (
-            <Box
-              key={c.hex}
-              role="button"
-              tabIndex={0}
-              aria-label={`Set color ${c.name}`}
-              onClick={() => onPick(c.hex)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") onPick(c.hex);
-              }}
-              sx={{
-                width: 28,
-                height: 28,
-                borderRadius: "50%",
-                bgcolor: c.hex,
-                cursor: "pointer",
-                border: current?.toLowerCase() === c.hex.toLowerCase() ? 2 : 1,
-                borderColor:
-                  current?.toLowerCase() === c.hex.toLowerCase() ? "primary.main" : "divider",
-              }}
-            />
-          ))}
-        </Box>
-        <Stack direction="row" spacing={1} alignItems="center">
-          <TextField
-            size="small"
-            label="Custom hex"
-            placeholder="#a1b2c3"
-            value={hex}
-            onChange={(e) => setHex(e.target.value)}
-            error={hex.length > 0 && !validHex}
-            helperText={hex.length > 0 && !validHex ? "Expecting #rrggbb" : " "}
-            sx={{ flex: 1 }}
+    <div className="w-60 p-3">
+      <p className="mb-1.5 text-xs text-muted-foreground">Preset</p>
+      <div className="mb-3 grid grid-cols-6 gap-1.5">
+        {PRESET_COLORS.map((c) => (
+          <button
+            key={c.hex}
+            type="button"
+            aria-label={`Set color ${c.name}`}
+            onClick={() => onPick(c.hex)}
+            className={cn(
+              "size-6 rounded-full border transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              current?.toLowerCase() === c.hex.toLowerCase()
+                ? "border-2 border-primary"
+                : "border-border",
+            )}
+            style={{ backgroundColor: c.hex }}
           />
-          <IconButton
-            size="small"
-            color="primary"
-            disabled={!validHex}
-            onClick={() => onPick(hex.toLowerCase())}
-            aria-label="apply custom color"
-          >
-            <CheckIcon />
-          </IconButton>
-        </Stack>
-        <Divider sx={{ my: 1 }} />
-        <Button fullWidth size="small" onClick={() => onPick(null)}>
-          Clear color
+        ))}
+      </div>
+      <div className="mb-2 flex items-center gap-1.5">
+        <Input
+          placeholder="#a1b2c3"
+          value={hex}
+          onChange={(e) => setHex(e.target.value)}
+          aria-invalid={hex.length > 0 && !validHex}
+          className="h-8"
+        />
+        <Button
+          size="icon-sm"
+          variant="default"
+          disabled={!validHex}
+          onClick={() => onPick(hex.toLowerCase())}
+          aria-label="apply custom color"
+        >
+          <Check />
         </Button>
-      </Box>
-    </Popover>
+      </div>
+      <Separator className="my-2" />
+      <Button variant="outline" size="sm" className="w-full" onClick={() => onPick(null)}>
+        Clear color
+      </Button>
+    </div>
   );
 }
 
@@ -201,9 +165,11 @@ export function TagManager({
 }: Props) {
   const [filter, setFilter] = useState("");
   const [mode, setMode] = useState<Mode | null>(null);
-  const [mergeTarget, setMergeTarget] = useState<string | null>(null);
+  const [mergeTarget, setMergeTarget] = useState<string>("");
+  const [mergeOpen, setMergeOpen] = useState(false);
+  const [parentOpenFor, setParentOpenFor] = useState<string | null>(null);
+  const [colorOpenFor, setColorOpenFor] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("");
-  const [colorAnchor, setColorAnchor] = useState<{ name: string; el: HTMLElement } | null>(null);
   const [parentError, setParentError] = useState<{ name: string; message: string } | null>(null);
 
   const filtered = useMemo(() => {
@@ -225,16 +191,16 @@ export function TagManager({
       return;
     }
     await onRename(mode.name, trimmed);
-    setStatus(`renamed "${mode.name}" -> "${trimmed}"`);
+    setStatus(`renamed "${mode.name}" → "${trimmed}"`);
     setMode(null);
   };
 
   const handleMergeSubmit = async () => {
-    if (mode?.kind !== "merge" || !mergeTarget) return;
-    const r = await onMerge(mode.from, mergeTarget);
-    setStatus(`merged "${mode.from}" -> "${mergeTarget}" (${r.affected} bookmarks)`);
+    if (mode?.kind !== "merge" || !mergeTarget.trim()) return;
+    const r = await onMerge(mode.from, mergeTarget.trim());
+    setStatus(`merged "${mode.from}" → "${mergeTarget}" (${r.affected} bookmarks)`);
     setMode(null);
-    setMergeTarget(null);
+    setMergeTarget("");
   };
 
   const handleDelete = async (name: string) => {
@@ -250,13 +216,14 @@ export function TagManager({
   };
 
   const handleColorPick = async (name: string, color: string | null) => {
-    setColorAnchor(null);
+    setColorOpenFor(null);
     await onSetColor(name, color);
     setStatus(color ? `colored "${name}" ${color}` : `cleared color on "${name}"`);
   };
 
   const handleParentChange = async (name: string, nextParent: string | null) => {
     setParentError(null);
+    setParentOpenFor(null);
     if (nextParent !== null && onValidateParent) {
       const check = await onValidateParent(name, nextParent);
       if (!check.ok) {
@@ -276,39 +243,34 @@ export function TagManager({
   };
 
   return (
-    <Stack spacing={2} sx={{ p: 3, width: { xs: "100vw", sm: 520 }, maxWidth: "100vw" }}>
-      <Stack direction="row" alignItems="center" spacing={1}>
-        <Typography variant="h6" sx={{ flex: 1 }}>
-          Tags ({tags.length})
-        </Typography>
-        <IconButton onClick={onClose} aria-label="close">
-          <CloseIcon />
-        </IconButton>
-      </Stack>
+    <div className="flex h-full flex-col gap-3 p-5 sm:w-[520px]">
+      <div className="flex items-center gap-2">
+        <h2 className="flex-1 text-lg font-semibold">Tags ({tags.length})</h2>
+        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="close">
+          <X />
+        </Button>
+      </div>
 
-      <TextField
-        size="small"
-        label="Filter"
-        value={filter}
-        onChange={(e) => setFilter(e.target.value)}
-        placeholder="search tag names…"
-        fullWidth
-      />
+      <div>
+        <Label htmlFor="bb-tag-filter" className="sr-only">
+          Filter
+        </Label>
+        <Input
+          id="bb-tag-filter"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+          placeholder="search tag names…"
+        />
+      </div>
 
-      {status && (
-        <Typography variant="caption" color="success.main">
-          {status}
-        </Typography>
-      )}
+      {status && <p className="text-xs text-emerald-600 dark:text-emerald-500">{status}</p>}
 
-      <Divider />
+      <Separator />
 
       {filtered.length === 0 ? (
-        <Typography variant="body2" color="text.secondary">
-          No tags match.
-        </Typography>
+        <p className="text-sm text-muted-foreground">No tags match.</p>
       ) : (
-        <Stack spacing={1}>
+        <div className="flex flex-col gap-1.5 overflow-y-auto pr-1">
           {filtered.map((tag) => {
             const isRenaming = mode?.kind === "rename" && mode.name === tag.name;
             const isMerging = mode?.kind === "merge" && mode.from === tag.name;
@@ -327,47 +289,39 @@ export function TagManager({
                 : null;
 
             return (
-              <Box
-                key={tag.name}
-                sx={{
-                  border: 1,
-                  borderColor: "divider",
-                  borderRadius: 1,
-                  p: 1.5,
-                }}
-              >
-                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                  <Box
-                    component="button"
-                    type="button"
-                    aria-label={`change color of ${tag.name}`}
-                    onClick={(e) => setColorAnchor({ name: tag.name, el: e.currentTarget })}
-                    sx={{
-                      width: 22,
-                      height: 22,
-                      borderRadius: "50%",
-                      border: 1,
-                      borderColor: "divider",
-                      bgcolor: tag.color ?? "transparent",
-                      cursor: "pointer",
-                      p: 0,
-                      backgroundImage: tag.color
-                        ? "none"
-                        : "repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0 4px, transparent 4px 8px)",
-                    }}
-                  />
-                  <Chip
-                    label={tag.name}
-                    size="small"
-                    variant={tag.color ? "filled" : "outlined"}
-                    sx={tag.color ? { bgcolor: tag.color } : undefined}
-                  />
+              <div key={tag.name} className="rounded-md border p-2.5">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Popover
+                    open={colorOpenFor === tag.name}
+                    onOpenChange={(o) => setColorOpenFor(o ? tag.name : null)}
+                  >
+                    <PopoverTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={`change color of ${tag.name}`}
+                        className={cn(
+                          "size-5 rounded-full border focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          !tag.color &&
+                            "bg-[repeating-linear-gradient(45deg,rgba(0,0,0,0.08)_0_4px,transparent_4px_8px)]",
+                        )}
+                        style={tag.color ? { backgroundColor: tag.color } : undefined}
+                      />
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <ColorPickerContent
+                        current={tag.color}
+                        onPick={(c) => handleColorPick(tag.name, c)}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <Badge
+                    variant={tag.color ? "default" : "outline"}
+                    style={tag.color ? { backgroundColor: tag.color } : undefined}
+                  >
+                    {tag.name}
+                  </Badge>
                   {ancestors.length > 0 && (
-                    <Typography
-                      variant="caption"
-                      color="text.secondary"
-                      sx={{ fontStyle: "italic" }}
-                    >
+                    <span className="text-xs italic text-muted-foreground">
                       {ancestors
                         .slice()
                         .reverse()
@@ -375,128 +329,189 @@ export function TagManager({
                         .join(" › ")}
                       {" › "}
                       {tag.name}
-                    </Typography>
+                    </span>
                   )}
-                  <Typography variant="caption" color="text.secondary">
+                  <span className="text-xs text-muted-foreground">
                     {counts[tag.name] ?? 0} bookmarks
-                  </Typography>
-                  <Box sx={{ flex: 1 }} />
-                  <IconButton
-                    size="small"
+                  </span>
+                  <div className="flex-1" />
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     aria-label="rename"
                     onClick={() => setMode({ kind: "rename", name: tag.name, draft: tag.name })}
                   >
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
+                    <Pencil />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     aria-label="merge into"
                     onClick={() => {
                       setMode({ kind: "merge", from: tag.name });
-                      setMergeTarget(null);
+                      setMergeTarget("");
                     }}
                   >
-                    <CallMergeIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton
-                    size="small"
+                    <GitMerge />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
                     aria-label="delete"
-                    color="error"
+                    className="text-destructive hover:text-destructive"
                     onClick={() => handleDelete(tag.name)}
                   >
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </Stack>
+                    <Trash2 />
+                  </Button>
+                </div>
 
-                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                  <Autocomplete
-                    size="small"
-                    options={parentOptions}
-                    value={tag.parentName ?? null}
-                    onChange={(_, v) => handleParentChange(tag.name, v)}
-                    sx={{ flex: 1 }}
-                    isOptionEqualToValue={(opt, val) => opt.toLowerCase() === val.toLowerCase()}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        label="Parent tag"
-                        placeholder="(no parent)"
-                        error={Boolean(errForThisTag)}
-                        helperText={errForThisTag ?? " "}
-                      />
-                    )}
-                  />
-                </Stack>
+                <div className="mt-2 flex items-center gap-2">
+                  <Popover
+                    open={parentOpenFor === tag.name}
+                    onOpenChange={(o) => setParentOpenFor(o ? tag.name : null)}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1 justify-start font-normal"
+                      >
+                        Parent: {tag.parentName || "(none)"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search parents…" />
+                        <CommandList>
+                          <CommandEmpty>No options.</CommandEmpty>
+                          <CommandGroup>
+                            <CommandItem
+                              value="__none__"
+                              onSelect={() => handleParentChange(tag.name, null)}
+                            >
+                              (no parent)
+                            </CommandItem>
+                            {parentOptions.map((p) => (
+                              <CommandItem
+                                key={p}
+                                value={p}
+                                onSelect={() => handleParentChange(tag.name, p)}
+                              >
+                                {p}
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                {errForThisTag && <p className="mt-1 text-xs text-destructive">{errForThisTag}</p>}
 
                 {isRenaming && (
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                    <TextField
-                      size="small"
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <Input
                       value={mode.draft}
                       onChange={(e) => setMode({ ...mode, draft: e.target.value })}
                       onKeyDown={(e) => {
                         if (e.key === "Enter") handleRenameSubmit();
                         if (e.key === "Escape") setMode(null);
                       }}
-                      label="New name"
+                      placeholder="New name"
                       autoFocus
-                      sx={{ flex: 1 }}
                     />
-                    <IconButton color="primary" onClick={handleRenameSubmit}>
-                      <CheckIcon />
-                    </IconButton>
-                    <IconButton onClick={() => setMode(null)}>
-                      <CloseIcon />
-                    </IconButton>
-                  </Stack>
+                    <Button variant="default" size="icon-sm" onClick={handleRenameSubmit}>
+                      <Check />
+                    </Button>
+                    <Button variant="ghost" size="icon-sm" onClick={() => setMode(null)}>
+                      <X />
+                    </Button>
+                  </div>
                 )}
 
                 {isMerging && (
-                  <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
-                    <Autocomplete
-                      freeSolo
-                      size="small"
-                      options={otherTagNames}
-                      value={mergeTarget}
-                      onChange={(_, v) => setMergeTarget(typeof v === "string" ? v : null)}
-                      onInputChange={(_, v) => setMergeTarget(v)}
-                      sx={{ flex: 1 }}
-                      renderInput={(params) => (
-                        <TextField {...params} label={`Merge "${tag.name}" into…`} autoFocus />
-                      )}
-                    />
-                    <IconButton color="primary" onClick={handleMergeSubmit} disabled={!mergeTarget}>
-                      <CheckIcon />
-                    </IconButton>
-                    <IconButton
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <Popover open={mergeOpen} onOpenChange={setMergeOpen}>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className="flex-1 justify-start font-normal">
+                          {mergeTarget || `Merge "${tag.name}" into…`}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[300px] p-0" align="start">
+                        <Command>
+                          <CommandInput
+                            placeholder="Type tag name…"
+                            value={mergeTarget}
+                            onValueChange={setMergeTarget}
+                          />
+                          <CommandList>
+                            <CommandEmpty>
+                              {mergeTarget.trim() ? (
+                                <button
+                                  type="button"
+                                  className="text-sm underline-offset-4 hover:underline"
+                                  onClick={() => setMergeOpen(false)}
+                                >
+                                  Use "{mergeTarget.trim()}" (free-form)
+                                </button>
+                              ) : (
+                                "No matches."
+                              )}
+                            </CommandEmpty>
+                            <CommandGroup>
+                              {otherTagNames
+                                .filter((n) =>
+                                  n.toLowerCase().includes(mergeTarget.trim().toLowerCase()),
+                                )
+                                .map((n) => (
+                                  <CommandItem
+                                    key={n}
+                                    value={n}
+                                    onSelect={() => {
+                                      setMergeTarget(n);
+                                      setMergeOpen(false);
+                                    }}
+                                  >
+                                    {n}
+                                  </CommandItem>
+                                ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                    <Button
+                      variant="default"
+                      size="icon-sm"
+                      onClick={handleMergeSubmit}
+                      disabled={!mergeTarget.trim()}
+                    >
+                      <Check />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
                       onClick={() => {
                         setMode(null);
-                        setMergeTarget(null);
+                        setMergeTarget("");
                       }}
                     >
-                      <CloseIcon />
-                    </IconButton>
-                  </Stack>
+                      <X />
+                    </Button>
+                  </div>
                 )}
-              </Box>
+              </div>
             );
           })}
-        </Stack>
+        </div>
       )}
 
-      <Box sx={{ flex: 1 }} />
-      <Stack direction="row" justifyContent="flex-end">
-        <Button onClick={onClose}>Close</Button>
-      </Stack>
-
-      {colorAnchor && (
-        <ColorPickerPopover
-          current={tags.find((t) => t.name === colorAnchor.name)?.color ?? null}
-          anchorEl={colorAnchor.el}
-          onClose={() => setColorAnchor(null)}
-          onPick={(c) => handleColorPick(colorAnchor.name, c)}
-        />
-      )}
-    </Stack>
+      <div className="flex-1" />
+      <div className="flex justify-end">
+        <Button variant="outline" onClick={onClose}>
+          Close
+        </Button>
+      </div>
+    </div>
   );
 }

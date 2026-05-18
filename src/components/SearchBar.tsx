@@ -1,16 +1,6 @@
-/**
- * SearchBar — presentational component for the bookmark search input.
- *
- * Intentionally has no knowledge of the search subsystem; the parent
- * passes in the controlled `query`, `setQuery`, current `resultCount`,
- * and any `parseError`. This makes it easy to test in isolation and
- * lets the overview/popup decide how to drive it.
- *
- * NOT yet imported anywhere. The main thread wires it in during Phase 3
- * integration.
- */
-
-import { Stack, TextField, Typography } from "@mui/material";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export type SearchBarProps = {
   query: string;
@@ -21,21 +11,23 @@ export type SearchBarProps = {
 
 export function SearchBar({ query, setQuery, resultCount, parseError }: SearchBarProps) {
   return (
-    <Stack spacing={1} sx={{ width: "100%" }}>
-      <TextField
-        fullWidth
-        label="Search bookmarks"
-        placeholder="react hooks tag:frontend rating:>=7"
+    <div className="flex w-full flex-col gap-1.5">
+      <Label htmlFor="bb-search" className="sr-only">
+        Search bookmarks
+      </Label>
+      <Input
+        id="bb-search"
         value={query}
-        onChange={(ev) => setQuery(ev.target.value)}
-        error={Boolean(parseError)}
-        helperText={parseError ?? undefined}
-        inputProps={{ "aria-label": "search bookmarks" }}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="react hooks tag:frontend rating:>=7"
+        aria-label="search bookmarks"
+        aria-invalid={Boolean(parseError) || undefined}
+        className={cn(parseError && "border-destructive focus-visible:ring-destructive/40")}
       />
-      <Typography variant="caption" color="text.secondary">
-        {resultCount === 1 ? "1 result" : `${resultCount} results`}
-      </Typography>
-    </Stack>
+      <p className={cn("text-xs", parseError ? "text-destructive" : "text-muted-foreground")}>
+        {parseError ?? (resultCount === 1 ? "1 result" : `${resultCount} results`)}
+      </p>
+    </div>
   );
 }
 

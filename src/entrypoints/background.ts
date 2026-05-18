@@ -1,5 +1,5 @@
-import { wireUnreadBadge } from "@/core/badge";
 import { BACKUP_ALARM_NAME, installBackupAlarm, runBackupOnce } from "@/core/backup";
+import { wireUnreadBadge } from "@/core/badge";
 import { installContextMenu } from "@/core/contextMenu";
 import {
   ENRICHMENT_ALARM_NAME,

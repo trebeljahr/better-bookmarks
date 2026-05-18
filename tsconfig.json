@@ -4,5 +4,13 @@
     "jsx": "react-jsx",
     "lib": ["ESNext", "DOM", "DOM.Iterable"]
   },
-  "exclude": ["node_modules", ".output", "vitest.config.ts"]
+  "exclude": [
+    "node_modules",
+    ".output",
+    "vitest.config.ts",
+    "apps/**",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "src/test/**"
+  ]
 }

@@ -18,7 +18,9 @@
       "!**/coverage",
       "!**/*.html",
       "!**/*.htm",
-      "!apps/web/**/*.css"
+      "!apps/web/**/*.css",
+      "!src/styles",
+      "!src/components/ui"
     ]
   },
   "formatter": {

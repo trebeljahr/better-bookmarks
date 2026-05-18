@@ -1,20 +1,20 @@
-import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
-import BookmarkAddIcon from "@mui/icons-material/BookmarkAdd";
-import DeleteIcon from "@mui/icons-material/Delete";
-import {
-  Box,
-  Chip,
-  Fab,
-  Link,
-  MenuItem,
-  Rating,
-  Stack,
-  TextField,
-  Typography,
-} from "@mui/material";
+import { BookmarkPlus, Sparkles, Trash2 } from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Tags from "@/components/Tags";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Rating } from "@/components/ui/rating";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { canonicalize } from "@/core/canonicalizer";
 import { detectContentType, suggestTags } from "@/core/enrichment";
 import { migrateLegacyStore } from "@/core/migration/legacyToV1";
@@ -29,9 +29,6 @@ import { getSettings } from "@/core/storage/settings";
 import type { Bookmark, ContentType, ReadStatus } from "@/shared/types";
 import { DEFAULT_SETTINGS } from "@/shared/types";
 
-// Wire the search indexer to Dexie hooks in this popup context, so a save
-// here populates postings immediately (popup may close before the service
-// worker's hook fires for the same write).
 wireSearchIndexer();
 
 async function getCurrentTab() {
@@ -187,115 +184,126 @@ export const Popup = () => {
   };
 
   return (
-    <Stack spacing={2} sx={{ width: 360, p: 1.5 }} onKeyDown={handleKeyDown}>
-      <TextField
-        label="Title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        autoFocus
-        size="small"
-      />
-
-      <Stack direction="row" spacing={1} alignItems="center">
-        <Typography variant="caption" color="text.secondary">
-          Rating
-        </Typography>
-        <Rating
-          max={10}
-          value={rating}
-          onChange={(_, v) => {
-            if (v !== null) setRating(v);
-          }}
+    <div className="flex w-[360px] flex-col gap-3 p-3" onKeyDown={handleKeyDown}>
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="bb-popup-title">Title</Label>
+        <Input
+          id="bb-popup-title"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          autoFocus
         />
-      </Stack>
+      </div>
 
-      <Tags setTags={setTags} tags={tags} possibleOptions={knownTagNames} />
+      <div className="flex items-center gap-2">
+        <Label className="text-xs text-muted-foreground">Rating</Label>
+        <Rating max={10} value={rating} onChange={setRating} size="md" />
+      </div>
+
+      <div className="flex flex-col gap-1.5">
+        <Label className="text-xs text-muted-foreground">Tags</Label>
+        <Tags setTags={setTags} tags={tags} possibleOptions={knownTagNames} />
+      </div>
 
       {suggestions.length > 0 && (
-        <Box>
-          <Typography variant="caption" color="text.secondary" sx={{ display: "block", mb: 0.5 }}>
-            <AutoAwesomeIcon fontSize="inherit" sx={{ verticalAlign: "middle", mr: 0.5 }} />
-            suggested
-          </Typography>
-          <Stack direction="row" spacing={0.5} flexWrap="wrap">
+        <div className="flex flex-col gap-1.5">
+          <p className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+            <Sparkles className="size-3" /> suggested
+          </p>
+          <div className="flex flex-wrap gap-1">
             {suggestions.map((s) => (
-              <Chip
+              <Badge
                 key={s.tag}
-                label={s.tag}
-                size="small"
-                variant="outlined"
+                variant="outline"
+                role="button"
+                tabIndex={0}
                 onClick={() => acceptSuggestion(s.tag)}
-                clickable
-              />
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    acceptSuggestion(s.tag);
+                  }
+                }}
+                className="cursor-pointer hover:bg-accent"
+              >
+                {s.tag}
+              </Badge>
             ))}
-          </Stack>
-        </Box>
+          </div>
+        </div>
       )}
 
-      <Stack direction="row" spacing={1}>
-        <TextField
-          select
-          label="Status"
-          value={status}
-          onChange={(e) => setStatus(e.target.value as ReadStatus)}
-          size="small"
-          sx={{ flex: 1 }}
-        >
-          {STATUS_OPTIONS.map((s) => (
-            <MenuItem key={s} value={s}>
-              {s}
-            </MenuItem>
-          ))}
-        </TextField>
-        <TextField
-          select
-          label="Type"
-          value={contentType}
-          onChange={(e) => setContentType(e.target.value as ContentType)}
-          size="small"
-          sx={{ flex: 1 }}
-        >
-          {CONTENT_TYPE_OPTIONS.map((t) => (
-            <MenuItem key={t} value={t}>
-              {t}
-            </MenuItem>
-          ))}
-        </TextField>
-      </Stack>
+      <div className="grid grid-cols-2 gap-2">
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Status</Label>
+          <Select value={status} onValueChange={(v) => setStatus(v as ReadStatus)}>
+            <SelectTrigger size="sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label className="text-xs text-muted-foreground">Type</Label>
+          <Select value={contentType} onValueChange={(v) => setContentType(v as ContentType)}>
+            <SelectTrigger size="sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {CONTENT_TYPE_OPTIONS.map((t) => (
+                <SelectItem key={t} value={t}>
+                  {t}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
 
-      <TextField
-        label="Note"
-        value={note}
-        onChange={(e) => setNote(e.target.value)}
-        size="small"
-        multiline
-        minRows={2}
-        placeholder="Why this bookmark? Private to you."
-      />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="bb-popup-note" className="text-xs text-muted-foreground">
+          Note
+        </Label>
+        <Textarea
+          id="bb-popup-note"
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={2}
+          placeholder="Why this bookmark? Private to you."
+        />
+      </div>
 
-      <Stack direction="row" spacing={2} justifyContent="flex-end" alignItems="center">
-        <Typography variant="caption" color="text.disabled">
-          ⌘/Ctrl+Enter to save
-        </Typography>
-        <Fab variant="extended" size="small" color="primary" aria-label="add" onClick={saveAndExit}>
-          <BookmarkAddIcon sx={{ mr: 1 }} />
-          Save
-        </Fab>
-        <Fab
-          variant="circular"
-          size="small"
-          color="secondary"
+      <div className="flex items-center justify-end gap-2 pt-1">
+        <span className="text-[10px] text-muted-foreground/70">⌘/Ctrl+Enter to save</span>
+        <Button size="sm" onClick={saveAndExit}>
+          <BookmarkPlus /> Save
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon-sm"
           aria-label="delete"
           onClick={deleteBookmark}
           disabled={!existingId}
+          className="text-destructive hover:text-destructive"
         >
-          <DeleteIcon />
-        </Fab>
-      </Stack>
+          <Trash2 />
+        </Button>
+      </div>
 
-      <Link href="/overview.html" target="_blank" rel="noopener" variant="caption">
+      <a
+        href="/overview.html"
+        target="_blank"
+        rel="noopener"
+        className="text-xs text-primary underline-offset-4 hover:underline"
+      >
         Bookmark Overview →
-      </Link>
-    </Stack>
+      </a>
+    </div>
   );
 };

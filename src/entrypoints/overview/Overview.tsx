@@ -1,27 +1,13 @@
-import DeleteIcon from "@mui/icons-material/Delete";
-import DownloadIcon from "@mui/icons-material/Download";
-import EditIcon from "@mui/icons-material/Edit";
-import LocalOfferIcon from "@mui/icons-material/LocalOffer";
-import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-import SettingsIcon from "@mui/icons-material/Settings";
-import StarIcon from "@mui/icons-material/Star";
-import UploadIcon from "@mui/icons-material/Upload";
 import {
-  Box,
-  Button,
-  Checkbox,
-  Chip,
-  Drawer,
-  IconButton,
-  ListItem,
-  ListItemAvatar,
-  ListItemText,
-  Menu,
-  MenuItem,
-  Stack,
-  Typography,
-} from "@mui/material";
-import Avatar from "@mui/material/Avatar";
+  Download,
+  ExternalLink,
+  Pencil,
+  Settings as SettingsIcon,
+  Star,
+  Tag as TagIcon,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
@@ -29,6 +15,17 @@ import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
 import { SearchBar } from "@/components/SearchBar";
 import { TagManager } from "@/components/TagManager";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { canonicalize } from "@/core/canonicalizer";
 import {
   exportJson,
@@ -55,11 +52,9 @@ import {
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useSearch } from "@/hooks/useSearch";
 import { useTags } from "@/hooks/useTags";
+import { cn } from "@/lib/utils";
 import type { ReadStatus } from "@/shared/types";
 
-// Wire search indexer eagerly in the overview context so any edits the user
-// makes here update the postings store immediately. Idempotent across the
-// app's three contexts (popup / overview / background service worker).
 wireSearchIndexer();
 ensureSearchIndexInitialized().catch((err) =>
   console.error("ensureSearchIndexInitialized failed", err),
@@ -148,7 +143,6 @@ export const Overview = () => {
   const [cursorIndex, setCursorIndex] = useState<number>(0);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string>("");
-  const [exportAnchor, setExportAnchor] = useState<HTMLElement | null>(null);
   const [tagManagerOpen, setTagManagerOpen] = useState<boolean>(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const listRef = useRef<FixedSizeList | null>(null);
@@ -197,14 +191,12 @@ export const Overview = () => {
   };
 
   const handleExportJson = async () => {
-    setExportAnchor(null);
     const json = await exportJson();
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     triggerDownload(json, `better-bookmarks-${stamp}.json`, "application/json");
   };
 
   const handleExportNetscape = async () => {
-    setExportAnchor(null);
     const html = await exportNetscape();
     const stamp = new Date().toISOString().replace(/[:.]/g, "-");
     triggerDownload(html, `bookmarks-${stamp}.html`, "text/html");
@@ -223,14 +215,11 @@ export const Overview = () => {
     [bookmarks, selectedId],
   );
 
-  // What to render in the list: search results when a query is active,
-  // otherwise the full bookmark set sorted by recency.
   const displayed = useMemo<Bookmark[]>(() => {
     if (query.trim().length > 0) return results;
     return [...bookmarks].sort((a, b) => b.updatedAt - a.updatedAt);
   }, [bookmarks, query, results]);
 
-  // Keep cursor inside the visible range when the displayed list shrinks.
   useEffect(() => {
     if (displayed.length === 0) {
       setCursorIndex(0);
@@ -303,11 +292,8 @@ export const Overview = () => {
     setSelectedId(null);
   };
 
-  // Keyboard shortcuts: j/k navigate, / focus search, e/Enter open detail,
-  // x toggle bulk-select, Esc close drawer or clear bulk selection.
   useEffect(() => {
     const handler = (ev: KeyboardEvent) => {
-      // Special-case "/" to focus search even when no input is focused.
       if (ev.key === "/" && !isTypingTarget(ev.target)) {
         ev.preventDefault();
         const input = document.querySelector<HTMLInputElement>(
@@ -316,8 +302,6 @@ export const Overview = () => {
         input?.focus();
         return;
       }
-      // Escape always closes the drawer or clears bulk selection, regardless
-      // of focus target — that's the standard cancellation idiom.
       if (ev.key === "Escape") {
         if (selectedId) {
           setSelectedId(null);
@@ -328,7 +312,6 @@ export const Overview = () => {
           return;
         }
       }
-      // Other shortcuts only fire when not typing in an input/text area.
       if (isTypingTarget(ev.target)) return;
 
       switch (ev.key) {
@@ -383,117 +366,107 @@ export const Overview = () => {
     if (!bookmark) return null;
     const isCursor = index === cursorIndex;
     const isChecked = bulkSelected.has(bookmark.id);
+    const ratingHigh = bookmark.rating && bookmark.rating >= 8;
     return (
-      <ListItem
+      <div
         style={style}
         key={bookmark.id}
-        component="div"
-        disablePadding
         onClick={() => setCursorIndex(index)}
-        sx={{
-          bgcolor: isCursor ? "action.selected" : undefined,
-          borderLeft: isCursor ? "3px solid" : "3px solid transparent",
-          borderLeftColor: isCursor ? "primary.main" : undefined,
-          pl: 0.5,
+        onKeyDown={(e) => {
+          if (e.key === "Enter") setSelectedId(bookmark.id);
         }}
-        secondaryAction={
-          <Stack direction="row" spacing={0.5}>
-            <IconButton
-              aria-label="open"
-              component="a"
-              href={bookmark.originalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              size="small"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <OpenInNewIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              aria-label="edit"
-              onClick={(e) => {
-                e.stopPropagation();
-                setSelectedId(bookmark.id);
-              }}
-              size="small"
-            >
-              <EditIcon fontSize="small" />
-            </IconButton>
-            <IconButton
-              aria-label="delete"
-              color="error"
-              onClick={(e) => {
-                e.stopPropagation();
-                deleteBookmarkRecord(bookmark.id);
-              }}
-              size="small"
-            >
-              <DeleteIcon fontSize="small" />
-            </IconButton>
-          </Stack>
-        }
+        role="button"
+        tabIndex={0}
+        className={cn(
+          "group flex items-center gap-2 border-l-[3px] border-transparent pl-1 pr-2",
+          isCursor && "border-primary bg-accent",
+        )}
       >
         <Checkbox
           checked={isChecked}
-          onChange={() => toggleBulk(bookmark.id)}
+          onCheckedChange={() => toggleBulk(bookmark.id)}
           onClick={(e) => e.stopPropagation()}
-          inputProps={{ "aria-label": `select ${bookmark.title || bookmark.canonicalUrl}` }}
+          aria-label={`select ${bookmark.title || bookmark.canonicalUrl}`}
         />
-        <ListItemAvatar>
-          <Avatar
-            sx={{
-              bgcolor: bookmark.rating && bookmark.rating >= 8 ? "warning.main" : undefined,
+        <Avatar className="size-9 shrink-0">
+          <AvatarFallback className={cn(ratingHigh && "bg-amber-200 text-amber-900")}>
+            <Star className={cn("size-4", ratingHigh && "fill-amber-600")} />
+          </AvatarFallback>
+        </Avatar>
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-medium">{bookmark.title || bookmark.canonicalUrl}</p>
+          <div className="flex flex-wrap items-center gap-1">
+            <span className="truncate text-xs text-muted-foreground">{bookmark.domain}</span>
+            {bookmark.tags.slice(0, 4).map((t) => (
+              <Badge key={t} variant="outline" className="text-[10px]">
+                {t}
+              </Badge>
+            ))}
+            {bookmark.tags.length > 4 && (
+              <span className="text-xs text-muted-foreground/70">+{bookmark.tags.length - 4}</span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-0.5">
+          <Button variant="ghost" size="icon-sm" asChild aria-label="open">
+            <a
+              href={bookmark.originalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <ExternalLink />
+            </a>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="edit"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedId(bookmark.id);
             }}
           >
-            <StarIcon />
-          </Avatar>
-        </ListItemAvatar>
-        <ListItemText
-          primary={<Typography noWrap>{bookmark.title || bookmark.canonicalUrl}</Typography>}
-          secondary={
-            <Stack
-              direction="row"
-              spacing={1}
-              alignItems="center"
-              component="span"
-              sx={{ flexWrap: "wrap" }}
-            >
-              <Typography variant="caption" color="text.secondary" component="span" noWrap>
-                {bookmark.domain}
-              </Typography>
-              {bookmark.tags.slice(0, 4).map((t) => (
-                <Chip key={t} label={t} size="small" variant="outlined" component="span" />
-              ))}
-              {bookmark.tags.length > 4 && (
-                <Typography variant="caption" color="text.disabled" component="span">
-                  +{bookmark.tags.length - 4}
-                </Typography>
-              )}
-            </Stack>
-          }
-        />
-      </ListItem>
+            <Pencil />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            aria-label="delete"
+            className="text-destructive hover:text-destructive"
+            onClick={(e) => {
+              e.stopPropagation();
+              deleteBookmarkRecord(bookmark.id);
+            }}
+          >
+            <Trash2 />
+          </Button>
+        </div>
+      </div>
     );
   };
 
   return (
-    <Stack spacing={2} sx={{ p: 3, maxWidth: 1100, mx: "auto" }}>
-      <Stack direction="row" alignItems="center" spacing={2}>
-        <Typography variant="h4" sx={{ flex: 1 }}>
-          Better Bookmarks
-        </Typography>
-        <IconButton aria-label="manage tags" onClick={() => setTagManagerOpen(true)}>
-          <LocalOfferIcon />
-        </IconButton>
-        <IconButton aria-label="settings" onClick={openSettings}>
+    <div className="mx-auto flex max-w-[1100px] flex-col gap-3 p-6">
+      <div className="flex items-center gap-2">
+        <h1 className="flex-1 text-2xl font-semibold">Better Bookmarks</h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="manage tags"
+          onClick={() => setTagManagerOpen(true)}
+        >
+          <TagIcon />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="settings" onClick={openSettings}>
           <SettingsIcon />
-        </IconButton>
-      </Stack>
-      <Typography variant="body2" color="text.secondary">
+        </Button>
+      </div>
+      <p className="text-sm text-muted-foreground">
         {loading
           ? "loading…"
           : `${bookmarks.length} bookmarks total, ${displayed.length} showing · /focus, j/k move, Enter/e open, x select, o open URL, Esc clear`}
-      </Typography>
+      </p>
 
       <SearchBar
         query={query}
@@ -502,44 +475,34 @@ export const Overview = () => {
         parseError={parseError}
       />
 
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
-        <Button variant="outlined" startIcon={<UploadIcon />} onClick={handleChromeImport}>
-          Import from Chrome
+      <div className="flex flex-wrap items-center gap-2">
+        <Button variant="outline" size="sm" onClick={handleChromeImport}>
+          <Upload /> Import from Chrome
         </Button>
-        <Button
-          variant="outlined"
-          startIcon={<UploadIcon />}
-          onClick={() => fileInput.current?.click()}
-        >
-          Import file…
+        <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
+          <Upload /> Import file…
         </Button>
-        <Button
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={(e) => setExportAnchor(e.currentTarget)}
-        >
-          Export…
-        </Button>
-        <Menu
-          anchorEl={exportAnchor}
-          open={Boolean(exportAnchor)}
-          onClose={() => setExportAnchor(null)}
-        >
-          <MenuItem onClick={handleExportJson}>JSON (round-trippable)</MenuItem>
-          <MenuItem onClick={handleExportNetscape}>HTML (Chrome / Firefox)</MenuItem>
-        </Menu>
-        {status && (
-          <Typography variant="caption" color="text.secondary">
-            {status}
-          </Typography>
-        )}
-      </Stack>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm">
+              <Download /> Export…
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={handleExportJson}>JSON (round-trippable)</DropdownMenuItem>
+            <DropdownMenuItem onClick={handleExportNetscape}>
+              HTML (Chrome / Firefox)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        {status && <span className="text-xs text-muted-foreground">{status}</span>}
+      </div>
 
       <input
         ref={fileInput}
         type="file"
         accept=".json,.csv,.html,.htm,.txt,.urls"
-        style={{ display: "none" }}
+        className="hidden"
         onChange={handleFileInputChange}
       />
 
@@ -554,7 +517,7 @@ export const Overview = () => {
         />
       )}
 
-      <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
+      <div className="rounded-md border">
         <FixedSizeList
           ref={listRef}
           height={Math.min(700, Math.max(300, window.innerHeight - 280))}
@@ -565,88 +528,82 @@ export const Overview = () => {
         >
           {renderRow}
         </FixedSizeList>
-      </Box>
+      </div>
 
-      <Drawer
-        anchor="right"
-        open={selected !== null}
-        onClose={() => setSelectedId(null)}
-        PaperProps={{ sx: { maxWidth: "100vw" } }}
-      >
-        {selected && (
-          <BookmarkDetail
-            bookmark={selected}
-            allBookmarks={bookmarks}
-            possibleTags={tagsFromBookmarks}
-            onSave={handleSaveDetail}
-            onDelete={handleDeleteDetail}
-            onClose={() => setSelectedId(null)}
-          />
-        )}
-      </Drawer>
+      <Sheet open={selected !== null} onOpenChange={(o) => !o && setSelectedId(null)}>
+        <SheetContent side="right" className="max-w-[100vw] sm:max-w-[600px]">
+          {selected && (
+            <BookmarkDetail
+              bookmark={selected}
+              allBookmarks={bookmarks}
+              possibleTags={tagsFromBookmarks}
+              onSave={handleSaveDetail}
+              onDelete={handleDeleteDetail}
+              onClose={() => setSelectedId(null)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
 
-      <Drawer
-        anchor="right"
-        open={tagManagerOpen}
-        onClose={() => setTagManagerOpen(false)}
-        PaperProps={{ sx: { maxWidth: "100vw" } }}
-      >
-        {tagManagerOpen && (
-          <TagManager
-            tags={tagRecords}
-            counts={tagCounts}
-            onRename={async (oldName, newName) => {
-              await renameTag(oldName, newName);
-            }}
-            onMerge={async (from, into) => mergeTags(from, into)}
-            onDelete={async (name) => {
-              await deleteTag(name);
-            }}
-            onSetColor={async (name, color) => {
-              await setTagColor(name, color);
-            }}
-            onSetParent={async (name, parentName) => {
-              await setTagParent(name, parentName);
-            }}
-            onValidateParent={async (name, parentName) => {
-              try {
-                // Dry-run by attempting and rolling back is too invasive;
-                // instead we mirror the storage validation client-side.
-                if (parentName.toLowerCase() === name.toLowerCase()) {
-                  return { ok: false, error: "A tag cannot be its own parent" };
-                }
-                const exists = tagRecords.some((t) => t.lowercaseName === parentName.toLowerCase());
-                if (!exists) {
-                  return { ok: false, error: `Parent tag "${parentName}" does not exist` };
-                }
-                const byLower = new Map(tagRecords.map((t) => [t.lowercaseName, t] as const));
-                let cursor: string | null = parentName;
-                const seen = new Set<string>([name.toLowerCase()]);
-                while (cursor !== null) {
-                  const cl = cursor.toLowerCase();
-                  if (seen.has(cl)) {
-                    return {
-                      ok: false,
-                      error: `Cycle: "${name}" → "${parentName}" would loop`,
-                    };
+      <Sheet open={tagManagerOpen} onOpenChange={setTagManagerOpen}>
+        <SheetContent side="right" className="max-w-[100vw] sm:max-w-[560px]">
+          {tagManagerOpen && (
+            <TagManager
+              tags={tagRecords}
+              counts={tagCounts}
+              onRename={async (oldName, newName) => {
+                await renameTag(oldName, newName);
+              }}
+              onMerge={async (from, into) => mergeTags(from, into)}
+              onDelete={async (name) => {
+                await deleteTag(name);
+              }}
+              onSetColor={async (name, color) => {
+                await setTagColor(name, color);
+              }}
+              onSetParent={async (name, parentName) => {
+                await setTagParent(name, parentName);
+              }}
+              onValidateParent={async (name, parentName) => {
+                try {
+                  if (parentName.toLowerCase() === name.toLowerCase()) {
+                    return { ok: false, error: "A tag cannot be its own parent" };
                   }
-                  seen.add(cl);
-                  const next = byLower.get(cl);
-                  if (!next) break;
-                  cursor = next.parentName;
+                  const exists = tagRecords.some(
+                    (t) => t.lowercaseName === parentName.toLowerCase(),
+                  );
+                  if (!exists) {
+                    return { ok: false, error: `Parent tag "${parentName}" does not exist` };
+                  }
+                  const byLower = new Map(tagRecords.map((t) => [t.lowercaseName, t] as const));
+                  let cursor: string | null = parentName;
+                  const seen = new Set<string>([name.toLowerCase()]);
+                  while (cursor !== null) {
+                    const cl = cursor.toLowerCase();
+                    if (seen.has(cl)) {
+                      return {
+                        ok: false,
+                        error: `Cycle: "${name}" → "${parentName}" would loop`,
+                      };
+                    }
+                    seen.add(cl);
+                    const next = byLower.get(cl);
+                    if (!next) break;
+                    cursor = next.parentName;
+                  }
+                  return { ok: true };
+                } catch (err) {
+                  return {
+                    ok: false,
+                    error: err instanceof Error ? err.message : String(err),
+                  };
                 }
-                return { ok: true };
-              } catch (err) {
-                return {
-                  ok: false,
-                  error: err instanceof Error ? err.message : String(err),
-                };
-              }
-            }}
-            onClose={() => setTagManagerOpen(false)}
-          />
-        )}
-      </Drawer>
-    </Stack>
+              }}
+              onClose={() => setTagManagerOpen(false)}
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 };
