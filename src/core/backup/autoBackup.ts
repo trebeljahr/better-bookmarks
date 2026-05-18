@@ -1,18 +1,11 @@
 /**
- * Auto-backup: collects bookmarks + tags + edges into a JSON payload and
- * writes it to ~/Downloads via chrome.downloads.download.
- *
- * Rolling-N retention keeps only the newest N matching files on disk.
- *
- * TODO(P5-importExport): once `src/core/importExport/json.ts:exportJson`
- * lands, delegate payload assembly to it to avoid drift between manual
- * export and auto-backup output.
+ * Auto-backup: writes the exportJson() snapshot to ~/Downloads via
+ * chrome.downloads.download. Rolling-N retention keeps only the newest N
+ * matching files on disk.
  */
 
-import { listAllEdges } from "../edges/crud";
-import { listBookmarks } from "../storage/bookmarks";
+import { exportJson } from "../importExport/json";
 import { getSettings } from "../storage/settings";
-import { listTags } from "../storage/tags";
 
 // @types/chrome 0.0.158 only types the callback signatures for these
 // chrome.downloads APIs. MV3 surfaces them as Promise-returning too, so we
@@ -27,15 +20,6 @@ const downloadsApi = (): DownloadsPromiseApi => chrome.downloads as unknown as D
 
 export const BACKUP_FILENAME_PREFIX = "better-bookmarks-backup-";
 export const BACKUP_FILENAME_REGEX = "better-bookmarks-backup-.*\\.json";
-export const BACKUP_PAYLOAD_VERSION = 1;
-
-export type BackupPayload = {
-  version: typeof BACKUP_PAYLOAD_VERSION;
-  exportedAt: number;
-  bookmarks: Awaited<ReturnType<typeof listBookmarks>>;
-  tags: Awaited<ReturnType<typeof listTags>>;
-  edges: Awaited<ReturnType<typeof listAllEdges>>;
-};
 
 export type BackupResult = {
   fileName: string;
@@ -48,17 +32,6 @@ export function backupFileNameFor(now: number): string {
   const date = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
   const time = `${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`;
   return `${BACKUP_FILENAME_PREFIX}${date}-${time}.json`;
-}
-
-export async function collectBackupPayload(now: number): Promise<BackupPayload> {
-  const [bookmarks, tags, edges] = await Promise.all([listBookmarks(), listTags(), listAllEdges()]);
-  return {
-    version: BACKUP_PAYLOAD_VERSION,
-    exportedAt: now,
-    bookmarks,
-    tags,
-    edges,
-  };
 }
 
 function utf8ToBase64(s: string): string {
@@ -79,8 +52,7 @@ function utf8ToBase64(s: string): string {
  */
 export async function runBackupOnce(now: number = Date.now()): Promise<BackupResult> {
   const settings = await getSettings();
-  const payload = await collectBackupPayload(now);
-  const json = JSON.stringify(payload);
+  const json = await exportJson();
   const byteSize = new TextEncoder().encode(json).byteLength;
   const fileName = backupFileNameFor(now);
   const url = `data:application/json;base64,${utf8ToBase64(json)}`;

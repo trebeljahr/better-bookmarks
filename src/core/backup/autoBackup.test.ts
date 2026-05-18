@@ -1,14 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createEdge } from "../edges/crud";
+import { JSON_EXPORT_VERSION } from "../importExport/json";
 import { upsertBookmark } from "../storage/bookmarks";
 import { getDB, resetDBForTests } from "../storage/db";
-import { upsertTag } from "../storage/tags";
 import {
   BACKUP_FILENAME_REGEX,
-  BACKUP_PAYLOAD_VERSION,
   backupFileNameFor,
   cleanupOldBackups,
-  collectBackupPayload,
   runBackupOnce,
 } from "./autoBackup";
 
@@ -125,39 +122,6 @@ describe("backupFileNameFor", () => {
   });
 });
 
-describe("collectBackupPayload", () => {
-  it("includes bookmarks, tags, edges and a versioned header", async () => {
-    const fake = fakeChrome();
-    installChrome(fake);
-
-    const a = await upsertBookmark({ rawUrl: "https://example.com/a", title: "A" });
-    const b = await upsertBookmark({ rawUrl: "https://example.com/b", title: "B" });
-    if (!a.ok || !b.ok) throw new Error("seed failed");
-    await upsertTag({ name: "ai" });
-    await createEdge({ fromId: a.bookmark.id, toId: b.bookmark.id, type: "related" });
-
-    const now = 1_700_000_000_000;
-    const payload = await collectBackupPayload(now);
-
-    expect(payload.version).toBe(BACKUP_PAYLOAD_VERSION);
-    expect(payload.exportedAt).toBe(now);
-    expect(payload.bookmarks).toHaveLength(2);
-    expect(payload.tags.map((t) => t.name)).toContain("ai");
-    expect(payload.edges).toHaveLength(1);
-    expect(payload.edges[0].fromId).toBe(a.bookmark.id);
-    expect(payload.edges[0].toId).toBe(b.bookmark.id);
-  });
-
-  it("returns empty arrays when store is empty", async () => {
-    const fake = fakeChrome();
-    installChrome(fake);
-    const payload = await collectBackupPayload(0);
-    expect(payload.bookmarks).toEqual([]);
-    expect(payload.tags).toEqual([]);
-    expect(payload.edges).toEqual([]);
-  });
-});
-
 describe("runBackupOnce", () => {
   it("downloads a versioned JSON blob and reports filename + byteSize", async () => {
     const fake = fakeChrome();
@@ -177,12 +141,12 @@ describe("runBackupOnce", () => {
     expect(arg.url).toMatch(/^data:application\/json;base64,/);
 
     // The payload encoded in the data URL must round-trip back to a versioned
-    // BackupPayload whose bookmarks include the seeded entry.
+    // exportJson snapshot whose bookmarks include the seeded entry.
     const base64 = arg.url.replace(/^data:application\/json;base64,/, "");
     // biome-ignore lint/suspicious/noExplicitAny: decoded JSON is unconstrained
     const decoded = JSON.parse(Buffer.from(base64, "base64").toString("utf-8")) as any;
-    expect(decoded.version).toBe(BACKUP_PAYLOAD_VERSION);
-    expect(decoded.exportedAt).toBe(now);
+    expect(decoded.version).toBe(JSON_EXPORT_VERSION);
+    expect(typeof decoded.exportedAt).toBe("number");
     expect(decoded.bookmarks[0].title).toBe("X");
   });
 
