@@ -55,6 +55,7 @@ export type Bookmark = {
   capturedFrom: CaptureSource;
 
   linkCheck?: LinkCheckResult;
+  enrichedAt?: number;
 };
 
 export type EdgeType = "related" | "sequel" | "source" | "rebuts" | "supersedes" | "translates";
@@ -112,6 +113,9 @@ export type Settings = {
   deadLinkSweepIntervalMin: number;
   deadLinkSweepBatchSize: number;
   deadLinkStaleAfterDays: number;
+  networkEnrichmentEnabled: boolean;
+  enrichmentSweepIntervalMin: number;
+  enrichmentBatchSize: number;
 };
 
 export type CanonicalizationOverrides = {
@@ -137,4 +141,7 @@ export const DEFAULT_SETTINGS: Settings = {
   deadLinkSweepIntervalMin: 360,
   deadLinkSweepBatchSize: 50,
   deadLinkStaleAfterDays: 30,
+  networkEnrichmentEnabled: false,
+  enrichmentSweepIntervalMin: 720,
+  enrichmentBatchSize: 25,
 };
