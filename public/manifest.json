@@ -33,6 +33,8 @@
     "service_worker": "js/background.js"
   },
 
+  "options_page": "options.html",
+
   "omnibox": { "keyword": "bb" },
 
   "permissions": ["storage", "tabs", "bookmarks", "downloads", "alarms"],

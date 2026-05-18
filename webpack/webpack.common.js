@@ -7,6 +7,7 @@ module.exports = {
   entry: {
     popup: path.join(srcDir, "popup.tsx"),
     overview: path.join(srcDir, "overview.tsx"),
+    options: path.join(srcDir, "options.tsx"),
     background: path.join(srcDir, "background.ts"),
   },
   output: {

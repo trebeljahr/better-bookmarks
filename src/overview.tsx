@@ -1,6 +1,8 @@
 import DeleteIcon from "@mui/icons-material/Delete";
+import DownloadIcon from "@mui/icons-material/Download";
 import EditIcon from "@mui/icons-material/Edit";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import SettingsIcon from "@mui/icons-material/Settings";
 import StarIcon from "@mui/icons-material/Star";
 import UploadIcon from "@mui/icons-material/Upload";
 import {
@@ -12,6 +14,8 @@ import {
   ListItem,
   ListItemAvatar,
   ListItemText,
+  Menu,
+  MenuItem,
   Stack,
   ThemeProvider,
   Typography,
@@ -24,10 +28,17 @@ import { BookmarkDetail } from "./components/BookmarkDetail";
 import { theme } from "./components/MaterialTheme";
 import { SearchBar } from "./components/SearchBar";
 import { canonicalize } from "./core/canonicalizer";
+import {
+  exportJson,
+  exportNetscape,
+  importGoodreadsHtml,
+  importJson,
+  importPocketCsv,
+  importRawUrlList,
+} from "./core/importExport";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "./core/search";
 import {
   deleteBookmark as deleteBookmarkRecord,
-  listBookmarks,
   updateBookmark,
   upsertBookmark,
 } from "./core/storage/bookmarks";
@@ -88,31 +99,98 @@ function getTagsFromBookmarks(bookmarks: Bookmark[]): string[] {
   return Array.from(all).sort();
 }
 
+function detectFormat(file: File): "json" | "goodreads" | "pocket" | "raw-url" | "unknown" {
+  const name = file.name.toLowerCase();
+  if (name.endsWith(".json")) return "json";
+  if (name.endsWith(".csv")) return "pocket";
+  if (name.endsWith(".html") || name.endsWith(".htm")) return "goodreads";
+  if (name.endsWith(".txt") || name.endsWith(".urls")) return "raw-url";
+  return "unknown";
+}
+
+function triggerDownload(content: string, fileName: string, mimeType: string): void {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 const Overview = () => {
   const { bookmarks, loading } = useBookmarks();
   const { query, setQuery, results, parseError } = useSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [importStatus, setImportStatus] = useState<string>("");
+  const [status, setStatus] = useState<string>("");
+  const [exportAnchor, setExportAnchor] = useState<HTMLElement | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   const tagsFromBookmarks = useMemo(() => getTagsFromBookmarks(bookmarks), [bookmarks]);
 
-  const downloadLink = useRef<HTMLAnchorElement>(null);
-
-  async function exportBookmarks() {
-    const all = await listBookmarks();
-    const json = JSON.stringify(all, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const objectUrl = URL.createObjectURL(blob);
-    if (!downloadLink.current) return;
-    downloadLink.current.href = objectUrl;
-    downloadLink.current.click();
+  async function handleFileImport(file: File) {
+    setStatus(`importing ${file.name}…`);
+    const text = await file.text();
+    const fmt = detectFormat(file);
+    try {
+      if (fmt === "json") {
+        const report = await importJson(text);
+        setStatus(
+          `JSON: ${report.bookmarksImported} new + ${report.bookmarksMerged} merged bookmarks, ${report.edgesImported} edges`,
+        );
+      } else if (fmt === "goodreads") {
+        const report = await importGoodreadsHtml(text);
+        setStatus(`Goodreads: ${report.imported} imported, ${report.merged} merged`);
+      } else if (fmt === "pocket") {
+        const report = await importPocketCsv(text);
+        setStatus(`Pocket: ${report.imported} imported, ${report.merged} merged`);
+      } else if (fmt === "raw-url") {
+        const report = await importRawUrlList(text);
+        setStatus(`Raw URLs: ${report.imported} imported, ${report.merged} merged`);
+      } else {
+        setStatus(`unknown format for ${file.name}`);
+      }
+    } catch (err) {
+      setStatus(`import failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
 
-  const handleUpload = async () => {
-    setImportStatus("importing…");
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await handleFileImport(file);
+    if (fileInput.current) fileInput.current.value = "";
+  };
+
+  const handleChromeImport = async () => {
+    setStatus("importing Chrome tree…");
     const tree = await chrome.bookmarks.getTree();
     const count = await importChromeTree(tree[0]);
-    setImportStatus(`imported ${count} bookmarks`);
+    setStatus(`Chrome: ${count} bookmarks processed`);
+  };
+
+  const handleExportJson = async () => {
+    setExportAnchor(null);
+    const json = await exportJson();
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    triggerDownload(json, `better-bookmarks-${stamp}.json`, "application/json");
+  };
+
+  const handleExportNetscape = async () => {
+    setExportAnchor(null);
+    const html = await exportNetscape();
+    const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+    triggerDownload(html, `bookmarks-${stamp}.html`, "text/html");
+  };
+
+  const openSettings = () => {
+    if (chrome?.runtime?.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      window.open("/options.html", "_blank");
+    }
   };
 
   const selected = useMemo(
@@ -220,7 +298,14 @@ const Overview = () => {
 
   return (
     <Stack spacing={2} sx={{ p: 3, maxWidth: 1100, mx: "auto" }}>
-      <Typography variant="h4">Better Bookmarks</Typography>
+      <Stack direction="row" alignItems="center" spacing={2}>
+        <Typography variant="h4" sx={{ flex: 1 }}>
+          Better Bookmarks
+        </Typography>
+        <IconButton aria-label="settings" onClick={openSettings}>
+          <SettingsIcon />
+        </IconButton>
+      </Stack>
       <Typography variant="body2" color="text.secondary">
         {loading ? "loading…" : `${bookmarks.length} bookmarks total, ${displayed.length} showing`}
       </Typography>
@@ -233,26 +318,45 @@ const Overview = () => {
       />
 
       <Stack direction="row" spacing={1} alignItems="center" sx={{ flexWrap: "wrap" }}>
-        <Button variant="outlined" startIcon={<UploadIcon />} onClick={handleUpload}>
+        <Button variant="outlined" startIcon={<UploadIcon />} onClick={handleChromeImport}>
           Import from Chrome
         </Button>
-        <Button variant="outlined" onClick={exportBookmarks}>
-          Export JSON
+        <Button
+          variant="outlined"
+          startIcon={<UploadIcon />}
+          onClick={() => fileInput.current?.click()}
+        >
+          Import file…
         </Button>
-        {importStatus && (
+        <Button
+          variant="outlined"
+          startIcon={<DownloadIcon />}
+          onClick={(e) => setExportAnchor(e.currentTarget)}
+        >
+          Export…
+        </Button>
+        <Menu
+          anchorEl={exportAnchor}
+          open={Boolean(exportAnchor)}
+          onClose={() => setExportAnchor(null)}
+        >
+          <MenuItem onClick={handleExportJson}>JSON (round-trippable)</MenuItem>
+          <MenuItem onClick={handleExportNetscape}>HTML (Chrome / Firefox)</MenuItem>
+        </Menu>
+        {status && (
           <Typography variant="caption" color="text.secondary">
-            {importStatus}
+            {status}
           </Typography>
         )}
       </Stack>
 
-      {/* biome-ignore lint/a11y/useAnchorContent: download anchor wired dynamically */}
-      <a
+      <input
+        ref={fileInput}
+        type="file"
+        accept=".json,.csv,.html,.htm,.txt,.urls"
         style={{ display: "none" }}
-        download="bookmarks.json"
-        href="about:blank"
-        ref={downloadLink}
-      ></a>
+        onChange={handleFileInputChange}
+      />
 
       <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
         <FixedSizeList
