@@ -8,6 +8,7 @@ import UploadIcon from "@mui/icons-material/Upload";
 import {
   Box,
   Button,
+  Checkbox,
   Chip,
   Drawer,
   IconButton,
@@ -21,10 +22,11 @@ import {
   Typography,
 } from "@mui/material";
 import Avatar from "@mui/material/Avatar";
-import React, { useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { BookmarkDetail } from "./components/BookmarkDetail";
+import { BulkActionsBar } from "./components/BulkActionsBar";
 import { theme } from "./components/MaterialTheme";
 import { SearchBar } from "./components/SearchBar";
 import { canonicalize } from "./core/canonicalizer";
@@ -42,8 +44,10 @@ import {
   updateBookmark,
   upsertBookmark,
 } from "./core/storage/bookmarks";
+import { upsertTag } from "./core/storage/tags";
 import { type Bookmark, useBookmarks } from "./hooks/useBookmarks";
 import { useSearch } from "./hooks/useSearch";
+import type { ReadStatus } from "./shared/types";
 
 // Wire search indexer eagerly in the overview context so any edits the user
 // makes here update the postings store immediately. Idempotent across the
@@ -120,13 +124,24 @@ function triggerDownload(content: string, fileName: string, mimeType: string): v
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
+function isTypingTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return true;
+  if (target.isContentEditable) return true;
+  return false;
+}
+
 const Overview = () => {
   const { bookmarks, loading } = useBookmarks();
   const { query, setQuery, results, parseError } = useSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [cursorIndex, setCursorIndex] = useState<number>(0);
+  const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string>("");
   const [exportAnchor, setExportAnchor] = useState<HTMLElement | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+  const listRef = useRef<FixedSizeList | null>(null);
 
   const tagsFromBookmarks = useMemo(() => getTagsFromBookmarks(bookmarks), [bookmarks]);
 
@@ -205,6 +220,61 @@ const Overview = () => {
     return [...bookmarks].sort((a, b) => b.updatedAt - a.updatedAt);
   }, [bookmarks, query, results]);
 
+  // Keep cursor inside the visible range when the displayed list shrinks.
+  useEffect(() => {
+    if (displayed.length === 0) {
+      setCursorIndex(0);
+      return;
+    }
+    setCursorIndex((idx) => Math.min(idx, displayed.length - 1));
+  }, [displayed.length]);
+
+  const toggleBulk = useCallback((id: string) => {
+    setBulkSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const clearBulk = useCallback(() => setBulkSelected(new Set()), []);
+
+  const handleBulkAddTag = useCallback(
+    async (tag: string) => {
+      const trimmed = tag.trim();
+      if (!trimmed) return;
+      await upsertTag({ name: trimmed });
+      const affected = bookmarks.filter((b) => bulkSelected.has(b.id));
+      for (const b of affected) {
+        if (b.tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) continue;
+        await updateBookmark(b.id, { tags: [...b.tags, trimmed] });
+      }
+      setStatus(`added tag "${trimmed}" to ${affected.length} bookmarks`);
+    },
+    [bookmarks, bulkSelected],
+  );
+
+  const handleBulkSetStatus = useCallback(
+    async (next: ReadStatus) => {
+      const ids = Array.from(bulkSelected);
+      for (const id of ids) {
+        await updateBookmark(id, { status: next });
+      }
+      setStatus(`set status "${next}" on ${ids.length} bookmarks`);
+    },
+    [bulkSelected],
+  );
+
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(bulkSelected);
+    for (const id of ids) {
+      await deleteBookmarkRecord(id);
+    }
+    clearBulk();
+    setStatus(`deleted ${ids.length} bookmarks`);
+  }, [bulkSelected, clearBulk]);
+
   const handleSaveDetail = async (updated: Bookmark) => {
     await updateBookmark(updated.id, {
       title: updated.title,
@@ -223,16 +293,99 @@ const Overview = () => {
     setSelectedId(null);
   };
 
+  // Keyboard shortcuts: j/k navigate, / focus search, e/Enter open detail,
+  // x toggle bulk-select, Esc close drawer or clear bulk selection.
+  useEffect(() => {
+    const handler = (ev: KeyboardEvent) => {
+      // Special-case "/" to focus search even when no input is focused.
+      if (ev.key === "/" && !isTypingTarget(ev.target)) {
+        ev.preventDefault();
+        const input = document.querySelector<HTMLInputElement>(
+          'input[aria-label="search bookmarks"]',
+        );
+        input?.focus();
+        return;
+      }
+      // Escape always closes the drawer or clears bulk selection, regardless
+      // of focus target — that's the standard cancellation idiom.
+      if (ev.key === "Escape") {
+        if (selectedId) {
+          setSelectedId(null);
+          return;
+        }
+        if (bulkSelected.size > 0) {
+          clearBulk();
+          return;
+        }
+      }
+      // Other shortcuts only fire when not typing in an input/text area.
+      if (isTypingTarget(ev.target)) return;
+
+      switch (ev.key) {
+        case "j":
+        case "ArrowDown": {
+          ev.preventDefault();
+          setCursorIndex((i) => {
+            const next = Math.min(displayed.length - 1, i + 1);
+            listRef.current?.scrollToItem(next, "smart");
+            return next;
+          });
+          break;
+        }
+        case "k":
+        case "ArrowUp": {
+          ev.preventDefault();
+          setCursorIndex((i) => {
+            const next = Math.max(0, i - 1);
+            listRef.current?.scrollToItem(next, "smart");
+            return next;
+          });
+          break;
+        }
+        case "Enter":
+        case "e": {
+          ev.preventDefault();
+          const b = displayed[cursorIndex];
+          if (b) setSelectedId(b.id);
+          break;
+        }
+        case "x": {
+          ev.preventDefault();
+          const b = displayed[cursorIndex];
+          if (b) toggleBulk(b.id);
+          break;
+        }
+        case "o": {
+          ev.preventDefault();
+          const b = displayed[cursorIndex];
+          if (b) window.open(b.originalUrl, "_blank", "noopener,noreferrer");
+          break;
+        }
+      }
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [bulkSelected.size, clearBulk, cursorIndex, displayed, selectedId, toggleBulk]);
+
   const renderRow = (props: ListChildComponentProps) => {
     const { index, style } = props;
     const bookmark = displayed[index];
     if (!bookmark) return null;
+    const isCursor = index === cursorIndex;
+    const isChecked = bulkSelected.has(bookmark.id);
     return (
       <ListItem
         style={style}
         key={bookmark.id}
         component="div"
         disablePadding
+        onClick={() => setCursorIndex(index)}
+        sx={{
+          bgcolor: isCursor ? "action.selected" : undefined,
+          borderLeft: isCursor ? "3px solid" : "3px solid transparent",
+          borderLeftColor: isCursor ? "primary.main" : undefined,
+          pl: 0.5,
+        }}
         secondaryAction={
           <Stack direction="row" spacing={0.5}>
             <IconButton
@@ -242,16 +395,27 @@ const Overview = () => {
               target="_blank"
               rel="noopener noreferrer"
               size="small"
+              onClick={(e) => e.stopPropagation()}
             >
               <OpenInNewIcon fontSize="small" />
             </IconButton>
-            <IconButton aria-label="edit" onClick={() => setSelectedId(bookmark.id)} size="small">
+            <IconButton
+              aria-label="edit"
+              onClick={(e) => {
+                e.stopPropagation();
+                setSelectedId(bookmark.id);
+              }}
+              size="small"
+            >
               <EditIcon fontSize="small" />
             </IconButton>
             <IconButton
               aria-label="delete"
               color="error"
-              onClick={() => deleteBookmarkRecord(bookmark.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                deleteBookmarkRecord(bookmark.id);
+              }}
               size="small"
             >
               <DeleteIcon fontSize="small" />
@@ -259,6 +423,12 @@ const Overview = () => {
           </Stack>
         }
       >
+        <Checkbox
+          checked={isChecked}
+          onChange={() => toggleBulk(bookmark.id)}
+          onClick={(e) => e.stopPropagation()}
+          inputProps={{ "aria-label": `select ${bookmark.title || bookmark.canonicalUrl}` }}
+        />
         <ListItemAvatar>
           <Avatar
             sx={{
@@ -307,7 +477,9 @@ const Overview = () => {
         </IconButton>
       </Stack>
       <Typography variant="body2" color="text.secondary">
-        {loading ? "loading…" : `${bookmarks.length} bookmarks total, ${displayed.length} showing`}
+        {loading
+          ? "loading…"
+          : `${bookmarks.length} bookmarks total, ${displayed.length} showing · /focus, j/k move, Enter/e open, x select, o open URL, Esc clear`}
       </Typography>
 
       <SearchBar
@@ -358,8 +530,20 @@ const Overview = () => {
         onChange={handleFileInputChange}
       />
 
+      {bulkSelected.size > 0 && (
+        <BulkActionsBar
+          selectedCount={bulkSelected.size}
+          possibleTags={tagsFromBookmarks}
+          onClear={clearBulk}
+          onAddTag={handleBulkAddTag}
+          onSetStatus={handleBulkSetStatus}
+          onDelete={handleBulkDelete}
+        />
+      )}
+
       <Box sx={{ border: 1, borderColor: "divider", borderRadius: 1 }}>
         <FixedSizeList
+          ref={listRef}
           height={Math.min(700, Math.max(300, window.innerHeight - 280))}
           width="100%"
           itemSize={72}
