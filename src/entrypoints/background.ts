@@ -1,4 +1,6 @@
+import { wireUnreadBadge } from "@/core/badge";
 import { BACKUP_ALARM_NAME, installBackupAlarm, runBackupOnce } from "@/core/backup";
+import { installContextMenu } from "@/core/contextMenu";
 import { DEAD_LINK_ALARM_NAME, installDeadLinkAlarm, runDeadLinkSweep } from "@/core/maintenance";
 import { installOmnibox } from "@/core/omnibox";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
@@ -63,4 +65,31 @@ export default defineBackground(() => {
 
   // Omnibox: register `bb` keyword listeners.
   installOmnibox();
+
+  // Side panel: keep the action click bound to the popup (default behavior
+  // would steal the click and open the side panel instead). Users open the
+  // side panel via the keyboard command or the context menu.
+  if (chrome.sidePanel?.setPanelBehavior) {
+    chrome.sidePanel
+      .setPanelBehavior({ openPanelOnActionClick: false })
+      .catch((err) => console.error("setPanelBehavior failed", err));
+  }
+
+  chrome.commands.onCommand.addListener(async (name) => {
+    if (name !== "open_sidepanel") return;
+    try {
+      const win = await chrome.windows.getCurrent();
+      if (typeof win.id === "number") {
+        await chrome.sidePanel.open({ windowId: win.id });
+      }
+    } catch (err) {
+      console.error("open_sidepanel failed", err);
+    }
+  });
+
+  // Context menus: "Add", "Add (with note)", "Tag…" submenu of top tags.
+  installContextMenu();
+
+  // Action badge: unread count, refreshed on bookmark mutations.
+  wireUnreadBadge();
 });

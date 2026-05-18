@@ -8,13 +8,32 @@ export default defineConfig({
     description:
       "Better Bookmarks is a Chrome extension that allows you to save your bookmarks in a more organized way.",
     version: "1.0",
-    permissions: ["storage", "tabs", "bookmarks", "downloads", "alarms", "activeTab"],
+    permissions: [
+      "storage",
+      "tabs",
+      "bookmarks",
+      "downloads",
+      "alarms",
+      "activeTab",
+      "sidePanel",
+      "contextMenus",
+    ],
+    side_panel: {
+      default_path: "sidepanel.html",
+    },
     commands: {
       _execute_action: {
         suggested_key: {
           default: "Ctrl+Shift+X",
           mac: "MacCtrl+Shift+X",
         },
+      },
+      open_sidepanel: {
+        suggested_key: {
+          default: "Ctrl+Shift+B",
+          mac: "MacCtrl+Shift+B",
+        },
+        description: "Open the Better Bookmarks side panel",
       },
     },
     action: {
