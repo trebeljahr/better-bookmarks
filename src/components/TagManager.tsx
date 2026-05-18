@@ -1,10 +1,11 @@
 /**
- * TagManager — manage every tag in the store: rename, merge, delete.
+ * TagManager — manage every tag in the store: rename, merge, delete,
+ * recolor, and re-parent.
  *
- * Renders inside a Drawer in the overview. The Tag schema also carries
- * color / parent / description; this surface focuses on the most
- * common destructive operations (rename + merge + delete) which carry
- * the biggest data-correctness risk and previously had no UI.
+ * Renders inside a Drawer in the overview. The Tag schema carries
+ * color, parentName, and description; this surface exposes the
+ * destructive ops (rename + merge + delete) alongside the curation
+ * ops (color + hierarchy).
  */
 
 import CallMergeIcon from "@mui/icons-material/CallMerge";
@@ -19,6 +20,7 @@ import {
   Chip,
   Divider,
   IconButton,
+  Popover,
   Stack,
   TextField,
   Typography,
@@ -32,16 +34,177 @@ type Props = {
   onRename: (oldName: string, newName: string) => Promise<void>;
   onMerge: (from: string, into: string) => Promise<{ affected: number }>;
   onDelete: (name: string) => Promise<void>;
+  onSetColor: (name: string, color: string | null) => Promise<void>;
+  onSetParent: (name: string, parentName: string | null) => Promise<void>;
+  onValidateParent?: (name: string, parentName: string) => Promise<{ ok: boolean; error?: string }>;
   onClose: () => void;
 };
 
 type Mode = { kind: "rename"; name: string; draft: string } | { kind: "merge"; from: string };
 
-export function TagManager({ tags, counts, onRename, onMerge, onDelete, onClose }: Props) {
+// Material-ish palette suggestions. Twelve named hues a user can
+// pick at a glance, plus an explicit "clear" affordance.
+const PRESET_COLORS: { hex: string; name: string }[] = [
+  { hex: "#ef5350", name: "Red" },
+  { hex: "#ec407a", name: "Pink" },
+  { hex: "#ab47bc", name: "Purple" },
+  { hex: "#7e57c2", name: "Deep Purple" },
+  { hex: "#5c6bc0", name: "Indigo" },
+  { hex: "#42a5f5", name: "Blue" },
+  { hex: "#26c6da", name: "Cyan" },
+  { hex: "#26a69a", name: "Teal" },
+  { hex: "#66bb6a", name: "Green" },
+  { hex: "#d4e157", name: "Lime" },
+  { hex: "#ffca28", name: "Amber" },
+  { hex: "#ff7043", name: "Deep Orange" },
+];
+
+const HEX_RE = /^#[0-9a-fA-F]{6}$/;
+
+function descendantNamesOf(rootName: string, tags: Tag[]): Set<string> {
+  const childrenByParent = new Map<string, Tag[]>();
+  for (const t of tags) {
+    if (!t.parentName) continue;
+    const key = t.parentName.toLowerCase();
+    const list = childrenByParent.get(key);
+    if (list) list.push(t);
+    else childrenByParent.set(key, [t]);
+  }
+  const out = new Set<string>();
+  const queue = [rootName.toLowerCase()];
+  while (queue.length) {
+    const cur = queue.shift();
+    if (!cur) break;
+    const kids = childrenByParent.get(cur) ?? [];
+    for (const k of kids) {
+      const kl = k.name.toLowerCase();
+      if (out.has(kl)) continue;
+      out.add(kl);
+      queue.push(kl);
+    }
+  }
+  return out;
+}
+
+function ancestorChainOf(name: string, tags: Tag[]): Tag[] {
+  const byLower = new Map(tags.map((t) => [t.lowercaseName, t] as const));
+  const start = byLower.get(name.toLowerCase());
+  if (!start) return [];
+  const seen = new Set<string>([start.lowercaseName]);
+  const chain: Tag[] = [];
+  let cursor: string | null = start.parentName;
+  while (cursor !== null) {
+    const cl = cursor.toLowerCase();
+    if (seen.has(cl)) break;
+    seen.add(cl);
+    const parent = byLower.get(cl);
+    if (!parent) break;
+    chain.push(parent);
+    cursor = parent.parentName;
+  }
+  return chain;
+}
+
+type ColorPickerProps = {
+  current: string | null;
+  anchorEl: HTMLElement | null;
+  onClose: () => void;
+  onPick: (color: string | null) => void;
+};
+
+function ColorPickerPopover({ current, anchorEl, onClose, onPick }: ColorPickerProps) {
+  const [hex, setHex] = useState(current ?? "");
+  const validHex = HEX_RE.test(hex);
+  return (
+    <Popover
+      open={Boolean(anchorEl)}
+      anchorEl={anchorEl}
+      onClose={onClose}
+      anchorOrigin={{ vertical: "bottom", horizontal: "left" }}
+    >
+      <Box sx={{ p: 2, width: 240 }}>
+        <Typography variant="caption" color="text.secondary">
+          Preset
+        </Typography>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "repeat(6, 1fr)",
+            gap: 1,
+            mt: 1,
+            mb: 2,
+          }}
+        >
+          {PRESET_COLORS.map((c) => (
+            <Box
+              key={c.hex}
+              role="button"
+              tabIndex={0}
+              aria-label={`Set color ${c.name}`}
+              onClick={() => onPick(c.hex)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") onPick(c.hex);
+              }}
+              sx={{
+                width: 28,
+                height: 28,
+                borderRadius: "50%",
+                bgcolor: c.hex,
+                cursor: "pointer",
+                border: current?.toLowerCase() === c.hex.toLowerCase() ? 2 : 1,
+                borderColor:
+                  current?.toLowerCase() === c.hex.toLowerCase() ? "primary.main" : "divider",
+              }}
+            />
+          ))}
+        </Box>
+        <Stack direction="row" spacing={1} alignItems="center">
+          <TextField
+            size="small"
+            label="Custom hex"
+            placeholder="#a1b2c3"
+            value={hex}
+            onChange={(e) => setHex(e.target.value)}
+            error={hex.length > 0 && !validHex}
+            helperText={hex.length > 0 && !validHex ? "Expecting #rrggbb" : " "}
+            sx={{ flex: 1 }}
+          />
+          <IconButton
+            size="small"
+            color="primary"
+            disabled={!validHex}
+            onClick={() => onPick(hex.toLowerCase())}
+            aria-label="apply custom color"
+          >
+            <CheckIcon />
+          </IconButton>
+        </Stack>
+        <Divider sx={{ my: 1 }} />
+        <Button fullWidth size="small" onClick={() => onPick(null)}>
+          Clear color
+        </Button>
+      </Box>
+    </Popover>
+  );
+}
+
+export function TagManager({
+  tags,
+  counts,
+  onRename,
+  onMerge,
+  onDelete,
+  onSetColor,
+  onSetParent,
+  onValidateParent,
+  onClose,
+}: Props) {
   const [filter, setFilter] = useState("");
   const [mode, setMode] = useState<Mode | null>(null);
   const [mergeTarget, setMergeTarget] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("");
+  const [colorAnchor, setColorAnchor] = useState<{ name: string; el: HTMLElement } | null>(null);
+  const [parentError, setParentError] = useState<{ name: string; message: string } | null>(null);
 
   const filtered = useMemo(() => {
     const needle = filter.trim().toLowerCase();
@@ -86,6 +249,32 @@ export function TagManager({ tags, counts, onRename, onMerge, onDelete, onClose 
     setStatus(`deleted "${name}"`);
   };
 
+  const handleColorPick = async (name: string, color: string | null) => {
+    setColorAnchor(null);
+    await onSetColor(name, color);
+    setStatus(color ? `colored "${name}" ${color}` : `cleared color on "${name}"`);
+  };
+
+  const handleParentChange = async (name: string, nextParent: string | null) => {
+    setParentError(null);
+    if (nextParent !== null && onValidateParent) {
+      const check = await onValidateParent(name, nextParent);
+      if (!check.ok) {
+        setParentError({ name, message: check.error ?? "Invalid parent" });
+        return;
+      }
+    }
+    try {
+      await onSetParent(name, nextParent);
+      setStatus(nextParent ? `"${name}" now under "${nextParent}"` : `cleared parent of "${name}"`);
+    } catch (err) {
+      setParentError({
+        name,
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  };
+
   return (
     <Stack spacing={2} sx={{ p: 3, width: { xs: "100vw", sm: 520 }, maxWidth: "100vw" }}>
       <Stack direction="row" alignItems="center" spacing={1}>
@@ -123,6 +312,20 @@ export function TagManager({ tags, counts, onRename, onMerge, onDelete, onClose 
           {filtered.map((tag) => {
             const isRenaming = mode?.kind === "rename" && mode.name === tag.name;
             const isMerging = mode?.kind === "merge" && mode.from === tag.name;
+            const ancestors = ancestorChainOf(tag.name, tags);
+            const blockedParents = descendantNamesOf(tag.name, tags);
+            const parentOptions = tags
+              .map((t) => t.name)
+              .filter(
+                (n) =>
+                  n.toLowerCase() !== tag.name.toLowerCase() &&
+                  !blockedParents.has(n.toLowerCase()),
+              );
+            const errForThisTag =
+              parentError?.name.toLowerCase() === tag.name.toLowerCase()
+                ? parentError.message
+                : null;
+
             return (
               <Box
                 key={tag.name}
@@ -133,13 +336,47 @@ export function TagManager({ tags, counts, onRename, onMerge, onDelete, onClose 
                   p: 1.5,
                 }}
               >
-                <Stack direction="row" spacing={1} alignItems="center">
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                  <Box
+                    component="button"
+                    type="button"
+                    aria-label={`change color of ${tag.name}`}
+                    onClick={(e) => setColorAnchor({ name: tag.name, el: e.currentTarget })}
+                    sx={{
+                      width: 22,
+                      height: 22,
+                      borderRadius: "50%",
+                      border: 1,
+                      borderColor: "divider",
+                      bgcolor: tag.color ?? "transparent",
+                      cursor: "pointer",
+                      p: 0,
+                      backgroundImage: tag.color
+                        ? "none"
+                        : "repeating-linear-gradient(45deg, rgba(0,0,0,0.08) 0 4px, transparent 4px 8px)",
+                    }}
+                  />
                   <Chip
                     label={tag.name}
                     size="small"
                     variant={tag.color ? "filled" : "outlined"}
                     sx={tag.color ? { bgcolor: tag.color } : undefined}
                   />
+                  {ancestors.length > 0 && (
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      sx={{ fontStyle: "italic" }}
+                    >
+                      {ancestors
+                        .slice()
+                        .reverse()
+                        .map((a) => a.name)
+                        .join(" › ")}
+                      {" › "}
+                      {tag.name}
+                    </Typography>
+                  )}
                   <Typography variant="caption" color="text.secondary">
                     {counts[tag.name] ?? 0} bookmarks
                   </Typography>
@@ -169,6 +406,26 @@ export function TagManager({ tags, counts, onRename, onMerge, onDelete, onClose 
                   >
                     <DeleteIcon fontSize="small" />
                   </IconButton>
+                </Stack>
+
+                <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                  <Autocomplete
+                    size="small"
+                    options={parentOptions}
+                    value={tag.parentName ?? null}
+                    onChange={(_, v) => handleParentChange(tag.name, v)}
+                    sx={{ flex: 1 }}
+                    isOptionEqualToValue={(opt, val) => opt.toLowerCase() === val.toLowerCase()}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Parent tag"
+                        placeholder="(no parent)"
+                        error={Boolean(errForThisTag)}
+                        helperText={errForThisTag ?? " "}
+                      />
+                    )}
+                  />
                 </Stack>
 
                 {isRenaming && (
@@ -231,6 +488,15 @@ export function TagManager({ tags, counts, onRename, onMerge, onDelete, onClose 
       <Stack direction="row" justifyContent="flex-end">
         <Button onClick={onClose}>Close</Button>
       </Stack>
+
+      {colorAnchor && (
+        <ColorPickerPopover
+          current={tags.find((t) => t.name === colorAnchor.name)?.color ?? null}
+          anchorEl={colorAnchor.el}
+          onClose={() => setColorAnchor(null)}
+          onPick={(c) => handleColorPick(colorAnchor.name, c)}
+        />
+      )}
     </Stack>
   );
 }

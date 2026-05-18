@@ -7,6 +7,9 @@ import {
   listTags,
   mergeTags,
   renameTag,
+  setTagColor,
+  setTagParent,
+  tagAncestors,
   tagBookmarkCounts,
   upsertTag,
 } from "./tags";
@@ -127,5 +130,127 @@ describe("tagBookmarkCounts", () => {
     await upsertBookmark({ rawUrl: "https://example.com/c", tags: ["Paper"] });
     const counts = await tagBookmarkCounts();
     expect(counts).toEqual({ AI: 2, Paper: 2 });
+  });
+});
+
+describe("setTagColor", () => {
+  it("round-trips a hex color", async () => {
+    await upsertTag({ name: "AI" });
+    await setTagColor("AI", "#a1b2c3");
+    const t = await getTag("AI");
+    expect(t?.color).toBe("#a1b2c3");
+  });
+
+  it("preserves other fields when changing color", async () => {
+    await upsertTag({ name: "AI", description: "smart stuff", parentName: null });
+    await setTagColor("AI", "#ff0000");
+    const t = await getTag("AI");
+    expect(t?.description).toBe("smart stuff");
+    expect(t?.parentName).toBe(null);
+    expect(t?.color).toBe("#ff0000");
+  });
+
+  it("clears color when passed null", async () => {
+    await upsertTag({ name: "AI", color: "#ff0000" });
+    await setTagColor("AI", null);
+    const t = await getTag("AI");
+    expect(t?.color).toBe(null);
+  });
+
+  it("is case-insensitive on lookup", async () => {
+    await upsertTag({ name: "AI" });
+    await setTagColor("ai", "#123456");
+    const t = await getTag("AI");
+    expect(t?.color).toBe("#123456");
+  });
+
+  it("throws on unknown tag", async () => {
+    await expect(setTagColor("ghost", "#000000")).rejects.toThrow(/does not exist/);
+  });
+});
+
+describe("setTagParent", () => {
+  it("sets parent on a simple two-level hierarchy", async () => {
+    await upsertTag({ name: "Parent" });
+    await upsertTag({ name: "Child" });
+    await setTagParent("Child", "Parent");
+    const child = await getTag("Child");
+    expect(child?.parentName).toBe("Parent");
+  });
+
+  it("normalizes parent to the stored case", async () => {
+    await upsertTag({ name: "Parent" });
+    await upsertTag({ name: "Child" });
+    await setTagParent("child", "parent");
+    const child = await getTag("Child");
+    expect(child?.parentName).toBe("Parent");
+  });
+
+  it("clears parent when passed null", async () => {
+    await upsertTag({ name: "Parent" });
+    await upsertTag({ name: "Child", parentName: "Parent" });
+    await setTagParent("Child", null);
+    const child = await getTag("Child");
+    expect(child?.parentName).toBe(null);
+  });
+
+  it("rejects self-parent", async () => {
+    await upsertTag({ name: "X" });
+    await expect(setTagParent("X", "X")).rejects.toThrow(/its own parent/);
+  });
+
+  it("rejects nonexistent parent", async () => {
+    await upsertTag({ name: "Child" });
+    await expect(setTagParent("Child", "Ghost")).rejects.toThrow(/does not exist/);
+  });
+
+  it("rejects cycle (A->B then B->A)", async () => {
+    await upsertTag({ name: "A" });
+    await upsertTag({ name: "B" });
+    await setTagParent("B", "A");
+    await expect(setTagParent("A", "B")).rejects.toThrow(/cycle/i);
+  });
+
+  it("rejects deeper cycle (A->B->C then A->C)", async () => {
+    await upsertTag({ name: "A" });
+    await upsertTag({ name: "B" });
+    await upsertTag({ name: "C" });
+    await setTagParent("B", "A");
+    await setTagParent("C", "B");
+    await expect(setTagParent("A", "C")).rejects.toThrow(/cycle/i);
+  });
+
+  it("preserves color when setting parent", async () => {
+    await upsertTag({ name: "Parent" });
+    await upsertTag({ name: "Child", color: "#abc123" });
+    await setTagParent("Child", "Parent");
+    const child = await getTag("Child");
+    expect(child?.color).toBe("#abc123");
+  });
+
+  it("throws on unknown tag", async () => {
+    await upsertTag({ name: "Parent" });
+    await expect(setTagParent("ghost", "Parent")).rejects.toThrow(/does not exist/);
+  });
+});
+
+describe("tagAncestors", () => {
+  it("returns chain in order: immediate parent first, root last", async () => {
+    await upsertTag({ name: "Root" });
+    await upsertTag({ name: "Mid" });
+    await upsertTag({ name: "Leaf" });
+    await setTagParent("Mid", "Root");
+    await setTagParent("Leaf", "Mid");
+    const chain = await tagAncestors("Leaf");
+    expect(chain.map((t) => t.name)).toEqual(["Mid", "Root"]);
+  });
+
+  it("returns empty for a root tag", async () => {
+    await upsertTag({ name: "Root" });
+    expect(await tagAncestors("Root")).toEqual([]);
+  });
+
+  it("returns empty for unknown tag", async () => {
+    expect(await tagAncestors("ghost")).toEqual([]);
   });
 });

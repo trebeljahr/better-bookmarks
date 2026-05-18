@@ -44,7 +44,14 @@ import {
   updateBookmark,
   upsertBookmark,
 } from "@/core/storage/bookmarks";
-import { deleteTag, mergeTags, renameTag, upsertTag } from "@/core/storage/tags";
+import {
+  deleteTag,
+  mergeTags,
+  renameTag,
+  setTagColor,
+  setTagParent,
+  upsertTag,
+} from "@/core/storage/tags";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useSearch } from "@/hooks/useSearch";
 import { useTags } from "@/hooks/useTags";
@@ -594,6 +601,47 @@ export const Overview = () => {
             onMerge={async (from, into) => mergeTags(from, into)}
             onDelete={async (name) => {
               await deleteTag(name);
+            }}
+            onSetColor={async (name, color) => {
+              await setTagColor(name, color);
+            }}
+            onSetParent={async (name, parentName) => {
+              await setTagParent(name, parentName);
+            }}
+            onValidateParent={async (name, parentName) => {
+              try {
+                // Dry-run by attempting and rolling back is too invasive;
+                // instead we mirror the storage validation client-side.
+                if (parentName.toLowerCase() === name.toLowerCase()) {
+                  return { ok: false, error: "A tag cannot be its own parent" };
+                }
+                const exists = tagRecords.some((t) => t.lowercaseName === parentName.toLowerCase());
+                if (!exists) {
+                  return { ok: false, error: `Parent tag "${parentName}" does not exist` };
+                }
+                const byLower = new Map(tagRecords.map((t) => [t.lowercaseName, t] as const));
+                let cursor: string | null = parentName;
+                const seen = new Set<string>([name.toLowerCase()]);
+                while (cursor !== null) {
+                  const cl = cursor.toLowerCase();
+                  if (seen.has(cl)) {
+                    return {
+                      ok: false,
+                      error: `Cycle: "${name}" → "${parentName}" would loop`,
+                    };
+                  }
+                  seen.add(cl);
+                  const next = byLower.get(cl);
+                  if (!next) break;
+                  cursor = next.parentName;
+                }
+                return { ok: true };
+              } catch (err) {
+                return {
+                  ok: false,
+                  error: err instanceof Error ? err.message : String(err),
+                };
+              }
             }}
             onClose={() => setTagManagerOpen(false)}
           />
