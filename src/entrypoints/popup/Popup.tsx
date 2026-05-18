@@ -10,26 +10,24 @@ import {
   Rating,
   Stack,
   TextField,
-  ThemeProvider,
   Typography,
 } from "@mui/material";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
-import ReactDOM from "react-dom";
-import { theme } from "./components/MaterialTheme";
-import Tags from "./components/Tags";
-import { canonicalize } from "./core/canonicalizer";
-import { detectContentType, suggestTags } from "./core/enrichment";
-import { migrateLegacyStore } from "./core/migration/legacyToV1";
-import { wireSearchIndexer } from "./core/search";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import Tags from "@/components/Tags";
+import { canonicalize } from "@/core/canonicalizer";
+import { detectContentType, suggestTags } from "@/core/enrichment";
+import { migrateLegacyStore } from "@/core/migration/legacyToV1";
+import { wireSearchIndexer } from "@/core/search";
 import {
   deleteBookmark as deleteBookmarkRecord,
   getBookmarkByRawUrl,
   listBookmarks,
   upsertBookmark,
-} from "./core/storage/bookmarks";
-import { getSettings } from "./core/storage/settings";
-import type { Bookmark, ContentType, ReadStatus } from "./shared/types";
-import { DEFAULT_SETTINGS } from "./shared/types";
+} from "@/core/storage/bookmarks";
+import { getSettings } from "@/core/storage/settings";
+import type { Bookmark, ContentType, ReadStatus } from "@/shared/types";
+import { DEFAULT_SETTINGS } from "@/shared/types";
 
 // Wire the search indexer to Dexie hooks in this popup context, so a save
 // here populates postings immediately (popup may close before the service
@@ -72,7 +70,7 @@ const CONTENT_TYPE_OPTIONS: ReadonlyArray<ContentType> = [
   "reference",
 ];
 
-const Popup = () => {
+export const Popup = () => {
   const [currentTab, setCurrentTab] = useState<chrome.tabs.Tab>();
   const [rating, setRating] = useState<number>(DEFAULT_SETTINGS.defaultRating);
   const [title, setTitle] = useState<string>("");
@@ -301,12 +299,3 @@ const Popup = () => {
     </Stack>
   );
 };
-
-ReactDOM.render(
-  <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <Popup />
-    </ThemeProvider>
-  </React.StrictMode>,
-  document.getElementById("root"),
-);

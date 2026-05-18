@@ -19,19 +19,17 @@ import {
   Menu,
   MenuItem,
   Stack,
-  ThemeProvider,
   Typography,
 } from "@mui/material";
 import Avatar from "@mui/material/Avatar";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import ReactDOM from "react-dom";
+import type React from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
-import { BookmarkDetail } from "./components/BookmarkDetail";
-import { BulkActionsBar } from "./components/BulkActionsBar";
-import { theme } from "./components/MaterialTheme";
-import { SearchBar } from "./components/SearchBar";
-import { TagManager } from "./components/TagManager";
-import { canonicalize } from "./core/canonicalizer";
+import { BookmarkDetail } from "@/components/BookmarkDetail";
+import { BulkActionsBar } from "@/components/BulkActionsBar";
+import { SearchBar } from "@/components/SearchBar";
+import { TagManager } from "@/components/TagManager";
+import { canonicalize } from "@/core/canonicalizer";
 import {
   exportJson,
   exportNetscape,
@@ -39,18 +37,18 @@ import {
   importJson,
   importPocketCsv,
   importRawUrlList,
-} from "./core/importExport";
-import { ensureSearchIndexInitialized, wireSearchIndexer } from "./core/search";
+} from "@/core/importExport";
+import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
 import {
   deleteBookmark as deleteBookmarkRecord,
   updateBookmark,
   upsertBookmark,
-} from "./core/storage/bookmarks";
-import { deleteTag, mergeTags, renameTag, upsertTag } from "./core/storage/tags";
-import { type Bookmark, useBookmarks } from "./hooks/useBookmarks";
-import { useSearch } from "./hooks/useSearch";
-import { useTags } from "./hooks/useTags";
-import type { ReadStatus } from "./shared/types";
+} from "@/core/storage/bookmarks";
+import { deleteTag, mergeTags, renameTag, upsertTag } from "@/core/storage/tags";
+import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
+import { useSearch } from "@/hooks/useSearch";
+import { useTags } from "@/hooks/useTags";
+import type { ReadStatus } from "@/shared/types";
 
 // Wire search indexer eagerly in the overview context so any edits the user
 // makes here update the postings store immediately. Idempotent across the
@@ -135,7 +133,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return false;
 }
 
-const Overview = () => {
+export const Overview = () => {
   const { bookmarks, loading } = useBookmarks();
   const { query, setQuery, results, parseError } = useSearch();
   const { tags: tagRecords, counts: tagCounts } = useTags();
@@ -604,12 +602,3 @@ const Overview = () => {
     </Stack>
   );
 };
-
-ReactDOM.render(
-  <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <Overview />
-    </ThemeProvider>
-  </React.StrictMode>,
-  document.getElementById("root"),
-);

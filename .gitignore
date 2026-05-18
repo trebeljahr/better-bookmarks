@@ -2,6 +2,13 @@ npm-debug.log
 node_modules/
 dist/
 tmp/
+
+# WXT
+.wxt/
+.output/
+stats.html
+stats-*.json
+web-ext.config.ts
 # claude code
 .claude/settings.local.json
 .claude/worktrees/

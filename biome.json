@@ -12,6 +12,8 @@
       "!**/build",
       "!**/node_modules",
       "!**/.next",
+      "!**/.wxt",
+      "!**/.output",
       "!**/out",
       "!**/coverage",
       "!**/*.html",

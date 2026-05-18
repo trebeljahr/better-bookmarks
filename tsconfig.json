@@ -1,23 +1,8 @@
 {
+  "extends": "./.wxt/tsconfig.json",
   "compilerOptions": {
-    "strict": true,
-    "module": "commonjs",
-    "target": "es2020",
-    "lib": ["es2020", "dom", "dom.iterable"],
-    "esModuleInterop": true,
-    "sourceMap": false,
-    "rootDir": "src",
-    "outDir": "dist/js",
-    "noEmitOnError": true,
     "jsx": "react-jsx",
-    "typeRoots": ["node_modules/@types"]
+    "lib": ["ESNext", "DOM", "DOM.Iterable"]
   },
-  "exclude": [
-    "node_modules",
-    "dist",
-    "vitest.config.ts",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "src/test"
-  ]
+  "exclude": ["node_modules", ".output", "vitest.config.ts"]
 }

@@ -18,19 +18,16 @@ import {
   Stack,
   Switch,
   TextField,
-  ThemeProvider,
   Typography,
 } from "@mui/material";
-import * as React from "react";
+import type * as React from "react";
 import { useCallback, useEffect, useState } from "react";
-import ReactDOM from "react-dom";
-import { theme } from "./components/MaterialTheme";
-import { runBackupOnce } from "./core/backup";
-import { countBookmarks } from "./core/storage/bookmarks";
-import { getDB } from "./core/storage/db";
-import { getSettings, setSettings } from "./core/storage/settings";
-import type { ConflictPolicy, FolderMirrorPolicy, ReadStatus, Settings } from "./shared/types";
-import { DEFAULT_SETTINGS } from "./shared/types";
+import { runBackupOnce } from "@/core/backup";
+import { countBookmarks } from "@/core/storage/bookmarks";
+import { getDB } from "@/core/storage/db";
+import { getSettings, setSettings } from "@/core/storage/settings";
+import type { ConflictPolicy, FolderMirrorPolicy, ReadStatus, Settings } from "@/shared/types";
+import { DEFAULT_SETTINGS } from "@/shared/types";
 
 const CONFLICT_POLICIES: ReadonlyArray<{ value: ConflictPolicy; label: string; help: string }> = [
   {
@@ -78,7 +75,7 @@ type Stats = {
   mappings: number;
 };
 
-const Options = () => {
+export const Options = () => {
   const [settings, setLocalSettings] = useState<Settings | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -357,12 +354,3 @@ function formatBytes(bytes: number): string {
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
-
-ReactDOM.render(
-  <React.StrictMode>
-    <ThemeProvider theme={theme}>
-      <Options />
-    </ThemeProvider>
-  </React.StrictMode>,
-  document.getElementById("root"),
-);
