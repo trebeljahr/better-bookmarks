@@ -1,6 +1,7 @@
 import DeleteIcon from "@mui/icons-material/Delete";
 import DownloadIcon from "@mui/icons-material/Download";
 import EditIcon from "@mui/icons-material/Edit";
+import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import OpenInNewIcon from "@mui/icons-material/OpenInNew";
 import SettingsIcon from "@mui/icons-material/Settings";
 import StarIcon from "@mui/icons-material/Star";
@@ -29,6 +30,7 @@ import { BookmarkDetail } from "./components/BookmarkDetail";
 import { BulkActionsBar } from "./components/BulkActionsBar";
 import { theme } from "./components/MaterialTheme";
 import { SearchBar } from "./components/SearchBar";
+import { TagManager } from "./components/TagManager";
 import { canonicalize } from "./core/canonicalizer";
 import {
   exportJson,
@@ -44,9 +46,10 @@ import {
   updateBookmark,
   upsertBookmark,
 } from "./core/storage/bookmarks";
-import { upsertTag } from "./core/storage/tags";
+import { deleteTag, mergeTags, renameTag, upsertTag } from "./core/storage/tags";
 import { type Bookmark, useBookmarks } from "./hooks/useBookmarks";
 import { useSearch } from "./hooks/useSearch";
+import { useTags } from "./hooks/useTags";
 import type { ReadStatus } from "./shared/types";
 
 // Wire search indexer eagerly in the overview context so any edits the user
@@ -135,11 +138,13 @@ function isTypingTarget(target: EventTarget | null): boolean {
 const Overview = () => {
   const { bookmarks, loading } = useBookmarks();
   const { query, setQuery, results, parseError } = useSearch();
+  const { tags: tagRecords, counts: tagCounts } = useTags();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursorIndex, setCursorIndex] = useState<number>(0);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState<string>("");
   const [exportAnchor, setExportAnchor] = useState<HTMLElement | null>(null);
+  const [tagManagerOpen, setTagManagerOpen] = useState<boolean>(false);
   const fileInput = useRef<HTMLInputElement>(null);
   const listRef = useRef<FixedSizeList | null>(null);
 
@@ -472,6 +477,9 @@ const Overview = () => {
         <Typography variant="h4" sx={{ flex: 1 }}>
           Better Bookmarks
         </Typography>
+        <IconButton aria-label="manage tags" onClick={() => setTagManagerOpen(true)}>
+          <LocalOfferIcon />
+        </IconButton>
         <IconButton aria-label="settings" onClick={openSettings}>
           <SettingsIcon />
         </IconButton>
@@ -568,6 +576,28 @@ const Overview = () => {
             onSave={handleSaveDetail}
             onDelete={handleDeleteDetail}
             onClose={() => setSelectedId(null)}
+          />
+        )}
+      </Drawer>
+
+      <Drawer
+        anchor="right"
+        open={tagManagerOpen}
+        onClose={() => setTagManagerOpen(false)}
+        PaperProps={{ sx: { maxWidth: "100vw" } }}
+      >
+        {tagManagerOpen && (
+          <TagManager
+            tags={tagRecords}
+            counts={tagCounts}
+            onRename={async (oldName, newName) => {
+              await renameTag(oldName, newName);
+            }}
+            onMerge={async (from, into) => mergeTags(from, into)}
+            onDelete={async (name) => {
+              await deleteTag(name);
+            }}
+            onClose={() => setTagManagerOpen(false)}
           />
         )}
       </Drawer>

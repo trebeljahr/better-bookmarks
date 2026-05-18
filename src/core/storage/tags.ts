@@ -79,3 +79,73 @@ export async function renameTag(oldName: string, newName: string): Promise<void>
     }
   });
 }
+
+/**
+ * Merge tag `from` into tag `into`.
+ *
+ * Every bookmark carrying `from` ends up carrying `into` (case-insensitively
+ * deduped). The `from` tag record is removed. The `into` tag record is
+ * created if it didn't already exist. Same-name merges are a no-op.
+ *
+ * Returns the number of bookmarks that were modified.
+ */
+export async function mergeTags(from: string, into: string): Promise<{ affected: number }> {
+  const fromLower = from.toLowerCase();
+  const intoTrimmed = into.trim();
+  const intoLower = intoTrimmed.toLowerCase();
+  if (!fromLower || !intoLower) return { affected: 0 };
+  if (fromLower === intoLower) return { affected: 0 };
+
+  const db = getDB();
+  return db.transaction("rw", db.tags, db.bookmarks, async () => {
+    const fromTag = await db.tags.where("lowercaseName").equals(fromLower).first();
+    if (!fromTag) return { affected: 0 };
+
+    // Ensure the destination tag exists (with default fields if new).
+    const existingInto = await db.tags.where("lowercaseName").equals(intoLower).first();
+    if (!existingInto) {
+      const fresh: Tag = {
+        name: intoTrimmed,
+        lowercaseName: intoLower,
+        parentName: null,
+        color: fromTag.color,
+        description: "",
+        mirrorFolderId: null,
+        createdAt: Date.now(),
+      };
+      await db.tags.put(fresh);
+    }
+    const intoName = existingInto?.name ?? intoTrimmed;
+
+    const affected = await db.bookmarks.where("tags").equals(fromTag.name).toArray();
+    for (const b of affected) {
+      const withoutFrom = b.tags.filter((t) => t.toLowerCase() !== fromLower);
+      const alreadyHasInto = withoutFrom.some((t) => t.toLowerCase() === intoLower);
+      const next = alreadyHasInto ? withoutFrom : [...withoutFrom, intoName];
+      await db.bookmarks.put({
+        ...b,
+        tags: Array.from(new Set(next)).sort((a, c) => a.localeCompare(c)),
+        updatedAt: Date.now(),
+      });
+    }
+
+    await db.tags.delete(fromTag.name);
+    return { affected: affected.length };
+  });
+}
+
+/**
+ * Return a `{ tagName: count }` map of how many bookmarks carry each tag.
+ * Useful for the tag-manager UI.
+ */
+export async function tagBookmarkCounts(): Promise<Record<string, number>> {
+  const db = getDB();
+  const all = await db.bookmarks.toArray();
+  const counts: Record<string, number> = {};
+  for (const b of all) {
+    for (const t of b.tags) {
+      counts[t] = (counts[t] ?? 0) + 1;
+    }
+  }
+  return counts;
+}
