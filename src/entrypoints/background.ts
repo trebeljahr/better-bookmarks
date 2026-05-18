@@ -1,4 +1,5 @@
 import { BACKUP_ALARM_NAME, installBackupAlarm, runBackupOnce } from "@/core/backup";
+import { DEAD_LINK_ALARM_NAME, installDeadLinkAlarm, runDeadLinkSweep } from "@/core/maintenance";
 import { installOmnibox } from "@/core/omnibox";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
 import { getBookmarkByRawUrl } from "@/core/storage/bookmarks";
@@ -48,14 +49,17 @@ export default defineBackground(() => {
     console.error("ensureSearchIndexInitialized failed", err),
   );
 
-  // Auto-backup alarm. The listener runs on the periodic alarm; install()
-  // registers/refreshes the alarm based on current settings.
+  // Auto-backup + dead-link sweep alarms. Listener runs on each periodic
+  // alarm; install() calls register/refresh the alarms based on settings.
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === BACKUP_ALARM_NAME) {
       runBackupOnce().catch((err) => console.error("auto-backup failed", err));
+    } else if (alarm.name === DEAD_LINK_ALARM_NAME) {
+      runDeadLinkSweep().catch((err) => console.error("dead-link sweep failed", err));
     }
   });
   installBackupAlarm().catch((err) => console.error("installBackupAlarm failed", err));
+  installDeadLinkAlarm().catch((err) => console.error("installDeadLinkAlarm failed", err));
 
   // Omnibox: register `bb` keyword listeners.
   installOmnibox();

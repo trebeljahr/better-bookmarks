@@ -22,6 +22,15 @@ export type CaptureSource =
   | "pocket"
   | "manual";
 
+export type LinkCheckReason = "client-error" | "server-error" | "network";
+
+export type LinkCheckResult = {
+  checkedAt: number;
+  ok: boolean;
+  httpStatus?: number;
+  reason?: LinkCheckReason;
+};
+
 export type Bookmark = {
   id: string;
   canonicalUrl: string;
@@ -44,6 +53,8 @@ export type Bookmark = {
   createdAt: number;
   updatedAt: number;
   capturedFrom: CaptureSource;
+
+  linkCheck?: LinkCheckResult;
 };
 
 export type EdgeType = "related" | "sequel" | "source" | "rebuts" | "supersedes" | "translates";
@@ -97,6 +108,10 @@ export type Settings = {
   autoBackupEnabled: boolean;
   autoBackupIntervalMin: number;
   autoBackupKeepCount: number;
+  deadLinkCheckEnabled: boolean;
+  deadLinkSweepIntervalMin: number;
+  deadLinkSweepBatchSize: number;
+  deadLinkStaleAfterDays: number;
 };
 
 export type CanonicalizationOverrides = {
@@ -118,4 +133,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoBackupEnabled: true,
   autoBackupIntervalMin: 1440,
   autoBackupKeepCount: 7,
+  deadLinkCheckEnabled: true,
+  deadLinkSweepIntervalMin: 360,
+  deadLinkSweepBatchSize: 50,
+  deadLinkStaleAfterDays: 30,
 };
