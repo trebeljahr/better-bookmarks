@@ -6,6 +6,14 @@ export default defineConfig({
   // Use a visible folder so Chrome's "Load unpacked" picker shows it on
   // macOS (Finder hides dot-prefixed directories by default).
   outDir: "dist",
+  // Do not let web-ext spawn a throwaway "guest" Chrome on `pnpm dev`.
+  // Instead, load `dist/chrome-mv3` once via chrome://extensions →
+  // Load unpacked in your real day-to-day Chrome. WXT's auto-reload
+  // client still talks to the dev server over WebSocket regardless of
+  // how the extension was loaded, so HMR keeps working.
+  webExt: {
+    disabled: true,
+  },
   modules: ["@wxt-dev/module-react"],
   vite: () => ({
     plugins: [tailwindcss()],
