@@ -16,6 +16,7 @@ import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
 import { type ActiveChip, FilterBar, type SortMode } from "@/components/FilterBar";
+import { FolderTreeSidebar } from "@/components/FolderTreeSidebar";
 import { TagManager } from "@/components/TagManager";
 import { TagTreeSidebar } from "@/components/TagTreeSidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -54,6 +55,7 @@ import {
 } from "@/core/storage/tags";
 import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
+import { useFolders } from "@/hooks/useFolders";
 import { useSearch } from "@/hooks/useSearch";
 import { useTags } from "@/hooks/useTags";
 import { cn } from "@/lib/utils";
@@ -136,6 +138,7 @@ export const Overview = () => {
   const [sort, setSort] = useState<SortMode>("default");
   const { query, setQuery, results, parseError } = useSearch({ limit: FILTER_ONLY_LIMIT });
   const { tags: tagRecords, counts: tagCounts } = useTags();
+  const { forest: folderForest, counts: folderCounts } = useFolders();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [cursorIndex, setCursorIndex] = useState<number>(0);
   const [bulkSelected, setBulkSelected] = useState<Set<string>>(new Set());
@@ -151,6 +154,18 @@ export const Overview = () => {
   const activeTagSet = useMemo(() => new Set(parsedQuery.tags), [parsedQuery.tags]);
   const excludedTagSet = useMemo(() => new Set(parsedQuery.excludeTags), [parsedQuery.excludeTags]);
   const activeStatusSet = useMemo(() => new Set(parsedQuery.statuses), [parsedQuery.statuses]);
+  const activeFolderSet = useMemo(() => new Set(parsedQuery.folders), [parsedQuery.folders]);
+  const folderTitleById = useMemo(() => {
+    const map = new Map<string, string>();
+    const walk = (nodes: typeof folderForest) => {
+      for (const n of nodes) {
+        map.set(n.chromeId, n.title);
+        walk(n.children);
+      }
+    };
+    walk(folderForest);
+    return map;
+  }, [folderForest]);
   const untaggedCount = useMemo(
     () => bookmarks.reduce((n, b) => (b.tags.length === 0 ? n + 1 : n), 0),
     [bookmarks],
@@ -383,6 +398,13 @@ export const Overview = () => {
     setQuery(toggleToken(query, "is:untagged"));
   }, [query, setQuery]);
 
+  const onToggleFolder = useCallback(
+    (chromeId: string) => {
+      setQuery(toggleToken(query, `folder:${chromeId}`));
+    },
+    [query, setQuery],
+  );
+
   const onClearAll = useCallback(() => {
     setQuery("");
     clearBulk();
@@ -401,13 +423,21 @@ export const Overview = () => {
     for (const t of parsedQuery.excludeTags) chips.push({ key: `-tag:${t}`, label: `-tag:${t}` });
     for (const d of parsedQuery.domains) chips.push({ key: `domain:${d}`, label: `domain:${d}` });
     for (const s of parsedQuery.statuses) chips.push({ key: `is:${s}`, label: `is:${s}` });
+    for (const f of parsedQuery.folders) {
+      const title = folderTitleById.get(f) ?? f;
+      chips.push({ key: `folder:${f}`, label: `folder:${title}` });
+    }
+    for (const f of parsedQuery.excludeFolders) {
+      const title = folderTitleById.get(f) ?? f;
+      chips.push({ key: `-folder:${f}`, label: `-folder:${title}` });
+    }
     if (parsedQuery.untagged) chips.push({ key: "is:untagged", label: "untagged" });
     if (parsedQuery.rating) {
       const r = parsedQuery.rating;
       chips.push({ key: `rating:${r.op}${r.value}`, label: `rating ${r.op}${r.value}` });
     }
     return chips;
-  }, [parsedQuery]);
+  }, [parsedQuery, folderTitleById]);
 
   const removeChip = useCallback(
     (key: string) => {
@@ -510,19 +540,31 @@ export const Overview = () => {
   };
 
   const sidebar = (
-    <TagTreeSidebar
-      tags={tagRecords}
-      counts={tagCounts}
-      totalCount={bookmarks.length}
-      untaggedCount={untaggedCount}
-      activeTags={activeTagSet}
-      excludedTags={excludedTagSet}
-      activeUntagged={parsedQuery.untagged}
-      noFilterActive={noFilterActive}
-      onToggleTag={onToggleTag}
-      onToggleUntagged={onToggleUntagged}
-      onClearAll={onClearAll}
-    />
+    <div className="flex h-full min-h-0 flex-col gap-3">
+      <div className="min-h-[180px] flex-[0_0_auto]">
+        <FolderTreeSidebar
+          forest={folderForest}
+          counts={folderCounts}
+          activeFolders={activeFolderSet}
+          onToggleFolder={onToggleFolder}
+        />
+      </div>
+      <div className="min-h-0 flex-1">
+        <TagTreeSidebar
+          tags={tagRecords}
+          counts={tagCounts}
+          totalCount={bookmarks.length}
+          untaggedCount={untaggedCount}
+          activeTags={activeTagSet}
+          excludedTags={excludedTagSet}
+          activeUntagged={parsedQuery.untagged}
+          noFilterActive={noFilterActive}
+          onToggleTag={onToggleTag}
+          onToggleUntagged={onToggleUntagged}
+          onClearAll={onClearAll}
+        />
+      </div>
+    </div>
   );
 
   return (

@@ -36,6 +36,8 @@ export type Query = {
   excludeTags: string[]; // lowercased tag names to exclude (-tag:NAME)
   domains: string[]; // lowercased exact domain names
   statuses: ReadStatus[]; // status filters
+  folders: string[]; // Chrome folder ids; bookmark must live in subtree of at least one
+  excludeFolders: string[]; // Chrome folder ids to exclude (-folder:ID)
   untagged: boolean; // is:untagged — keep only bookmarks with empty tags
   rating: RatingFilter | null; // null means no rating filter
   raw: string;
@@ -87,6 +89,8 @@ export function parseQuery(input: string): Query {
     excludeTags: [],
     domains: [],
     statuses: [],
+    folders: [],
+    excludeFolders: [],
     untagged: false,
     rating: null,
     raw: input,
@@ -103,10 +107,15 @@ export function parseQuery(input: string): Query {
     if (token.startsWith("-")) {
       const rest = token.slice(1);
       const colon = rest.indexOf(":");
-      if (colon > 0 && rest.slice(0, colon).toLowerCase() === "tag") {
+      if (colon > 0) {
+        const key = rest.slice(0, colon).toLowerCase();
         const value = rest.slice(colon + 1);
-        if (value) {
+        if (value && key === "tag") {
           query.excludeTags.push(value.toLowerCase());
+          continue;
+        }
+        if (value && key === "folder") {
+          query.excludeFolders.push(value);
           continue;
         }
       }
@@ -132,6 +141,12 @@ export function parseQuery(input: string): Query {
       }
       case "domain": {
         query.domains.push(value.toLowerCase());
+        break;
+      }
+      case "folder": {
+        // Chrome folder ids are opaque (numeric strings). Preserve case
+        // since they're identifiers, not user-facing labels.
+        query.folders.push(value);
         break;
       }
       case "is": {

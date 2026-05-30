@@ -127,7 +127,28 @@ export async function handleChanged(node: InboundChanged, now = Date.now()): Pro
   if (echoed) return;
 
   const mapping = await getMappingByChromeId(node.id);
-  if (!mapping?.bookmarkId) return;
+  if (!mapping) return;
+
+  // Folder rename: update the mapping's stored title so the sidebar tree
+  // reflects Chrome's new label. Folders carry no bookmarkId, so the
+  // earlier short-circuit would otherwise drop these events on the floor.
+  if (mapping.isFolder) {
+    if (node.title !== undefined && node.title !== mapping.lastKnownTitle) {
+      await upsertMapping({
+        chromeId: mapping.chromeId,
+        bookmarkId: mapping.bookmarkId,
+        isFolder: true,
+        parentChromeId: mapping.parentChromeId,
+        lastKnownTitle: node.title,
+        lastKnownUrl: mapping.lastKnownUrl,
+        lastKnownParentId: mapping.lastKnownParentId,
+        eventAt: now,
+      });
+    }
+    return;
+  }
+
+  if (!mapping.bookmarkId) return;
 
   const db = getDB();
   const bookmark = await db.bookmarks.get(mapping.bookmarkId);

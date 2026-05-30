@@ -17,6 +17,7 @@
 import type { Bookmark } from "../../shared/types";
 import { getBookmarkById } from "../storage/bookmarks";
 import { getDB, type Posting } from "../storage/db";
+import { bookmarkIdsInFolders } from "../storage/folders";
 import { getPostingsForTerm } from "./indexer";
 import { type Query, ratingMatches } from "./query";
 
@@ -103,6 +104,14 @@ export async function runQuery(q: Query, opts: SearchOptions = {}): Promise<Book
     candidates = await db.bookmarks.toArray();
   }
 
+  // Resolve folder filters into a bookmark-id allow list (union of
+  // includes) and a deny list (union of excludes). Run in parallel; null
+  // means "no folder constraint" so the filter passes through.
+  const [includeFolderIds, excludeFolderIds] = await Promise.all([
+    bookmarkIdsInFolders(q.folders),
+    bookmarkIdsInFolders(q.excludeFolders),
+  ]);
+
   // Apply filters.
   const tagSet = new Set(q.tags);
   const excludeTagSet = new Set(q.excludeTags);
@@ -121,6 +130,8 @@ export async function runQuery(q: Query, opts: SearchOptions = {}): Promise<Book
     if (domainSet.size > 0 && !domainSet.has(b.domain.toLowerCase())) return false;
     if (statusSet.size > 0 && !statusSet.has(b.status)) return false;
     if (!ratingMatches(b.rating, q.rating)) return false;
+    if (includeFolderIds && !includeFolderIds.has(b.id)) return false;
+    if (excludeFolderIds && excludeFolderIds.has(b.id)) return false;
     return true;
   });
 
@@ -154,6 +165,8 @@ export async function search(queryString: string, opts: SearchOptions = {}): Pro
     q.excludeTags.length === 0 &&
     q.domains.length === 0 &&
     q.statuses.length === 0 &&
+    q.folders.length === 0 &&
+    q.excludeFolders.length === 0 &&
     q.rating === null &&
     !q.untagged
   ) {

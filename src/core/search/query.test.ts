@@ -114,6 +114,25 @@ describe("parseQuery", () => {
     expect(q.bare).toEqual(["-tag:"]);
     expect(q.excludeTags).toEqual([]);
   });
+
+  it("parses folder: as folder filter (preserving case of the id)", () => {
+    const q = parseQuery("folder:42 folder:Abc");
+    expect(q.folders).toEqual(["42", "Abc"]);
+    expect(q.excludeFolders).toEqual([]);
+    expect(q.bare).toEqual([]);
+  });
+
+  it("parses -folder: as excludeFolders", () => {
+    const q = parseQuery("-folder:42");
+    expect(q.excludeFolders).toEqual(["42"]);
+    expect(q.folders).toEqual([]);
+  });
+
+  it("treats folder: with no value as bare", () => {
+    const q = parseQuery("folder:");
+    expect(q.folders).toEqual([]);
+    expect(q.bare).toEqual(["folder:"]);
+  });
 });
 
 describe("ratingMatches", () => {
