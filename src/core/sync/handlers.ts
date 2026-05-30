@@ -1,4 +1,4 @@
-import { ulid } from "ulid";
+import { ulid } from "@/core/util/ulid";
 import type { Bookmark } from "../../shared/types";
 import { canonicalize } from "../canonicalizer";
 import { dedupTags, getBookmarkByCanonicalUrl, updateBookmark } from "../storage/bookmarks";

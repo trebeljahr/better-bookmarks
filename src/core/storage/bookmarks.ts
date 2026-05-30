@@ -1,4 +1,4 @@
-import { ulid } from "ulid";
+import { ulid } from "@/core/util/ulid";
 import type { Bookmark, CaptureSource, ContentType, ReadStatus } from "../../shared/types";
 import { type CanonicalizeResult, canonicalize } from "../canonicalizer";
 import { getDB } from "./db";

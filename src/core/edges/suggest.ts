@@ -1,4 +1,4 @@
-import { ulid } from "ulid";
+import { ulid } from "@/core/util/ulid";
 import type { Bookmark, Edge, EdgeSource } from "../../shared/types";
 import { getBookmarkById, listBookmarks } from "../storage/bookmarks";
 import { listAllEdges } from "./crud";

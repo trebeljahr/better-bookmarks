@@ -1,4 +1,4 @@
-import { ulid } from "ulid";
+import { ulid } from "@/core/util/ulid";
 import type { Edge, EdgeSource, EdgeType } from "../../shared/types";
 import { getDB } from "../storage/db";
 
