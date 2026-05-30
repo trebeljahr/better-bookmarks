@@ -3,6 +3,9 @@ import { defineConfig } from "wxt";
 
 export default defineConfig({
   srcDir: "src",
+  // Use a visible folder so Chrome's "Load unpacked" picker shows it on
+  // macOS (Finder hides dot-prefixed directories by default).
+  outDir: "dist",
   modules: ["@wxt-dev/module-react"],
   vite: () => ({
     plugins: [tailwindcss()],
