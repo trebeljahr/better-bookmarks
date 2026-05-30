@@ -4,7 +4,6 @@ import {
   runBackupOnce,
   runChromeTreeBackupOnce,
 } from "@/core/backup";
-import { wireUnreadBadge } from "@/core/badge";
 import { installContextMenu } from "@/core/contextMenu";
 import {
   ENRICHMENT_ALARM_NAME,
@@ -12,6 +11,7 @@ import {
   runEnrichmentSweepIfEnabled,
 } from "@/core/enrichment";
 import { DEAD_LINK_ALARM_NAME, installDeadLinkAlarm, runDeadLinkSweep } from "@/core/maintenance";
+import { migrateLegacyStore } from "@/core/migration/legacyToV1";
 import { installOmnibox } from "@/core/omnibox";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
 import { getBookmarkByRawUrl } from "@/core/storage/bookmarks";
@@ -31,6 +31,8 @@ const ADDED_ICON = {
   "128": "/full128.png",
 };
 
+const OVERVIEW_PATH = "overview.html";
+
 async function setIconToCorrectVersion(tabId: number) {
   try {
     const tab = await chrome.tabs.get(tabId);
@@ -42,6 +44,26 @@ async function setIconToCorrectVersion(tabId: number) {
   }
 }
 
+async function openOrFocusOverview(): Promise<void> {
+  const overviewUrl = chrome.runtime.getURL(OVERVIEW_PATH);
+  try {
+    // Match overview.html with any trailing hash/search so we still focus a
+    // tab the user navigated within (e.g. #edit=<id> from a context-menu).
+    const existing = await chrome.tabs.query({ url: `${overviewUrl}*` });
+    const tab = existing[0];
+    if (tab?.id !== undefined) {
+      if (typeof tab.windowId === "number") {
+        await chrome.windows.update(tab.windowId, { focused: true });
+      }
+      await chrome.tabs.update(tab.id, { active: true });
+      return;
+    }
+    await chrome.tabs.create({ url: overviewUrl });
+  } catch (err) {
+    console.error("openOrFocusOverview failed", err);
+  }
+}
+
 export default defineBackground(() => {
   chrome.tabs.onActivated.addListener((activeInfo) => {
     setIconToCorrectVersion(activeInfo.tabId);
@@ -50,6 +72,16 @@ export default defineBackground(() => {
   chrome.tabs.onUpdated.addListener((tabId) => {
     setIconToCorrectVersion(tabId);
   });
+
+  // Toolbar icon click (and the _execute_action keyboard shortcut) opens the
+  // bookmarks overview tab. Focuses an existing overview tab if one exists.
+  chrome.action.onClicked.addListener(() => {
+    void openOrFocusOverview();
+  });
+
+  // The popup entry point used to trigger legacy-store migration on first
+  // open. With the popup gone, run it once at SW startup. Idempotent.
+  migrateLegacyStore().catch((err) => console.error("legacy migration failed", err));
 
   // Boot sync: register Chrome bookmarks listeners + run initial import +
   // reconcile drift. Idempotent.
@@ -80,9 +112,9 @@ export default defineBackground(() => {
   // Omnibox: register `bb` keyword listeners.
   installOmnibox();
 
-  // Side panel: keep the action click bound to the popup (default behavior
-  // would steal the click and open the side panel instead). Users open the
-  // side panel via the keyboard command or the context menu.
+  // Side panel: keep the action click bound to our overview tab opener (the
+  // default side-panel-on-action-click behaviour would steal the click).
+  // Users open the side panel via the keyboard command or the context menu.
   if (chrome.sidePanel?.setPanelBehavior) {
     chrome.sidePanel
       .setPanelBehavior({ openPanelOnActionClick: false })
@@ -103,7 +135,4 @@ export default defineBackground(() => {
 
   // Context menus: "Add", "Add (with note)", "Tag…" submenu of top tags.
   installContextMenu();
-
-  // Action badge: unread count, refreshed on bookmark mutations.
-  wireUnreadBadge();
 });

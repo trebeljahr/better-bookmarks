@@ -116,6 +116,10 @@ export type Settings = {
   networkEnrichmentEnabled: boolean;
   enrichmentSweepIntervalMin: number;
   enrichmentBatchSize: number;
+  // When the user creates a bookmark via Chrome's native Cmd+D / star-icon
+  // flow, surface the Better Bookmarks editor by opening the overview tab
+  // with `#edit=<id>`. Off by default so the native flow stays silent.
+  openOverviewOnNativeBookmark: boolean;
 };
 
 export type CanonicalizationOverrides = {
@@ -144,4 +148,5 @@ export const DEFAULT_SETTINGS: Settings = {
   networkEnrichmentEnabled: false,
   enrichmentSweepIntervalMin: 720,
   enrichmentBatchSize: 25,
+  openOverviewOnNativeBookmark: false,
 };

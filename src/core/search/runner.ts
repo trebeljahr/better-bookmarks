@@ -105,12 +105,18 @@ export async function runQuery(q: Query, opts: SearchOptions = {}): Promise<Book
 
   // Apply filters.
   const tagSet = new Set(q.tags);
+  const excludeTagSet = new Set(q.excludeTags);
   const domainSet = new Set(q.domains);
   const statusSet = new Set(q.statuses);
   const filtered = candidates.filter((b) => {
+    if (q.untagged && b.tags.length > 0) return false;
     if (tagSet.size > 0) {
       const haveAll = Array.from(tagSet).every((t) => b.tags.some((bt) => bt.toLowerCase() === t));
       if (!haveAll) return false;
+    }
+    if (excludeTagSet.size > 0) {
+      const hit = b.tags.some((bt) => excludeTagSet.has(bt.toLowerCase()));
+      if (hit) return false;
     }
     if (domainSet.size > 0 && !domainSet.has(b.domain.toLowerCase())) return false;
     if (statusSet.size > 0 && !statusSet.has(b.status)) return false;
@@ -145,9 +151,11 @@ export async function search(queryString: string, opts: SearchOptions = {}): Pro
   if (
     q.bare.length === 0 &&
     q.tags.length === 0 &&
+    q.excludeTags.length === 0 &&
     q.domains.length === 0 &&
     q.statuses.length === 0 &&
-    q.rating === null
+    q.rating === null &&
+    !q.untagged
   ) {
     const limit = opts.limit ?? DEFAULT_LIMIT;
     const db = (await import("../storage/db")).getDB();

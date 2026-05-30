@@ -5,8 +5,12 @@
  *   keystroke.
  * - Re-runs when the underlying bookmarks store changes (Dexie hooks,
  *   same mechanism as useBookmarks).
- * - For an empty query, returns the most recent 100 bookmarks.
+ * - For an empty query, returns the most recent N bookmarks (limit).
  * - Surfaces parser errors so the UI can show "invalid filter" inline.
+ *
+ * Callers can pass a `limit` to lift the default 100-cap when the query is
+ * filter-only (e.g. clicking a tag in the sidebar) and shouldn't silently
+ * truncate to top-100 by relevance.
  */
 
 import { useEffect, useState } from "react";
@@ -17,6 +21,11 @@ import type { Bookmark } from "../shared/types";
 const DEBOUNCE_MS = 100;
 const DEFAULT_LIMIT = 100;
 
+export type UseSearchOptions = {
+  /** Maximum number of results to return; defaults to 100. */
+  limit?: number;
+};
+
 export type UseSearchResult = {
   query: string;
   setQuery: (s: string) => void;
@@ -25,7 +34,8 @@ export type UseSearchResult = {
   parseError: string | null;
 };
 
-export function useSearch(): UseSearchResult {
+export function useSearch(opts: UseSearchOptions = {}): UseSearchResult {
+  const limit = opts.limit ?? DEFAULT_LIMIT;
   const [query, setQuery] = useState<string>("");
   const [results, setResults] = useState<Bookmark[]>([]);
   const [loading, setLoading] = useState<boolean>(false);
@@ -63,7 +73,7 @@ export function useSearch(): UseSearchResult {
 
     const handle = setTimeout(async () => {
       try {
-        const r = await search(query, { limit: DEFAULT_LIMIT });
+        const r = await search(query, { limit });
         if (!cancelled) {
           setResults(r);
           setLoading(false);
@@ -82,7 +92,7 @@ export function useSearch(): UseSearchResult {
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [query, storeRev]);
+  }, [query, storeRev, limit]);
 
   return { query, setQuery, results, loading, parseError };
 }

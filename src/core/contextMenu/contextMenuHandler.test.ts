@@ -11,14 +11,21 @@ type FakeContextMenus = {
   onClicked: { addListener: ReturnType<typeof vi.fn> };
 };
 
-type FakeAction = {
-  openPopup: ReturnType<typeof vi.fn>;
+type FakeTabs = {
+  query: ReturnType<typeof vi.fn>;
+  update: ReturnType<typeof vi.fn>;
+  create: ReturnType<typeof vi.fn>;
 };
 
-function installChrome(opts: { withOpenPopup?: boolean } = {}): {
+type FakeWindows = {
+  update: ReturnType<typeof vi.fn>;
+};
+
+function installChrome(opts: { withTabs?: boolean } = {}): {
   menus: CreatedMenu[];
   contextMenus: FakeContextMenus;
-  action?: FakeAction;
+  tabs?: FakeTabs;
+  windows?: FakeWindows;
 } {
   const menus: CreatedMenu[] = [];
   const contextMenus: FakeContextMenus = {
@@ -32,12 +39,22 @@ function installChrome(opts: { withOpenPopup?: boolean } = {}): {
     }),
     onClicked: { addListener: vi.fn() },
   };
-  const action: FakeAction | undefined = opts.withOpenPopup
-    ? { openPopup: vi.fn(async () => undefined) }
+  const tabs: FakeTabs | undefined = opts.withTabs
+    ? {
+        query: vi.fn(async () => []),
+        update: vi.fn(async () => undefined),
+        create: vi.fn(async () => undefined),
+      }
+    : undefined;
+  const windows: FakeWindows | undefined = opts.withTabs
+    ? { update: vi.fn(async () => undefined) }
+    : undefined;
+  const runtime = opts.withTabs
+    ? { getURL: (path: string) => `chrome-extension://abc/${path}` }
     : undefined;
   // biome-ignore lint/suspicious/noExplicitAny: test wiring
-  (globalThis as any).chrome = { contextMenus, action };
-  return { menus, contextMenus, action };
+  (globalThis as any).chrome = { contextMenus, tabs, windows, runtime };
+  return { menus, contextMenus, tabs, windows };
 }
 
 beforeEach(async () => {
@@ -157,8 +174,8 @@ describe("handleContextMenuClick", () => {
     expect(all[0]?.tags).toContain("reading");
   });
 
-  it("opens the popup after the add-with-note variant when available", async () => {
-    const { action } = installChrome({ withOpenPopup: true });
+  it("opens the overview tab with #edit=<id> after the add-with-note variant", async () => {
+    const { tabs } = installChrome({ withTabs: true });
     await handleContextMenuClick({
       info: { menuItemId: "bb-add-with-note" } as chrome.contextMenus.OnClickData,
       tab: {
@@ -167,7 +184,9 @@ describe("handleContextMenuClick", () => {
       } as chrome.tabs.Tab,
     });
 
-    expect(action?.openPopup).toHaveBeenCalledTimes(1);
+    expect(tabs?.create).toHaveBeenCalledTimes(1);
+    const createArg = tabs?.create.mock.calls[0]?.[0] as { url: string };
+    expect(createArg.url).toMatch(/overview\.html#edit=/);
     const all = await listBookmarks();
     expect(all).toHaveLength(1);
   });

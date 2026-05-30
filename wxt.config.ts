@@ -55,6 +55,7 @@ export default defineConfig({
           default: "Ctrl+Shift+X",
           mac: "MacCtrl+Shift+X",
         },
+        description: "Open Better Bookmarks overview",
       },
       open_sidepanel: {
         suggested_key: {

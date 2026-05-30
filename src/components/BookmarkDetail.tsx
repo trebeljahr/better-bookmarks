@@ -21,6 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { createEdge, deleteEdge } from "@/core/edges/crud";
 import type { SuggestedEdge } from "@/core/edges/suggest";
+import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { useEdges } from "@/hooks/useEdges";
 import type { Bookmark, ContentType, EdgeType, ReadStatus } from "@/shared/types";
 import { ConnectionsPanel } from "./ConnectionsPanel";
@@ -139,6 +140,14 @@ export function BookmarkDetail({
         <Badge variant="outline">captured: {bookmark.capturedFrom}</Badge>
         <Badge variant="outline">added: {new Date(bookmark.createdAt).toLocaleDateString()}</Badge>
       </div>
+
+      {bookmark.tags.length > 0 && (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {bookmark.tags.map((tag) => (
+            <DraggableTagChip key={tag} bookmarkId={bookmark.id} tag={tag} />
+          ))}
+        </div>
+      )}
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="bb-detail-title">Title</Label>
@@ -276,5 +285,18 @@ export function BookmarkDetail({
         onAcceptSuggestion={handleAcceptSuggestion}
       />
     </div>
+  );
+}
+
+function DraggableTagChip({ bookmarkId, tag }: { bookmarkId: string; tag: string }) {
+  const drag = useBookmarkDragSource({
+    getIds: () => [bookmarkId],
+    sourceTag: tag,
+    label: tag,
+  });
+  return (
+    <Badge variant="secondary" className="cursor-grab active:cursor-grabbing" {...drag}>
+      {tag}
+    </Badge>
   );
 }

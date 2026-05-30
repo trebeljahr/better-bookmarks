@@ -39,6 +39,7 @@ export { rebuildMappingsFromScratch, reconcile, resetReconcileGuardForTests } fr
 
 import type { Bookmark } from "../../shared/types";
 import { runChromeTreeBackupAtBoot } from "../backup/chromeTreeBackup";
+import { getBookmarkByRawUrl } from "../storage/bookmarks";
 import { getDB } from "../storage/db";
 import { getSettings } from "../storage/settings";
 import { handleChanged, handleCreated, handleMoved, handleRemoved } from "./handlers";
@@ -55,6 +56,11 @@ import { reconcile } from "./reconcile";
  * twice is safe because we keep handlers in a module-scope set.
  */
 const registered = { value: false };
+
+// Set true once the initial Chrome→store import has run. Before that, every
+// onCreated event we see is a synthetic import event we never want to react
+// to interactively (otherwise the overview would pop on each imported row).
+let initialImportDone = false;
 
 export async function startSync(): Promise<void> {
   if (typeof chrome === "undefined" || !chrome.bookmarks) return;
@@ -84,6 +90,9 @@ export async function startSync(): Promise<void> {
       title: node.title ?? "",
       parentId: node.parentId,
     }).catch((err) => console.error("handleCreated failed", err));
+    if (initialImportDone && node.url) {
+      void maybeOpenOverviewForNativeCreate(node.url);
+    }
   });
 
   chrome.bookmarks.onChanged.addListener((id, change) => {
@@ -112,6 +121,7 @@ export async function startSync(): Promise<void> {
   } catch (err) {
     console.error("initial import failed", err);
   }
+  initialImportDone = true;
 
   wireOutboundHooks();
 
@@ -172,4 +182,52 @@ function wireOutboundHooks(): void {
 
 export function resetOutboundWiringForTests(): void {
   outboundWired = false;
+}
+
+export function resetInitialImportFlagForTests(): void {
+  initialImportDone = false;
+}
+
+/**
+ * When the user creates a bookmark via Chrome's native flow (Cmd+D, star
+ * icon, Bookmarks menu), surface the Better Bookmarks editor by opening or
+ * focusing the overview tab with `#edit=<id>`. Best-effort and gated on:
+ *  - the openOverviewOnNativeBookmark setting being on,
+ *  - the new bookmark matching the active tab's URL (so we don't react to
+ *    bookmarks dropped on other tabs by extensions),
+ *  - the create not being the echo of our own outbound write.
+ */
+async function maybeOpenOverviewForNativeCreate(rawUrl: string): Promise<void> {
+  try {
+    const settings = await getSettings();
+    if (!settings.openOverviewOnNativeBookmark) return;
+    if (!chrome.tabs?.query) return;
+    const [activeTab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!activeTab?.url || activeTab.url !== rawUrl) return;
+    const stored = await getBookmarkByRawUrl(rawUrl);
+    if (!stored) return;
+    await openOverviewForEdit(stored.id);
+  } catch (err) {
+    console.warn("maybeOpenOverviewForNativeCreate failed", err);
+  }
+}
+
+async function openOverviewForEdit(bookmarkId: string): Promise<void> {
+  if (typeof chrome === "undefined" || !chrome.runtime?.getURL || !chrome.tabs) return;
+  const overviewUrl = chrome.runtime.getURL("overview.html");
+  const targetUrl = `${overviewUrl}#edit=${bookmarkId}`;
+  try {
+    const existing = await chrome.tabs.query({ url: `${overviewUrl}*` });
+    const tab = existing[0];
+    if (tab?.id !== undefined) {
+      if (typeof tab.windowId === "number" && chrome.windows?.update) {
+        await chrome.windows.update(tab.windowId, { focused: true });
+      }
+      await chrome.tabs.update(tab.id, { active: true, url: targetUrl });
+      return;
+    }
+    await chrome.tabs.create({ url: targetUrl });
+  } catch (err) {
+    console.warn("openOverviewForEdit failed", err);
+  }
 }

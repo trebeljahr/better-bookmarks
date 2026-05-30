@@ -15,26 +15,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useBookmarkDragSource, useBulkSelectDropTarget } from "@/hooks/useBookmarkDnd";
 import type { ReadStatus } from "@/shared/types";
 
 type Props = {
   selectedCount: number;
+  selectedIds: string[];
   possibleTags: string[];
   onClear: () => void;
   onAddTag: (tag: string) => void;
   onSetStatus: (status: ReadStatus) => void;
   onDelete: () => void;
+  onDropAdd: (ids: string[]) => void;
 };
 
 const STATUS_OPTIONS: ReadonlyArray<ReadStatus> = ["unread", "reading", "read", "archived"];
 
 export function BulkActionsBar({
   selectedCount,
+  selectedIds,
   possibleTags: _possibleTags,
   onClear,
   onAddTag,
   onSetStatus,
   onDelete,
+  onDropAdd,
 }: Props) {
   const [tagDraft, setTagDraft] = useState("");
 
@@ -45,9 +50,19 @@ export function BulkActionsBar({
     setTagDraft("");
   };
 
+  const drag = useBookmarkDragSource({
+    getIds: () => selectedIds,
+    sourceTag: null,
+    label: `${selectedCount} bookmarks`,
+  });
+  const dropTarget = useBulkSelectDropTarget({ onAddIds: onDropAdd });
+
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-2.5 shadow-xs">
-      <Badge variant="default" className="gap-1 pr-1">
+    <div
+      className="flex flex-wrap items-center gap-2 rounded-md border bg-card p-2.5 shadow-xs data-[drag-over=true]:ring-2 data-[drag-over=true]:ring-primary"
+      {...dropTarget}
+    >
+      <Badge variant="default" className="cursor-grab gap-1 pr-1 active:cursor-grabbing" {...drag}>
         {selectedCount} selected
         <button
           type="button"

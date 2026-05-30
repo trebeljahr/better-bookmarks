@@ -94,19 +94,38 @@ export async function handleContextMenuClick({ info, tab }: ClickArgs): Promise<
   const tagName = isTag ? id.slice(TAG_CHILD_PREFIX.length) : undefined;
   const tags = tagName ? [tagName] : undefined;
 
-  await upsertBookmark({
+  const result = await upsertBookmark({
     rawUrl,
     title,
     tags,
     capturedFrom: "manual",
   });
 
-  if (isAddWithNote && typeof chrome.action?.openPopup === "function") {
-    try {
-      await chrome.action.openPopup();
-    } catch (err) {
-      console.warn("openPopup after context-menu add failed", err);
+  // "Add with note" used to open the popup so the user could immediately
+  // add a note. The popup is gone; instead, open the overview tab and ask
+  // it to surface the bookmark detail sheet via `#edit=<bookmarkId>`.
+  if (isAddWithNote && result.ok) {
+    await openOverviewForEdit(result.bookmark.id);
+  }
+}
+
+async function openOverviewForEdit(bookmarkId: string): Promise<void> {
+  if (typeof chrome === "undefined" || !chrome.runtime?.getURL || !chrome.tabs) return;
+  const overviewUrl = chrome.runtime.getURL("overview.html");
+  const targetUrl = `${overviewUrl}#edit=${bookmarkId}`;
+  try {
+    const existing = await chrome.tabs.query({ url: `${overviewUrl}*` });
+    const tab = existing[0];
+    if (tab?.id !== undefined) {
+      if (typeof tab.windowId === "number" && chrome.windows?.update) {
+        await chrome.windows.update(tab.windowId, { focused: true });
+      }
+      await chrome.tabs.update(tab.id, { active: true, url: targetUrl });
+      return;
     }
+    await chrome.tabs.create({ url: targetUrl });
+  } catch (err) {
+    console.warn("openOverviewForEdit failed", err);
   }
 }
 

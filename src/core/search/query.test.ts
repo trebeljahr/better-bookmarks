@@ -87,6 +87,33 @@ describe("parseQuery", () => {
     const q = parseQuery("rating:1 rating:>=7");
     expect(q.rating).toEqual({ op: ">=", value: 7 });
   });
+
+  it("parses -tag:NAME as excludeTags", () => {
+    const q = parseQuery("-tag:Frontend");
+    expect(q.excludeTags).toEqual(["frontend"]);
+    expect(q.tags).toEqual([]);
+    expect(q.bare).toEqual([]);
+  });
+
+  it("parses is:untagged into the untagged flag", () => {
+    const q = parseQuery("is:untagged");
+    expect(q.untagged).toBe(true);
+    expect(q.statuses).toEqual([]);
+    expect(q.bare).toEqual([]);
+    expect(q.errors).toEqual([]);
+  });
+
+  it("falls through unknown -prefixed tokens as bare words", () => {
+    const q = parseQuery("-foo");
+    expect(q.bare).toEqual(["-foo"]);
+    expect(q.excludeTags).toEqual([]);
+  });
+
+  it("treats -tag: with no value as bare", () => {
+    const q = parseQuery("-tag:");
+    expect(q.bare).toEqual(["-tag:"]);
+    expect(q.excludeTags).toEqual([]);
+  });
 });
 
 describe("ratingMatches", () => {

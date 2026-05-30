@@ -121,6 +121,35 @@ describe("runQuery — filters", () => {
     const r = await runQuery(parseQuery("tag:a"));
     expect(r.map((b) => b.id)).toEqual(["1"]);
   });
+
+  it("excludeTags drops bookmarks carrying the tag", async () => {
+    await seed([
+      { id: "1", title: "x", tags: ["frontend"] },
+      { id: "2", title: "y", tags: ["backend"] },
+      { id: "3", title: "z", tags: ["frontend", "backend"] },
+    ]);
+    const r = await runQuery(parseQuery("-tag:frontend"));
+    expect(r.map((b) => b.id).sort()).toEqual(["2"]);
+  });
+
+  it("untagged keeps only bookmarks with empty tags", async () => {
+    await seed([
+      { id: "1", title: "x", tags: ["frontend"] },
+      { id: "2", title: "y", tags: [] },
+      { id: "3", title: "z", tags: ["backend"] },
+    ]);
+    const r = await runQuery(parseQuery("is:untagged"));
+    expect(r.map((b) => b.id)).toEqual(["2"]);
+  });
+
+  it("search() runs runQuery when only untagged is set", async () => {
+    await seed([
+      { id: "1", title: "x", tags: ["a"] },
+      { id: "2", title: "y", tags: [] },
+    ]);
+    const r = await search("is:untagged");
+    expect(r.map((b) => b.id)).toEqual(["2"]);
+  });
 });
 
 describe("runQuery — ranking", () => {

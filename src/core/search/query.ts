@@ -6,14 +6,19 @@
  *   term  := filter | bareWord
  *   filter:
  *     tag:NAME            (exact tag match, case-insensitive)
+ *     -tag:NAME           (exclude bookmarks carrying NAME)
  *     domain:HOST         (exact domain match, case-insensitive)
  *     is:STATUS           (one of unread|reading|read|archived)
+ *     is:untagged         (bookmarks with no tags — sidebar virtual folder)
  *     rating:OP? NUMBER   (OP one of >= > <= < =, default =)
  *   bareWord: a non-empty token without a leading "name:" prefix.
  *
  * The parser is lenient: malformed filters fall through as bare words so
  * that the user's typing never produces zero results just because they
  * mis-typed the syntax.
+ *
+ * Note: `is:untagged` is parsed into Query.untagged (boolean) rather than
+ * the ReadStatus union — it's a tag-presence predicate, not a read state.
  */
 
 import type { ReadStatus } from "../../shared/types";
@@ -28,8 +33,10 @@ export type RatingFilter = {
 export type Query = {
   bare: string[]; // lowercased bare-word tokens
   tags: string[]; // lowercased exact tag names
+  excludeTags: string[]; // lowercased tag names to exclude (-tag:NAME)
   domains: string[]; // lowercased exact domain names
   statuses: ReadStatus[]; // status filters
+  untagged: boolean; // is:untagged — keep only bookmarks with empty tags
   rating: RatingFilter | null; // null means no rating filter
   raw: string;
   errors: string[];
@@ -77,8 +84,10 @@ export function parseQuery(input: string): Query {
   const query: Query = {
     bare: [],
     tags: [],
+    excludeTags: [],
     domains: [],
     statuses: [],
+    untagged: false,
     rating: null,
     raw: input,
     errors: [],
@@ -89,6 +98,21 @@ export function parseQuery(input: string): Query {
   // split on punctuation here.
   const tokens = input.split(/\s+/).filter(Boolean);
   for (const token of tokens) {
+    // Leading "-" turns a filter into an exclusion. Only `-tag:` is
+    // supported; anything else falls through to bare.
+    if (token.startsWith("-")) {
+      const rest = token.slice(1);
+      const colon = rest.indexOf(":");
+      if (colon > 0 && rest.slice(0, colon).toLowerCase() === "tag") {
+        const value = rest.slice(colon + 1);
+        if (value) {
+          query.excludeTags.push(value.toLowerCase());
+          continue;
+        }
+      }
+      query.bare.push(token.toLowerCase());
+      continue;
+    }
     const colon = token.indexOf(":");
     if (colon <= 0) {
       query.bare.push(token.toLowerCase());
@@ -112,7 +136,9 @@ export function parseQuery(input: string): Query {
       }
       case "is": {
         const lower = value.toLowerCase();
-        if (isStatus(lower)) {
+        if (lower === "untagged") {
+          query.untagged = true;
+        } else if (isStatus(lower)) {
           query.statuses.push(lower);
         } else {
           query.errors.push(`unknown status: is:${value}`);
