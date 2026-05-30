@@ -14,6 +14,7 @@ import { DEAD_LINK_ALARM_NAME, installDeadLinkAlarm, runDeadLinkSweep } from "@/
 import { migrateLegacyStore } from "@/core/migration/legacyToV1";
 import { installOmnibox } from "@/core/omnibox";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
+import { ensureOffscreen } from "@/core/semantic";
 import { getBookmarkByRawUrl } from "@/core/storage/bookmarks";
 import { startSync } from "@/core/sync";
 
@@ -92,6 +93,11 @@ export default defineBackground(() => {
   ensureSearchIndexInitialized().catch((err) =>
     console.error("ensureSearchIndexInitialized failed", err),
   );
+
+  // Boot the semantic-embed offscreen document. Idempotent: ensureOffscreen()
+  // calls chrome.offscreen.hasDocument() before creating. The doc lazy-warms
+  // the transformers.js pipeline on first message.
+  ensureOffscreen().catch((err) => console.error("ensureOffscreen failed", err));
 
   // Periodic alarms: auto-backup, dead-link sweep, enrichment sweep. install()
   // calls register/refresh each alarm based on current settings.

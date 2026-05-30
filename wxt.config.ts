@@ -26,9 +26,10 @@ export default defineConfig({
       origin: "http://localhost:3147",
     },
   },
-  modules: ["@wxt-dev/module-react"],
+  modules: ["@wxt-dev/module-react", "./modules/copy-onnx-wasm.ts"],
   vite: () => ({
     plugins: [tailwindcss()],
+    optimizeDeps: { exclude: ["@huggingface/transformers"] },
   }),
   manifest: {
     name: "Better Bookmarks",
@@ -44,8 +45,19 @@ export default defineConfig({
       "activeTab",
       "sidePanel",
       "contextMenus",
+      "offscreen",
+      "unlimitedStorage",
     ],
-    host_permissions: ["<all_urls>"],
+    host_permissions: ["<all_urls>", "https://huggingface.co/*"],
+    content_security_policy: {
+      extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
+    },
+    web_accessible_resources: [
+      {
+        resources: ["transformers/*.wasm", "transformers/*.mjs", "transformers/*.js"],
+        matches: ["<all_urls>"],
+      },
+    ],
     side_panel: {
       default_path: "sidepanel.html",
     },

@@ -9,6 +9,9 @@ tmp/
 stats.html
 stats-*.json
 web-ext.config.ts
+
+# generated at build time by modules/copy-onnx-wasm.ts
+public/transformers/
 # claude code
 .claude/settings.local.json
 .claude/worktrees/

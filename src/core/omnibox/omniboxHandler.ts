@@ -42,7 +42,7 @@ export async function handleInputChanged(
 
 export function handleInputEntered(
   url: string,
-  disposition: chrome.omnibox.OnInputEnteredDisposition,
+  disposition: "currentTab" | "newForegroundTab" | "newBackgroundTab",
 ): void {
   if (!url) return;
   switch (disposition) {
