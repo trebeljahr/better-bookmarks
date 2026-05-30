@@ -2,7 +2,7 @@
  * BookmarkDetail — full record view for a single bookmark.
  */
 
-import { ExternalLink, Trash2, X } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import Tags from "@/components/Tags";
 import { Badge } from "@/components/ui/badge";
@@ -112,7 +112,7 @@ export function BookmarkDetail({
 
   return (
     <div className="flex h-full w-full flex-col gap-3 overflow-y-auto p-5">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 pr-10">
         <h2 className="flex-1 truncate text-lg font-semibold">
           {draft.title || draft.canonicalUrl}
         </h2>
@@ -120,9 +120,6 @@ export function BookmarkDetail({
           <a href={bookmark.originalUrl} target="_blank" rel="noopener noreferrer">
             <ExternalLink />
           </a>
-        </Button>
-        <Button variant="ghost" size="icon-sm" onClick={onClose} aria-label="close">
-          <X />
         </Button>
       </div>
 

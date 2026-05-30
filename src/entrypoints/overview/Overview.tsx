@@ -28,7 +28,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import {
   exportJson,
   exportNetscape,
@@ -640,12 +640,18 @@ export const Overview = () => {
 
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="left" className="w-[280px] p-3 sm:max-w-[280px]">
+          <SheetTitle className="sr-only">Folders sidebar</SheetTitle>
+          <SheetDescription className="sr-only">Browse bookmark folders and tags.</SheetDescription>
           {sidebar}
         </SheetContent>
       </Sheet>
 
       <Sheet open={selected !== null} onOpenChange={(o) => !o && setSelectedId(null)}>
         <SheetContent side="right" className="w-full max-w-[100vw] sm:max-w-[760px]">
+          <SheetTitle className="sr-only">Bookmark detail</SheetTitle>
+          <SheetDescription className="sr-only">
+            Edit bookmark fields, tags, rating and connections.
+          </SheetDescription>
           {selected && (
             <BookmarkDetail
               bookmark={selected}
@@ -661,6 +667,10 @@ export const Overview = () => {
 
       <Sheet open={tagManagerOpen} onOpenChange={setTagManagerOpen}>
         <SheetContent side="right" className="max-w-[100vw] sm:max-w-[560px]">
+          <SheetTitle className="sr-only">Tag manager</SheetTitle>
+          <SheetDescription className="sr-only">
+            Rename, merge, delete and recolor tags.
+          </SheetDescription>
           {tagManagerOpen && (
             <TagManager
               tags={tagRecords}

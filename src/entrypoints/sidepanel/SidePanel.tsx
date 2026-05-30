@@ -14,7 +14,7 @@ import { SearchBar } from "@/components/SearchBar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
 import { deleteBookmark as deleteBookmarkRecord, updateBookmark } from "@/core/storage/bookmarks";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
@@ -172,6 +172,10 @@ export const SidePanel = () => {
 
       <Sheet open={selected !== null} onOpenChange={(o) => !o && setSelectedId(null)}>
         <SheetContent side="right" className="w-full max-w-[100vw] sm:max-w-[600px]">
+          <SheetTitle className="sr-only">Bookmark detail</SheetTitle>
+          <SheetDescription className="sr-only">
+            Edit bookmark fields, tags, rating and connections.
+          </SheetDescription>
           {selected && (
             <BookmarkDetail
               bookmark={selected}
