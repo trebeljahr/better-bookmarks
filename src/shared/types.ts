@@ -98,6 +98,13 @@ export type ChromeMapping = {
 export type FolderMirrorPolicy = "off" | "all";
 export type ConflictPolicy = "prefer-chrome" | "prefer-store" | "prefer-newer" | "ask";
 
+export type HealthDismissedFinding = {
+  scannerId: string;
+  /** Stable hash of `bookmarkIds.sort().join("|")` — see Bookmark Health spec. */
+  fingerprint: string;
+  dismissedAt: number;
+};
+
 export type Settings = {
   defaultRating: number;
   defaultNecessaryTime: number;
@@ -120,6 +127,18 @@ export type Settings = {
   // flow, surface the Better Bookmarks editor by opening the overview tab
   // with `#edit=<id>`. Off by default so the native flow stays silent.
   openOverviewOnNativeBookmark: boolean;
+  // Bookmark Health (see docs/BOOKMARK_HEALTH.md). Per-scanner enable map
+  // keyed by scanner id (e.g. "stub.empty-title"). Missing entries fall
+  // back to the scanner's enabledByDefault.
+  healthEnabledScanners: Record<string, boolean>;
+  // Opt-in to the anomaly.broken-link scanner. Default false — the scan
+  // only reads bm.linkCheck populated by the existing dead-link sweep, but
+  // we keep the toggle behind a setting so users see the rule disabled
+  // until they actively turn it on.
+  healthBrokenLinkCheckEnabled: boolean;
+  // Persisted dismissals so the same finding doesn't keep reappearing.
+  // Dismissals are device-local (never mirrored to chrome.storage.sync).
+  healthDismissedFindings: HealthDismissedFinding[];
 };
 
 export type CanonicalizationOverrides = {
@@ -149,4 +168,7 @@ export const DEFAULT_SETTINGS: Settings = {
   enrichmentSweepIntervalMin: 720,
   enrichmentBatchSize: 25,
   openOverviewOnNativeBookmark: false,
+  healthEnabledScanners: {},
+  healthBrokenLinkCheckEnabled: false,
+  healthDismissedFindings: [],
 };

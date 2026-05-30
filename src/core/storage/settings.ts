@@ -16,6 +16,12 @@ export async function getSettings(): Promise<Settings> {
       ...DEFAULT_SETTINGS.canonicalizationOverrides,
       ...(stored.canonicalizationOverrides ?? {}),
     },
+    healthEnabledScanners: {
+      ...DEFAULT_SETTINGS.healthEnabledScanners,
+      ...(stored.healthEnabledScanners ?? {}),
+    },
+    healthDismissedFindings:
+      stored.healthDismissedFindings ?? DEFAULT_SETTINGS.healthDismissedFindings,
   };
 }
 
@@ -28,6 +34,11 @@ export async function setSettings(patch: Partial<Settings>): Promise<Settings> {
       ...current.canonicalizationOverrides,
       ...(patch.canonicalizationOverrides ?? {}),
     },
+    healthEnabledScanners: {
+      ...current.healthEnabledScanners,
+      ...(patch.healthEnabledScanners ?? {}),
+    },
+    healthDismissedFindings: patch.healthDismissedFindings ?? current.healthDismissedFindings,
   };
   if (typeof chrome !== "undefined" && chrome.storage?.local) {
     await chrome.storage.local.set({ [SETTINGS_KEY]: next });

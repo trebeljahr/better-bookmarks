@@ -3,6 +3,7 @@ import {
   Download,
   ExternalLink,
   Filter,
+  HeartPulse,
   Pencil,
   Settings as SettingsIcon,
   Star,
@@ -243,6 +244,14 @@ export const Overview = () => {
       chrome.runtime.openOptionsPage();
     } else {
       window.open("/options.html", "_blank");
+    }
+  };
+
+  const openHealth = () => {
+    if (chrome?.runtime?.getURL && chrome?.tabs?.create) {
+      chrome.tabs.create({ url: chrome.runtime.getURL("health.html") });
+    } else {
+      window.open("/health.html", "_blank");
     }
   };
 
@@ -598,6 +607,9 @@ export const Overview = () => {
         </Button>
         <Button variant="ghost" size="icon" aria-label="settings" onClick={openSettings}>
           <SettingsIcon />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="health" onClick={openHealth}>
+          <HeartPulse />
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
