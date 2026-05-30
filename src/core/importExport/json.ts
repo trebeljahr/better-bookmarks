@@ -1,6 +1,7 @@
 import type { Bookmark, Edge, Tag } from "../../shared/types";
 import { canonicalize } from "../canonicalizer";
 import { listAllEdges } from "../edges/crud";
+import { reindexAll, setSearchIndexerSuppressed } from "../search";
 import { dedupTags, listBookmarks } from "../storage/bookmarks";
 import { getDB } from "../storage/db";
 import { listTags } from "../storage/tags";
@@ -69,17 +70,15 @@ export async function importJson(
 
   const dryRun = opts.dryRun === true;
 
-  for (const record of bookmarks) {
-    try {
-      const outcome = await importBookmark(record, dryRun);
-      if (outcome === "created") report.bookmarksImported++;
-      else if (outcome === "merged") report.bookmarksMerged++;
-      else report.bookmarksSkipped++;
-    } catch (err) {
-      report.bookmarksSkipped++;
-      report.errors.push(`bookmark ${record?.id ?? "?"}: ${(err as Error).message}`);
-    }
-  }
+  // Batched bookmark import — same perf reasoning as initialImport: one
+  // prefetch of existing canonicals, plain-JS merge decisions, one
+  // transaction with bulkPut, search indexer suppressed for the duration
+  // and then a single reindexAll. See `importBookmarksBatched` below.
+  const bookmarkOutcome = await importBookmarksBatched(bookmarks, dryRun);
+  report.bookmarksImported = bookmarkOutcome.created;
+  report.bookmarksMerged = bookmarkOutcome.merged;
+  report.bookmarksSkipped = bookmarkOutcome.skipped;
+  report.errors.push(...bookmarkOutcome.errors);
 
   for (const tag of tags) {
     try {
@@ -105,34 +104,84 @@ export async function importJson(
   return report;
 }
 
-async function importBookmark(
-  record: Bookmark,
+type BatchedBookmarkOutcome = {
+  created: number;
+  merged: number;
+  skipped: number;
+  errors: string[];
+};
+
+async function importBookmarksBatched(
+  records: Bookmark[],
   dryRun: boolean,
-): Promise<"created" | "merged" | "skipped"> {
-  if (!record?.originalUrl) return "skipped";
-  const c = canonicalize(record.originalUrl);
-  if (!c.ok) return "skipped";
+): Promise<BatchedBookmarkOutcome> {
+  const result: BatchedBookmarkOutcome = { created: 0, merged: 0, skipped: 0, errors: [] };
+  if (records.length === 0) return result;
 
   const db = getDB();
-  return db.transaction("rw", db.bookmarks, async () => {
-    const existing = await db.bookmarks.where("canonicalUrl").equals(c.canonical).first();
-    if (existing) {
-      if (!dryRun) {
-        await db.bookmarks.put(mergeImportedBookmark(existing, record));
+  const existingByCanonical = new Map<string, Bookmark>();
+  for (const b of await db.bookmarks.toArray()) {
+    existingByCanonical.set(b.canonicalUrl, b);
+  }
+
+  const toWrite: Bookmark[] = [];
+
+  for (const record of records) {
+    try {
+      if (!record?.originalUrl) {
+        result.skipped += 1;
+        continue;
       }
-      return "merged";
+      const c = canonicalize(record.originalUrl);
+      if (!c.ok) {
+        result.skipped += 1;
+        continue;
+      }
+      const existing = existingByCanonical.get(c.canonical);
+      if (existing) {
+        const merged = mergeImportedBookmark(existing, record);
+        if (!dryRun) {
+          toWrite.push(merged);
+          existingByCanonical.set(c.canonical, merged);
+        }
+        result.merged += 1;
+      } else {
+        const fresh: Bookmark = {
+          ...record,
+          canonicalUrl: c.canonical,
+          domain: c.domain,
+          tags: dedupTags(record.tags ?? []),
+        };
+        if (!dryRun) {
+          toWrite.push(fresh);
+          existingByCanonical.set(c.canonical, fresh);
+        }
+        result.created += 1;
+      }
+    } catch (err) {
+      result.skipped += 1;
+      result.errors.push(`bookmark ${record?.id ?? "?"}: ${(err as Error).message}`);
     }
-    if (!dryRun) {
-      const fresh: Bookmark = {
-        ...record,
-        canonicalUrl: c.canonical,
-        domain: c.domain,
-        tags: dedupTags(record.tags ?? []),
-      };
-      await db.bookmarks.put(fresh);
-    }
-    return "created";
-  });
+  }
+
+  if (dryRun || toWrite.length === 0) return result;
+
+  setSearchIndexerSuppressed(true);
+  try {
+    await db.transaction("rw", db.bookmarks, async () => {
+      await db.bookmarks.bulkPut(toWrite);
+    });
+  } finally {
+    setSearchIndexerSuppressed(false);
+  }
+
+  try {
+    await reindexAll();
+  } catch (err) {
+    console.error("post-importJson reindexAll failed", err);
+  }
+
+  return result;
 }
 
 function mergeImportedBookmark(existing: Bookmark, imported: Bookmark): Bookmark {

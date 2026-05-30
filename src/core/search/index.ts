@@ -11,6 +11,8 @@ export { parseQuery, type Query, type RatingFilter, type RatingOp } from "./quer
 export { runQuery, type SearchOptions, search } from "./runner";
 export {
   ensureSearchIndexInitialized,
+  isSearchIndexerSuppressed,
   resetSearchWiringForTests,
+  setSearchIndexerSuppressed,
   wireSearchIndexer,
 } from "./wire";

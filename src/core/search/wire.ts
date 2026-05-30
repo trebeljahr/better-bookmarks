@@ -16,6 +16,23 @@ import { getDB } from "../storage/db";
 import { indexBookmark, reindexAll, removeBookmark } from "./indexer";
 
 let wired = false;
+let suppressed = 0;
+
+/**
+ * Suppress per-bookmark hook-triggered indexing while a bulk-write code path
+ * runs. Callers MUST follow with a matching release via `setSearchIndexerSuppressed(false)`
+ * and a single `reindexAll()` to repopulate the postings store.
+ *
+ * Implemented as a counter so nested suppressors compose. Negative counts
+ * clamp to zero defensively.
+ */
+export function setSearchIndexerSuppressed(value: boolean): void {
+  suppressed = Math.max(0, suppressed + (value ? 1 : -1));
+}
+
+export function isSearchIndexerSuppressed(): boolean {
+  return suppressed > 0;
+}
 
 export function wireSearchIndexer(): void {
   if (wired) return;
@@ -24,6 +41,7 @@ export function wireSearchIndexer(): void {
   const db = getDB();
 
   db.bookmarks.hook("creating", function (this, _primKey, obj, _trans) {
+    if (suppressed > 0) return;
     queueMicrotask(() => {
       indexBookmark(obj as Bookmark).catch((err) => {
         console.error("search indexBookmark (creating) failed", err);
@@ -32,6 +50,7 @@ export function wireSearchIndexer(): void {
   });
 
   db.bookmarks.hook("updating", function (this, mods, _primKey, obj, _trans) {
+    if (suppressed > 0) return;
     // Merge the diff onto the existing record so we don't need to re-read
     // through Dexie (re-reads from inside a hook race the transaction
     // commit under fake-indexeddb and produce flaky tests).
@@ -44,6 +63,7 @@ export function wireSearchIndexer(): void {
   });
 
   db.bookmarks.hook("deleting", function (this, primKey, _obj, _trans) {
+    if (suppressed > 0) return;
     queueMicrotask(() => {
       removeBookmark(primKey as string).catch((err) => {
         console.error("search removeBookmark (deleting) failed", err);
@@ -80,4 +100,5 @@ export function ensureSearchIndexInitialized(): Promise<void> {
 export function resetSearchWiringForTests(): void {
   wired = false;
   initialReindexPromise = null;
+  suppressed = 0;
 }
