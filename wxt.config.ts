@@ -14,6 +14,18 @@ export default defineConfig({
   webExt: {
     disabled: true,
   },
+  // Pin the dev server to a fixed high-3000s port so it never collides
+  // with other projects running on 3000/3001/etc. `strictPort` makes
+  // WXT fail loudly if 3147 is taken rather than silently sliding to a
+  // different port (which would break the reload client baked into the
+  // built extension).
+  dev: {
+    server: {
+      port: 3147,
+      strictPort: true,
+      origin: "http://localhost:3147",
+    },
+  },
   modules: ["@wxt-dev/module-react"],
   vite: () => ({
     plugins: [tailwindcss()],
