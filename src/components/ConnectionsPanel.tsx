@@ -141,74 +141,74 @@ export function ConnectionsPanel({
           <h4 className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             Add a connection
           </h4>
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            <div className="min-w-[240px] flex-[2]">
-              <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start font-normal">
-                    {selectedTarget ? selectedTarget.label : "Search bookmarks…"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[320px] p-0" align="start">
-                  <Command>
-                    <CommandInput placeholder="Search by title…" />
-                    <CommandList>
-                      <CommandEmpty>No matches.</CommandEmpty>
-                      <CommandGroup>
-                        {linkOptions.map((opt) => (
-                          <CommandItem
-                            key={opt.id}
-                            value={`${opt.label} ${opt.domain}`}
-                            onSelect={() => {
-                              setSelectedTarget(opt);
-                              setOpen(false);
-                            }}
-                            className="flex-col items-start gap-0"
-                          >
-                            <span className="text-sm">{opt.label}</span>
-                            <span className="text-xs text-muted-foreground">{opt.domain}</span>
-                          </CommandItem>
-                        ))}
-                      </CommandGroup>
-                    </CommandList>
-                  </Command>
-                </PopoverContent>
-              </Popover>
+          <div className="flex flex-col gap-2">
+            <Popover open={open} onOpenChange={setOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className="w-full justify-start font-normal">
+                  {selectedTarget ? selectedTarget.label : "Search bookmarks…"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[320px] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search by title…" />
+                  <CommandList>
+                    <CommandEmpty>No matches.</CommandEmpty>
+                    <CommandGroup>
+                      {linkOptions.map((opt) => (
+                        <CommandItem
+                          key={opt.id}
+                          value={`${opt.label} ${opt.domain}`}
+                          onSelect={() => {
+                            setSelectedTarget(opt);
+                            setOpen(false);
+                          }}
+                          className="flex-col items-start gap-0"
+                        >
+                          <span className="text-sm">{opt.label}</span>
+                          <span className="text-xs text-muted-foreground">{opt.domain}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="min-w-0 flex-1 basis-[140px]">
+                <Select value={linkType} onValueChange={(v) => setLinkType(v as EdgeType)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EDGE_TYPE_OPTIONS.map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="min-w-0 flex-[2] basis-[180px]">
+                <Label htmlFor="bb-edge-note" className="sr-only">
+                  Note
+                </Label>
+                <Input
+                  id="bb-edge-note"
+                  value={note}
+                  onChange={(e) => setNote(e.target.value)}
+                  placeholder="Note (optional)"
+                />
+              </div>
+              <Button
+                variant="default"
+                size="icon"
+                aria-label="add connection"
+                onClick={handleSubmitLink}
+                disabled={!selectedTarget}
+              >
+                <Link2 />
+              </Button>
             </div>
-            <div className="min-w-[140px] flex-1">
-              <Select value={linkType} onValueChange={(v) => setLinkType(v as EdgeType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EDGE_TYPE_OPTIONS.map((opt) => (
-                    <SelectItem key={opt.value} value={opt.value}>
-                      {opt.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="min-w-[180px] flex-[2]">
-              <Label htmlFor="bb-edge-note" className="sr-only">
-                Note
-              </Label>
-              <Input
-                id="bb-edge-note"
-                value={note}
-                onChange={(e) => setNote(e.target.value)}
-                placeholder="Note (optional)"
-              />
-            </div>
-            <Button
-              variant="default"
-              size="icon"
-              aria-label="add connection"
-              onClick={handleSubmitLink}
-              disabled={!selectedTarget}
-            >
-              <Link2 />
-            </Button>
           </div>
         </section>
 

@@ -161,7 +161,7 @@ export const SidePanel = () => {
       </div>
 
       <Sheet open={selected !== null} onOpenChange={(o) => !o && setSelectedId(null)}>
-        <SheetContent side="right" className="max-w-[100vw] sm:max-w-[600px]">
+        <SheetContent side="right" className="w-full max-w-[100vw] sm:max-w-[600px]">
           {selected && (
             <BookmarkDetail
               bookmark={selected}

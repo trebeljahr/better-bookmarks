@@ -110,7 +110,7 @@ export function BookmarkDetail({
   };
 
   return (
-    <div className="flex h-full flex-col gap-3 overflow-y-auto p-5 sm:w-[560px]">
+    <div className="flex h-full w-full flex-col gap-3 overflow-y-auto p-5">
       <div className="flex items-center gap-2">
         <h2 className="flex-1 truncate text-lg font-semibold">
           {draft.title || draft.canonicalUrl}
