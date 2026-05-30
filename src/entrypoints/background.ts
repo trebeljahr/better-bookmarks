@@ -1,4 +1,9 @@
-import { BACKUP_ALARM_NAME, installBackupAlarm, runBackupOnce } from "@/core/backup";
+import {
+  BACKUP_ALARM_NAME,
+  installBackupAlarm,
+  runBackupOnce,
+  runChromeTreeBackupOnce,
+} from "@/core/backup";
 import { wireUnreadBadge } from "@/core/badge";
 import { installContextMenu } from "@/core/contextMenu";
 import {
@@ -61,6 +66,7 @@ export default defineBackground(() => {
   chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === BACKUP_ALARM_NAME) {
       runBackupOnce().catch((err) => console.error("auto-backup failed", err));
+      runChromeTreeBackupOnce().catch((err) => console.error("chrome-tree-backup failed", err));
     } else if (alarm.name === DEAD_LINK_ALARM_NAME) {
       runDeadLinkSweep().catch((err) => console.error("dead-link sweep failed", err));
     } else if (alarm.name === ENRICHMENT_ALARM_NAME) {

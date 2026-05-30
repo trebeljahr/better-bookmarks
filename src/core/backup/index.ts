@@ -10,4 +10,13 @@ export {
   cleanupOldBackups,
   runBackupOnce,
 } from "./autoBackup";
+export {
+  CHROME_TREE_BACKUP_PREFIX,
+  CHROME_TREE_BACKUP_REGEX,
+  type ChromeTreeBackupResult,
+  chromeTreeBackupFileNameFor,
+  cleanupOldChromeTreeBackups,
+  runChromeTreeBackupAtBoot,
+  runChromeTreeBackupOnce,
+} from "./chromeTreeBackup";
 export { BACKUP_ALARM_NAME, installBackupAlarm } from "./scheduleAlarm";

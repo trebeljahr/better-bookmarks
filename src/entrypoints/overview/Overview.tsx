@@ -26,7 +26,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { canonicalize } from "@/core/canonicalizer";
 import {
   exportJson,
   exportNetscape,
@@ -36,11 +35,7 @@ import {
   importRawUrlList,
 } from "@/core/importExport";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
-import {
-  deleteBookmark as deleteBookmarkRecord,
-  updateBookmark,
-  upsertBookmark,
-} from "@/core/storage/bookmarks";
+import { deleteBookmark as deleteBookmarkRecord, updateBookmark } from "@/core/storage/bookmarks";
 import {
   deleteTag,
   mergeTags,
@@ -59,46 +54,6 @@ wireSearchIndexer();
 ensureSearchIndexInitialized().catch((err) =>
   console.error("ensureSearchIndexInitialized failed", err),
 );
-
-type BookmarksById = Record<string, chrome.bookmarks.BookmarkTreeNode>;
-
-function recursivelyFlattenBookmarks(bookmarkItem: chrome.bookmarks.BookmarkTreeNode) {
-  const bookmarksById: BookmarksById = {};
-  function recurse(node: chrome.bookmarks.BookmarkTreeNode) {
-    bookmarksById[node.id] = node;
-    node.children?.forEach(recurse);
-  }
-  recurse(bookmarkItem);
-  return bookmarksById;
-}
-
-async function importChromeTree(tree: chrome.bookmarks.BookmarkTreeNode): Promise<number> {
-  const all = recursivelyFlattenBookmarks(tree);
-  function tagsFor(item: chrome.bookmarks.BookmarkTreeNode): string[] {
-    const tags: string[] = [];
-    let current = item.parentId ? all[item.parentId] : undefined;
-    while (current && current.title !== "Bookmarks Bar" && current.parentId) {
-      if (current.title) tags.push(current.title);
-      current = current.parentId ? all[current.parentId] : undefined;
-    }
-    return tags;
-  }
-  let imported = 0;
-  for (const node of Object.values(all)) {
-    if (!node.url) continue;
-    const c = canonicalize(node.url);
-    if (!c.ok) continue;
-    await upsertBookmark({
-      rawUrl: node.url,
-      title: node.title,
-      description: node.title,
-      tags: tagsFor(node),
-      capturedFrom: "chrome-import",
-    });
-    imported += 1;
-  }
-  return imported;
-}
 
 function getTagsFromBookmarks(bookmarks: Bookmark[]): string[] {
   const all = new Set<string>();
@@ -181,13 +136,6 @@ export const Overview = () => {
     if (!file) return;
     await handleFileImport(file);
     if (fileInput.current) fileInput.current.value = "";
-  };
-
-  const handleChromeImport = async () => {
-    setStatus("importing Chrome tree…");
-    const tree = await chrome.bookmarks.getTree();
-    const count = await importChromeTree(tree[0]);
-    setStatus(`Chrome: ${count} bookmarks processed`);
   };
 
   const handleExportJson = async () => {
@@ -476,9 +424,6 @@ export const Overview = () => {
       />
 
       <div className="flex flex-wrap items-center gap-2">
-        <Button variant="outline" size="sm" onClick={handleChromeImport}>
-          <Upload /> Import from Chrome
-        </Button>
         <Button variant="outline" size="sm" onClick={() => fileInput.current?.click()}>
           <Upload /> Import file…
         </Button>
