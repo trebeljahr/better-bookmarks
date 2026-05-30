@@ -74,7 +74,17 @@ export const SidePanel = () => {
     if (!bookmark) return null;
     const ratingHigh = bookmark.rating && bookmark.rating >= 8;
     return (
-      <div style={style} key={bookmark.id} className="flex items-center gap-1.5 pl-1 pr-1">
+      <div
+        style={style}
+        key={bookmark.id}
+        onClick={() => setSelectedId(bookmark.id)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") setSelectedId(bookmark.id);
+        }}
+        role="button"
+        tabIndex={0}
+        className="flex items-center gap-1.5 pl-1 pr-1"
+      >
         <Avatar className="size-7 shrink-0">
           <AvatarFallback className={cn(ratingHigh && "bg-amber-200 text-amber-900")}>
             <Star className={cn("size-3.5", ratingHigh && "fill-amber-600")} />

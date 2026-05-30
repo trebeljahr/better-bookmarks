@@ -319,7 +319,10 @@ export const Overview = () => {
       <div
         style={style}
         key={bookmark.id}
-        onClick={() => setCursorIndex(index)}
+        onClick={() => {
+          setCursorIndex(index);
+          setSelectedId(bookmark.id);
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") setSelectedId(bookmark.id);
         }}
