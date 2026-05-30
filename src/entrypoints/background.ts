@@ -4,6 +4,7 @@ import {
   runBackupOnce,
   runChromeTreeBackupOnce,
 } from "@/core/backup";
+import { wireUnreadBadge } from "@/core/badge";
 import { installContextMenu } from "@/core/contextMenu";
 import {
   ENRICHMENT_ALARM_NAME,
@@ -141,4 +142,7 @@ export default defineBackground(() => {
 
   // Context menus: "Add", "Add (with note)", "Tag…" submenu of top tags.
   installContextMenu();
+
+  // Action badge: unread count, refreshed on bookmark mutations.
+  wireUnreadBadge();
 });
