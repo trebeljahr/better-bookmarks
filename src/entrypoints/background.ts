@@ -42,6 +42,10 @@ async function setIconToCorrectVersion(tabId: number) {
     const existing = await getBookmarkByRawUrl(tab.url);
     chrome.action.setIcon({ path: existing ? ADDED_ICON : NOT_ADDED_ICON });
   } catch (err) {
+    // Tab closed between the event firing and chrome.tabs.get resolving.
+    // Common during rapid tab churn; nothing to do.
+    const msg = err instanceof Error ? err.message : String(err);
+    if (/No tab with id/i.test(msg)) return;
     console.error("setIconToCorrectVersion failed", err);
   }
 }
