@@ -8,9 +8,8 @@
  * undo it.
  *
  * This module dumps the raw `chrome.bookmarks.getTree()` result to
- * ~/Downloads, with rolling-N retention. It runs:
- *   - once on every service-worker boot, BEFORE initial import / reconcile
- *   - via the same auto-backup alarm
+ * ~/Downloads, with rolling-N retention. It runs via the same auto-backup
+ * alarm (gated by `autoBackupEnabled`).
  *
  * Restore is manual today: open the JSON, walk the tree, recreate via
  * chrome.bookmarks.create. A scripted restore can come later.
@@ -120,57 +119,4 @@ export async function cleanupOldChromeTreeBackups(keep: number): Promise<void> {
       console.warn("chrome-tree-backup: erase failed", item.id, err);
     }
   }
-}
-
-const FIRST_BOOT_FLAG = "__bb_chrome_tree_backup_first_boot_done__";
-
-/**
- * Best-effort safety snapshot at service-worker boot. Awaited by startSync
- * BEFORE any initial-import / reconcile work, so a fresh on-disk dump always
- * exists before sync touches anything.
- *
- * Subsequent SW boots within the same install also snapshot, but only if the
- * last on-disk dump is older than `minIntervalMs` (default 1h). That keeps
- * dev cycles from spamming ~/Downloads while still guaranteeing one fresh
- * snapshot per work session.
- */
-export async function runChromeTreeBackupAtBoot(
-  minIntervalMs: number = 60 * 60 * 1000,
-  now: number = Date.now(),
-): Promise<ChromeTreeBackupResult | null> {
-  if (typeof chrome === "undefined" || !chrome.bookmarks || !chrome.downloads) {
-    return null;
-  }
-
-  let firstBootDone = false;
-  try {
-    const stored = await chrome.storage?.local.get(FIRST_BOOT_FLAG);
-    firstBootDone = Boolean(stored?.[FIRST_BOOT_FLAG]);
-  } catch {
-    // chrome.storage may be unavailable in odd contexts; treat as first boot.
-  }
-
-  if (firstBootDone) {
-    const api = downloadsApi();
-    try {
-      const items = await api.search({ filenameRegex: CHROME_TREE_BACKUP_REGEX });
-      const newest = items.reduce<number>((max, it) => {
-        const t = Date.parse(it.startTime ?? "") || 0;
-        return t > max ? t : max;
-      }, 0);
-      if (newest > 0 && now - newest < minIntervalMs) {
-        return null;
-      }
-    } catch (err) {
-      console.warn("chrome-tree-backup: boot search failed, proceeding", err);
-    }
-  }
-
-  const result = await runChromeTreeBackupOnce(now);
-  try {
-    await chrome.storage?.local.set({ [FIRST_BOOT_FLAG]: true });
-  } catch {
-    // best-effort
-  }
-  return result;
 }

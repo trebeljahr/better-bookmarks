@@ -16,7 +16,6 @@ export {
   type ChromeTreeBackupResult,
   chromeTreeBackupFileNameFor,
   cleanupOldChromeTreeBackups,
-  runChromeTreeBackupAtBoot,
   runChromeTreeBackupOnce,
 } from "./chromeTreeBackup";
 export { BACKUP_ALARM_NAME, installBackupAlarm } from "./scheduleAlarm";

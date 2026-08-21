@@ -38,7 +38,6 @@ export {
 export { rebuildMappingsFromScratch, reconcile, resetReconcileGuardForTests } from "./reconcile";
 
 import type { Bookmark } from "../../shared/types";
-import { runChromeTreeBackupAtBoot } from "../backup/chromeTreeBackup";
 import { getBookmarkByRawUrl } from "../storage/bookmarks";
 import { getDB } from "../storage/db";
 import { getSettings } from "../storage/settings";
@@ -66,22 +65,6 @@ export async function startSync(): Promise<void> {
   if (typeof chrome === "undefined" || !chrome.bookmarks) return;
   if (registered.value) return;
   registered.value = true;
-
-  // Safety snapshot: dump the raw chrome.bookmarks tree to ~/Downloads
-  // BEFORE any initial-import / reconcile work, so a fresh on-disk backup
-  // always exists if a sync bug corrupts the Chrome side during dev.
-  try {
-    const result = await runChromeTreeBackupAtBoot();
-    if (result) {
-      console.info(
-        "chrome tree backup:",
-        result.fileName,
-        `(${result.nodeCount} nodes, ${result.byteSize} bytes)`,
-      );
-    }
-  } catch (err) {
-    console.error("chrome tree backup at boot failed", err);
-  }
 
   chrome.bookmarks.onCreated.addListener((id, node) => {
     handleCreated({
