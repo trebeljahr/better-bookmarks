@@ -117,8 +117,10 @@ and may rewrite anything.
 ### Wikipedia (`*.wikipedia.org`)
 
 - Drop fragment by default (section anchors are not page identity).
-- Override: user can opt in to "treat sections as separate
-  bookmarks" for Wikipedia globally.
+- Override: options exposes a per-domain "keep fragments" toggle
+  (see [DECISIONS.md](DECISIONS.md) D9). When flipped on for
+  Wikipedia, the fragment is preserved and each `#section` becomes
+  its own canonical URL.
 
 ### Amazon (`amazon.*`)
 
@@ -136,6 +138,33 @@ and may rewrite anything.
 - We *do not* canonicalize search result URLs — they are session
   artifacts and shouldn't be bookmarked as identity.
 - Google Docs: keep doc id, drop everything else in the query.
+
+### arXiv (`arxiv.org`)
+
+- Collapse `/pdf/<id>` (with or without `.pdf` suffix, with or
+  without version tag) to `/abs/<id>` (see
+  [DECISIONS.md](DECISIONS.md) D8). PDF is a render format; `/abs/`
+  is identity.
+- Drop the query.
+- Fragment dropped.
+
+### Hacker News (`news.ycombinator.com`)
+
+- Strip fragments (see [DECISIONS.md](DECISIONS.md) D11). HN uses
+  fragments for "show more comments" navigation, never for
+  permalinks — those come as `?id=…`.
+- Path stays as-is.
+
+### Locale path prefixes (per-domain, off by default)
+
+Some docs sites mount language under a path prefix (`/en/`, `/de/`,
+`/fr/`, …). Stripping the prefix collapses translations to a single
+record, but different languages often have genuinely different
+content (see [DECISIONS.md](DECISIONS.md) D10).
+
+- Global default: leave locale prefixes alone.
+- Per-domain rule: sites explicitly added to the locale-strip list
+  in options get the leading `/<locale>/` removed before matching.
 
 ### Default fallback
 
@@ -184,11 +213,10 @@ commit and the change is reviewable.
 
 ## Open questions
 
-- Whether to canonicalize fragments on `news.ycombinator.com` (HN
-  uses fragments for "show more comments" navigation). Probably yes,
-  but the rule needs spot-checking.
-- Whether `arxiv.org/abs/<id>` and `arxiv.org/pdf/<id>` should
-  collapse. Same paper, different formats — leaning yes, collapse to
-  `/abs/<id>`.
-- Whether to strip locale path prefixes (`/en/`, `/de/`) for sites
-  that auto-detect. Risky; off by default.
+Previously listed here: HN fragment canonicalization, arXiv
+`/abs/` vs. `/pdf/` collapse, and locale path stripping. All three
+have landed as per-domain rules above (see
+[DECISIONS.md](DECISIONS.md) D8, D10, D11).
+
+Still open: `www.` host stripping ([DECISIONS.md](DECISIONS.md) D12
+remains provisional — per-domain only, default leaves it alone).

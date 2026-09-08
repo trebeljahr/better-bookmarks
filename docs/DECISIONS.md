@@ -106,7 +106,11 @@ forever, no benefit.
 ---
 
 ## D5. Migration release: keep legacy `chrome.storage.local` how
-long? — **PROVISIONAL**
+long? — **DECIDED**
+
+**Resolution:** keep for one release; auto-delete on next startup if
+the new store contains at least the same record count as the legacy
+store.
 
 After [ROADMAP.md](ROADMAP.md) phase 1 lands, the old key/value
 store is dead but the data is still in `chrome.storage.local`.
@@ -122,7 +126,10 @@ same record count as the legacy store.
 
 ---
 
-## D6. Drift reconciliation cadence — **PROVISIONAL**
+## D6. Drift reconciliation cadence — **DECIDED**
+
+**Resolution:** hybrid — reconcile on cold start of the service
+worker AND on UI open (popup, overview). No 6h alarm.
 
 [CHROME_SYNC.md](CHROME_SYNC.md#drift-recovery) currently says
 "on startup and every 6 hours". On reflection: service workers
@@ -142,7 +149,9 @@ when this lands.
 
 ---
 
-## D7. Omnibox keyword `bb` — **PROVISIONAL, P3**
+## D7. Omnibox keyword `bb` — **DECIDED, P3**
+
+**Resolution:** ship in Phase 3 alongside search.
 
 Add a `chrome_url_overrides` / omnibox keyword so the user can
 type `bb <query>` in the address bar and see results.
@@ -156,7 +165,9 @@ type `bb <query>` in the address bar and see results.
 
 ---
 
-## D8. Arxiv `/abs/` vs. `/pdf/` collapse — **PROVISIONAL**
+## D8. Arxiv `/abs/` vs. `/pdf/` collapse — **DECIDED**
+
+**Resolution:** collapse `/pdf/` URLs to `/abs/` in the canonicaliser.
 
 A real dedup question from the bookmark corpus.
 
@@ -170,7 +181,10 @@ abs is identity.
 
 ---
 
-## D9. Wikipedia section fragments — **PROVISIONAL**
+## D9. Wikipedia section fragments — **DECIDED**
+
+**Resolution:** strip fragments by default; expose a per-domain
+"keep fragments" toggle in options.
 
 [URL_NORMALIZATION.md](URL_NORMALIZATION.md#wikipedia-wikipediaorg)
 strips fragments by default. Some users want per-section bookmarks.
@@ -180,7 +194,9 @@ fragments" toggle in options.**
 
 ---
 
-## D10. Locale path stripping (`/en/`, `/de/`) — **PROVISIONAL**
+## D10. Locale path stripping (`/en/`, `/de/`) — **DECIDED**
+
+**Resolution:** per-domain only, off by default.
 
 Many docs sites mount language under a path prefix.
 
@@ -192,7 +208,9 @@ Many docs sites mount language under a path prefix.
 
 ---
 
-## D11. HN fragment canonicalization — **PROVISIONAL**
+## D11. HN fragment canonicalization — **DECIDED**
+
+**Resolution:** strip fragments on `news.ycombinator.com`.
 
 `news.ycombinator.com` uses fragments for navigation and (rarely)
 for permalinks. Permalinks come as `?id=...` in practice, not as
@@ -213,7 +231,10 @@ explicitly redirects.
 
 ---
 
-## D13. Auto-suggested edge thresholds — **PROVISIONAL, P4**
+## D13. Auto-suggested edge thresholds — **DECIDED, P4**
+
+**Resolution:** `(sharedTag >= 1 AND sharedDomain) OR
+(sharedTag >= 2)`, with a numeric strength score exposed to the UI.
 
 When to surface a suggested edge?
 

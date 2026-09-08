@@ -190,6 +190,13 @@ type Settings = {
   folderMirrorPolicy: "off" | "selected" | "all";
   conflictPolicy: "prefer-chrome" | "prefer-store" | "prefer-newer" | "ask";
 };
+
+type RuleSet = {
+  extraTrackingParams: string[];              // added to the shipped blacklist
+  keepFragmentsForDomains: string[];          // D9: opt-in, e.g. ["wikipedia.org"]
+  stripLocalePrefixForDomains: string[];      // D10: opt-in, off by default
+  // ...additional per-domain toggles land here as future rules ship.
+};
 ```
 
 A small subset of these (the ones that should follow the user across

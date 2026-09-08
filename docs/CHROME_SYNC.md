@@ -212,14 +212,15 @@ The service worker may suspend, the user may have Chrome bookmarks
 sync turned on (which produces events we may or may not see during
 service-worker downtime), or a manual edit may have happened in
 DevTools. We reconcile on the events most likely to expose drift,
-not on a fixed timer (see [DECISIONS.md](DECISIONS.md) D6).
+not on a fixed timer (see [DECISIONS.md](DECISIONS.md) D6, decided:
+hybrid — cold start + UI open, no 6h alarm).
 
 Reconciliation runs:
 
 - Once on every service-worker cold start (cheap because the worker
   was just woken and most state is already cached).
-- Once when the overview UI opens, debounced to at most once per
-  60 seconds.
+- Once when a user-visible UI surface opens — popup or overview —
+  debounced to at most once per 60 seconds across both.
 
 When it runs:
 

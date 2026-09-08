@@ -75,7 +75,8 @@ Goal: searching 20k bookmarks feels instant.
 3. Ranking: recency × rating × tag-match weight.
 4. New search UI in overview, replacing the per-field filters.
    Keep the per-field filters as an advanced sidebar.
-5. Optional: omnibox keyword (`bb`) wired to the same query path.
+5. Omnibox keyword (`bb`) wired to the same query path (see
+   [DECISIONS.md](DECISIONS.md) D7 — decided to ship in P3).
 
 Exit criteria: typing in the search box returns results inside
 50ms on a 20k-bookmark corpus.
@@ -86,8 +87,11 @@ Goal: bookmarks gain context by linking to each other.
 
 1. Edge store, edge service.
 2. Manual "link to another bookmark" UI in the detail view.
-3. Auto-suggestions: shared domain, shared tag intersection ≥ 2,
-   text similarity on title/note (cheap n-gram, no embeddings yet).
+3. Auto-suggestions with threshold `(sharedTag >= 1 AND
+   sharedDomain) OR (sharedTag >= 2)`, plus text similarity on
+   title/note (cheap n-gram, no embeddings yet). A numeric
+   strength score rides along on each suggestion so the UI can
+   rank (see [DECISIONS.md](DECISIONS.md) D13).
 4. "Suggested connections" panel in the overview.
 5. Graph view (optional): force-directed layout over a filtered
    subset.
