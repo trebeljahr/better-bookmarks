@@ -1,0 +1,63 @@
+name: Canonicalisation rule
+description: Propose a URL canonicalisation rule so a class of duplicates collapses to one bookmark
+title: "[canon] "
+labels: ["canonicalisation"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Better Bookmarks treats two URLs as the same bookmark when they normalise to
+        the same canonical form. If you've spotted a site whose URLs vary only in
+        tracking params, session ids, or similar noise, and today those show up as
+        separate bookmarks (or as false-positive duplicates), file a rule here.
+
+  - type: input
+    id: domain
+    attributes:
+      label: Domain
+      description: The host (or host pattern) the rule should apply to.
+      placeholder: "e.g. youtube.com, *.medium.com"
+    validations:
+      required: true
+
+  - type: textarea
+    id: example-pair
+    attributes:
+      label: Example duplicate URL pair
+      description: Two (or more) URLs that should collapse to the same bookmark. Please include the full URLs, not summaries.
+      placeholder: |
+        https://example.com/article?utm_source=newsletter&utm_medium=email
+        https://example.com/article
+      render: text
+    validations:
+      required: true
+
+  - type: textarea
+    id: strip
+    attributes:
+      label: What should be stripped (or rewritten)
+      description: |
+        Be specific. Query params to drop, path segments to collapse, fragments to ignore,
+        `www.` handling, trailing-slash handling, etc. If a param should be kept, say so.
+      placeholder: |
+        - Drop query params: utm_source, utm_medium, utm_campaign, utm_content, utm_term, fbclid, gclid
+        - Keep: v (YouTube video id)
+        - Strip trailing slash on path
+    validations:
+      required: true
+
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What's the underlying reason these URLs are equivalent? (Tracking, session, share links, mirror, etc.) Any counter-examples where the rule would be wrong?
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: References to the site's canonical `<link rel="canonical">` behaviour, screenshots, related rules.
+    validations:
+      required: false

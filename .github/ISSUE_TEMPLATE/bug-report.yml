@@ -1,0 +1,77 @@
+name: Bug report
+description: Something in the extension doesn't behave the way it should
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug. The more precise you can be about
+        version, environment, and reproduction, the faster this gets fixed.
+
+  - type: input
+    id: extension-version
+    attributes:
+      label: Extension version
+      description: Version shown on `chrome://extensions` (or in the popup footer).
+      placeholder: "e.g. 1.0.0"
+    validations:
+      required: true
+
+  - type: input
+    id: chrome-version
+    attributes:
+      label: Chrome version
+      description: Paste from `chrome://version` (or the equivalent for your Chromium browser).
+      placeholder: "e.g. Chrome 141.0.7390.54"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - ChromeOS
+        - Other (please specify in the description)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: A numbered list works best. Include any bookmarks/URLs involved if it isn't sensitive.
+      placeholder: |
+        1. Open the popup on any page
+        2. Click "Save"
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you think would happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happened instead? Include any error text from the extension's DevTools console if you have it.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Screenshots, logs, related issues, hunches.
+    validations:
+      required: false
