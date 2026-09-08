@@ -19,6 +19,26 @@ bookmarks tree so the omnibox and mobile sync keep working.
 - **Search that scales.** IndexedDB-backed inverted index. Designed
   around a real-world corpus of 20k+ bookmarks.
 
+## Install
+
+[![Chrome Web Store — coming soon](https://img.shields.io/badge/Chrome%20Web%20Store-coming%20soon-lightgrey)](# "Placeholder — swap to the real CWS link once the listing is approved.")
+
+Marketing site: [coming soon](# "Placeholder — will link to the deployed apps/web site.") — source lives in [`apps/web/`](apps/web/).
+
+### Development install / unpacked from a release zip
+
+Until the Chrome Web Store listing is live, install the extension
+unpacked from a local build or a release zip:
+
+1. Build the extension (see [Development](#development) below) or
+   download the latest `.zip` from
+   [Releases](https://github.com/trebeljahr/better-bookmarks/releases)
+   and unpack it into a folder.
+2. Open `chrome://extensions/` and turn on **Developer mode** in the
+   top-right corner.
+3. Click **Load unpacked** and pick the `./dist` directory (or the
+   unpacked release folder).
+
 ## Design docs
 
 The design decisions live alongside the code so future-us can read
@@ -48,5 +68,5 @@ pnpm build    # production build
 pnpm check    # biome format + lint
 ```
 
-Load the unpacked extension from `./dist` in
-`chrome://extensions/` with developer mode on.
+Load the freshly built `./dist` as an unpacked extension — see
+[Install](#install) above.
