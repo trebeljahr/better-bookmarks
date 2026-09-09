@@ -44,11 +44,23 @@ const faqs = [
   },
   {
     q: "Does it work in Firefox?",
-    a: "Firefox support is planned. The extension is built with WXT, which targets cross-browser builds, so a Firefox build is on the roadmap.",
+    a: "A Firefox build is available from the GitHub releases page (built with WXT, same codebase). AMO (addons.mozilla.org) submission is pending.",
   },
   {
     q: "How do I export my bookmarks?",
-    a: "The overview page has a JSON export — full data including tags, ratings, notes, and connections. JSON import is supported too.",
+    a: 'Open the overview page and use the "Export…" dropdown. JSON (round-trippable — full data including tags, ratings, notes, and connections) or HTML (Netscape bookmarks, importable into Chrome and Firefox). The neighbouring "Import file…" button reads either format back in.',
+  },
+  {
+    q: "Will there be a paid tier?",
+    a: "No. Better Bookmarks is free and MIT licensed. There are no plans for a paid version, subscription, or premium features.",
+  },
+  {
+    q: "Do you collect any analytics?",
+    a: "No. The extension makes no analytics calls. Only this marketing site uses Plausible — cookieless, no cross-site tracking, no personal data.",
+  },
+  {
+    q: "How big a collection does it handle?",
+    a: "It's designed for 20,000+ bookmarks; the maintainer's own corpus is that size and drives the performance work.",
   },
 ];
 
