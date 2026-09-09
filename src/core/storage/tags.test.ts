@@ -108,6 +108,96 @@ describe("mergeTags", () => {
     const after = (await db.bookmarks.toArray())[0];
     expect(after.tags).toEqual(["B"]);
   });
+
+  it("handles merge across 200+ bookmarks", async () => {
+    // Fixture:
+    //   - 100 bookmarks tagged only "machine-learning"
+    //   -  30 bookmarks tagged only "ml"
+    //   -  50 bookmarks tagged with both (overlap)
+    // Totals: 150 "machine-learning", 80 "ml", 180 distinct bookmarks.
+    // Plus one unrelated bookmark to prove the merge doesn't paint outside its lines.
+    // mergeTags in this repo is a single Dexie transaction with no AbortSignal /
+    // cancel-token surface (grepped tags.ts — none), so we do not assert
+    // cancellation rollback here.
+    await upsertTag({ name: "machine-learning" });
+    await upsertTag({ name: "ml" });
+    await upsertTag({ name: "unrelated" });
+
+    const onlyDest: string[] = [];
+    const onlySource: string[] = [];
+    const both: string[] = [];
+
+    for (let i = 0; i < 100; i++) {
+      const url = `https://example.com/dest/${i}`;
+      onlyDest.push(url);
+      const r = await upsertBookmark({ rawUrl: url, tags: ["machine-learning"] });
+      expect(r.ok).toBe(true);
+    }
+    for (let i = 0; i < 30; i++) {
+      const url = `https://example.com/src/${i}`;
+      onlySource.push(url);
+      const r = await upsertBookmark({ rawUrl: url, tags: ["ml"] });
+      expect(r.ok).toBe(true);
+    }
+    for (let i = 0; i < 50; i++) {
+      const url = `https://example.com/both/${i}`;
+      both.push(url);
+      const r = await upsertBookmark({ rawUrl: url, tags: ["ml", "machine-learning"] });
+      expect(r.ok).toBe(true);
+    }
+    const unrelatedUrl = "https://example.com/unrelated";
+    const noise = await upsertBookmark({ rawUrl: unrelatedUrl, tags: ["unrelated"] });
+    expect(noise.ok).toBe(true);
+
+    const db = getDB();
+    // Sanity: fixture landed as intended.
+    expect(await db.bookmarks.count()).toBe(181);
+    expect((await db.bookmarks.where("tags").equals("machine-learning").toArray()).length).toBe(
+      150,
+    );
+    expect((await db.bookmarks.where("tags").equals("ml").toArray()).length).toBe(80);
+
+    const result = await mergeTags("ml", "machine-learning");
+    // affected = every bookmark that carried "ml" (30 only-ml + 50 both).
+    expect(result.affected).toBe(80);
+
+    // Final tag count: source removed, destination survives, unrelated untouched.
+    const tagNames = (await listTags()).map((t) => t.name).sort();
+    expect(tagNames).toEqual(["machine-learning", "unrelated"]);
+    expect(await getTag("ml")).toBeUndefined();
+
+    // Every bookmark that used to carry "ml" or "machine-learning" now carries
+    // "machine-learning" and no longer carries "ml".
+    const affectedUrls = [...onlySource, ...both, ...onlyDest];
+    for (const url of affectedUrls) {
+      const b = await db.bookmarks.where("canonicalUrl").equals(url).first();
+      expect(b, url).toBeDefined();
+      expect(b?.tags).toContain("machine-learning");
+      expect(b?.tags).not.toContain("ml");
+      // No duplicates.
+      expect(b?.tags.length).toBe(new Set(b?.tags).size);
+    }
+
+    // Every bookmark that previously had "ml" is now findable under the
+    // destination — the merge preserved membership, not just tag text.
+    const destMembers = await db.bookmarks.where("tags").equals("machine-learning").toArray();
+    expect(destMembers.length).toBe(180);
+    expect(await db.bookmarks.where("tags").equals("ml").count()).toBe(0);
+
+    // No orphaned tag references anywhere: every tag string that appears on
+    // any bookmark exists in the tags table.
+    const knownTagNames = new Set((await listTags()).map((t) => t.name));
+    const allBookmarks = await db.bookmarks.toArray();
+    for (const b of allBookmarks) {
+      for (const t of b.tags) {
+        expect(knownTagNames.has(t), `orphaned tag "${t}" on ${b.canonicalUrl}`).toBe(true);
+      }
+    }
+
+    // Unrelated bookmark is exactly as it was.
+    const untouched = await db.bookmarks.where("canonicalUrl").equals(unrelatedUrl).first();
+    expect(untouched?.tags).toEqual(["unrelated"]);
+  });
 });
 
 describe("deleteTag", () => {
