@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { buildSyntheticCorpus } from "@/test/fixtures/synthetic-corpus";
 import { listBookmarks } from "../storage/bookmarks";
 import { getDB, resetDBForTests } from "../storage/db";
 import { importChromeTree } from "./initialImport";
@@ -94,4 +95,59 @@ describe("importChromeTree", () => {
     const after = await listBookmarks();
     expect(after).toHaveLength(before.length);
   });
+
+  // Scale guard. Drives importChromeTree with the shared 20k synthetic
+  // corpus (see `src/test/fixtures/synthetic-corpus.ts`) and asserts:
+  //
+  //   1. The walk terminates and reports every URL node.
+  //   2. Dedup is deterministic — created / merged counts derive from the
+  //      fixture's own stats, so a drift in either the canonicaliser or the
+  //      import merge path lights this test up.
+  //   3. Heap growth across the import stays under a generous 400 MB
+  //      ceiling. Regression guard, not an optimum — real-world browsers
+  //      have plenty of headroom, but we want to catch a per-bookmark leak
+  //      before it turns into a 2 GB blow-up on someone's 20k library.
+  //
+  // Timeout is loose: build + import + reindexAll on 20 k items in
+  // fake-indexeddb runs in tens of seconds on a laptop.
+  it("handles 20k corpus", async () => {
+    const { tree, stats } = buildSyntheticCorpus();
+    expect(stats.urlNodesInTree).toBe(20_000);
+
+    // Best-effort GC before/after so the delta reflects retained heap,
+    // not incidental allocation slack. Only works when Node is started
+    // with `--expose-gc`; otherwise the delta is a loose upper bound,
+    // which is fine — the ceiling is deliberately generous.
+    const maybeGc = (globalThis as { gc?: () => void }).gc;
+    if (maybeGc) maybeGc();
+    const heapBefore = process.memoryUsage().heapUsed;
+
+    const report = await importChromeTree(tree, () => 1_700_000_000_000);
+
+    if (maybeGc) maybeGc();
+    const heapAfter = process.memoryUsage().heapUsed;
+    const heapDelta = heapAfter - heapBefore;
+
+    // Every URL node was surfaced by the walk.
+    expect(report.bookmarksSeen).toBe(stats.urlNodesInTree);
+    // Deterministic dedup: fresh DB → created == unique canonical URLs,
+    // merged == the tracking-param duplicates the fixture planted.
+    expect(report.bookmarksCreated).toBe(stats.uniqueCanonicalUrls);
+    expect(report.bookmarksMerged).toBe(stats.duplicateVariants);
+    expect(report.rejected).toBe(0);
+
+    // Persisted rows match the deduped count.
+    const all = await listBookmarks();
+    expect(all).toHaveLength(stats.uniqueCanonicalUrls);
+
+    // 400 MB ceiling on heap growth across the import. Observed baseline
+    // on 2026-09-09 was ~240 MB (Node without --expose-gc, so this
+    // includes the whole fake-indexeddb store plus every posting
+    // reindexAll writes — all retained on the JS heap for this
+    // assertion, unlike production where IndexedDB lives outside it).
+    // The ceiling is set at roughly 1.6x that so a genuine per-bookmark
+    // leak trips it long before a run-to-run allocation wobble does.
+    const HEAP_CEILING_BYTES = 400 * 1024 * 1024;
+    expect(heapDelta).toBeLessThan(HEAP_CEILING_BYTES);
+  }, 180_000);
 });
