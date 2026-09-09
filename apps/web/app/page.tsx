@@ -1,6 +1,6 @@
-import { Bookmark, Github, Link2, Sparkles, Tags } from "lucide-react";
-import Link from "next/link";
-import { ThemeToggle } from "@/components/theme-toggle";
+import { Github, Link2, Sparkles, Tags } from "lucide-react";
+import { SiteFooter } from "@/components/site-footer";
+import { SiteHeader } from "@/components/site-header";
 import {
   Accordion,
   AccordionContent,
@@ -55,23 +55,7 @@ const faqs = [
 export default function Page() {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-40 w-full border-b border-border/40 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2 font-semibold">
-            <Bookmark className="size-5" />
-            <span>Better Bookmarks</span>
-          </Link>
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" asChild>
-              <a href={REPO_URL} target="_blank" rel="noreferrer">
-                <Github className="size-4" />
-                <span className="hidden sm:inline">GitHub</span>
-              </a>
-            </Button>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <SiteHeader />
 
       <main className="flex-1">
         <Hero />
@@ -80,7 +64,7 @@ export default function Page() {
         <Faq />
       </main>
 
-      <Footer />
+      <SiteFooter />
     </div>
   );
 }
@@ -208,32 +192,5 @@ function Faq() {
         </Accordion>
       </div>
     </section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="border-t border-border/40">
-      <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-6 py-10 sm:flex-row">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Bookmark className="size-4" />
-          <span>Better Bookmarks · MIT · © 2026</span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
-            Privacy
-          </Link>
-          <a
-            href={REPO_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-          >
-            <Github className="size-4" />
-            github.com/trebeljahr/better-bookmarks
-          </a>
-        </div>
-      </div>
-    </footer>
   );
 }
