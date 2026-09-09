@@ -219,15 +219,20 @@ function Footer() {
           <Bookmark className="size-4" />
           <span>Better Bookmarks · MIT · © 2026</span>
         </div>
-        <a
-          href={REPO_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <Github className="size-4" />
-          github.com/trebeljahr/better-bookmarks
-        </a>
+        <div className="flex items-center gap-4">
+          <Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground">
+            Privacy
+          </Link>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+          >
+            <Github className="size-4" />
+            github.com/trebeljahr/better-bookmarks
+          </a>
+        </div>
       </div>
     </footer>
   );
