@@ -22,13 +22,48 @@ export type CaptureSource =
   | "pocket"
   | "manual";
 
-export type LinkCheckReason = "client-error" | "server-error" | "network";
+export type LinkCheckReason =
+  | "client-error"
+  | "server-error"
+  | "network"
+  | "rate-limited"
+  | "timeout";
 
+export type LinkCheckStatus = "alive" | "dead" | "unknown";
+
+/**
+ * A single failing probe recorded in the per-bookmark failure log.
+ * "dead" entries are permanent-looking (404 / 410). "unknown" entries
+ * are transient-looking (429, 5xx, network, timeout, other 4xx). See
+ * docs/DEAD_LINK_CHECKER.md.
+ */
+export type LinkCheckFailureEntry = {
+  at: number;
+  status: "dead" | "unknown";
+  httpStatus?: number;
+  reason?: LinkCheckReason;
+};
+
+/**
+ * Result of the most recent dead-link probe against a bookmark. See
+ * docs/DEAD_LINK_CHECKER.md for the retry, classification, and
+ * consecutive-day policy. `ok === false` only when the bookmark has
+ * been confirmed dead (permanent-looking failures across at least
+ * `CONSECUTIVE_DAY_THRESHOLD` distinct calendar days). Transient
+ * failures (429, 5xx, network) leave `ok === true` and are recorded
+ * in `failureLog`.
+ */
 export type LinkCheckResult = {
   checkedAt: number;
   ok: boolean;
   httpStatus?: number;
   reason?: LinkCheckReason;
+  status?: LinkCheckStatus;
+  retries?: number;
+  failureLog?: LinkCheckFailureEntry[];
+  consecutiveFailureDays?: number;
+  firstFailureAt?: number;
+  lastFailureAt?: number;
 };
 
 export type Bookmark = {
