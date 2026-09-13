@@ -7,6 +7,8 @@
  * not thrown — callers can decide whether to retry, back off, or skip.
  */
 
+import { detectLanguage, normalizeLangTag } from "./languageDetect";
+
 export type MetaResult =
   | {
       ok: true;
@@ -109,8 +111,17 @@ export function parseHtml(html: string): MetaResult {
   const author = metaContent(doc, 'meta[name="author"]');
   if (author) out.author = author;
 
-  const lang = extractLang(doc);
-  if (lang) out.lang = lang;
+  const declaredLang = normalizeLangTag(extractLang(doc));
+  if (declaredLang) {
+    out.lang = declaredLang;
+  } else {
+    // Fall back to trigram detection over the page's own advertised text
+    // (title + og description). Runs only when the page did not declare a
+    // language and we actually have material to look at.
+    const sample = [out.title, out.description].filter(Boolean).join(" ");
+    const detected = detectLanguage(sample);
+    if (detected) out.lang = detected;
+  }
 
   const wordCount = bodyWordCount(doc);
   if (wordCount > 0) {

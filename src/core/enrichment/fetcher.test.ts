@@ -60,7 +60,7 @@ describe("fetchAndParseMeta", () => {
     expect(result.ogImage).toBe("https://example.com/img.png");
     expect(result.siteName).toBe("Example Site");
     expect(result.author).toBe("Jane Doe");
-    expect(result.lang).toBe("en-us");
+    expect(result.lang).toBe("en");
     expect(result.wordCount).toBe(5);
     expect(result.readingTimeMin).toBe(1);
   });
@@ -182,5 +182,24 @@ describe("parseHtml", () => {
     );
     if (!result.ok) throw new Error("expected ok");
     expect(result.lang).toBe("de");
+  });
+
+  it("falls back to trigram detection on title+description when no lang declared", () => {
+    const result = parseHtml(
+      `<html><head>
+        <title>Der schnelle braune Fuchs</title>
+        <meta property="og:description" content="springt über den faulen Hund und läuft weiter durch den Wald">
+      </head><body></body></html>`,
+    );
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.lang).toBe("de");
+  });
+
+  it("leaves lang unset when no declaration and detection sample too short", () => {
+    const result = parseHtml(
+      `<html><head><title>Hi</title></head><body></body></html>`,
+    );
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.lang).toBeUndefined();
   });
 });

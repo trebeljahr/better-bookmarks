@@ -35,6 +35,7 @@ export {
   parseHtml,
   WORDS_PER_MINUTE,
 } from "./fetcher";
+export { detectLanguage, MIN_DETECT_LENGTH, normalizeLangTag } from "./languageDetect";
 export {
   ENRICHMENT_ALARM_NAME,
   installEnrichmentAlarm,
