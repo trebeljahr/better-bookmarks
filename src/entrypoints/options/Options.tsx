@@ -2,9 +2,9 @@
  * Options / settings page.
  */
 
-import { CloudUpload, Keyboard } from "lucide-react";
+import { CloudUpload, Keyboard, Upload } from "lucide-react";
 import type * as React from "react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { runBackupOnce } from "@/core/backup";
+import { importRawUrls } from "@/core/importExport";
 import { countBookmarks } from "@/core/storage/bookmarks";
 import { getDB } from "@/core/storage/db";
 import { getSettings, setSettings } from "@/core/storage/settings";
@@ -79,6 +81,10 @@ export const Options = () => {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [backupStatus, setBackupStatus] = useState<string>("");
   const [extraStrippedDraft, setExtraStrippedDraft] = useState("");
+  const [rawUrlsDraft, setRawUrlsDraft] = useState<string>("");
+  const [rawUrlsBusy, setRawUrlsBusy] = useState<boolean>(false);
+  const [rawUrlsStatus, setRawUrlsStatus] = useState<string>("");
+  const rawUrlsFileInput = useRef<HTMLInputElement>(null);
   const { open: shortcutHelpOpen, setOpen: setShortcutHelpOpen } = useShortcutHelp();
 
   useEffect(() => {
@@ -148,6 +154,50 @@ export const Options = () => {
     await update(DEFAULT_SETTINGS);
     setExtraStrippedDraft("");
   };
+
+  const runRawUrlImport = useCallback(
+    async (text: string, source: string) => {
+      const trimmed = text.trim();
+      if (trimmed.length === 0) {
+        setRawUrlsStatus("nothing to import — paste URLs or choose a file");
+        return;
+      }
+      setRawUrlsBusy(true);
+      setRawUrlsStatus(`importing ${source}…`);
+      try {
+        const report = await importRawUrls(trimmed);
+        const parts = [`${report.imported} new`, `${report.merged} merged`];
+        if (report.rejected > 0) parts.push(`${report.rejected} skipped`);
+        setRawUrlsStatus(`imported ${source}: ${parts.join(", ")}`);
+        // Refresh the store counts card so the new totals show up
+        // without a manual reload.
+        await refreshStats();
+      } catch (err) {
+        setRawUrlsStatus(`import failed: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setRawUrlsBusy(false);
+      }
+    },
+    [refreshStats],
+  );
+
+  const handleRawUrlTextImport = useCallback(async () => {
+    await runRawUrlImport(rawUrlsDraft, "pasted list");
+    // Only clear the textarea when the import ran through (i.e. the
+    // input wasn't empty to begin with).
+    if (rawUrlsDraft.trim().length > 0) setRawUrlsDraft("");
+  }, [rawUrlsDraft, runRawUrlImport]);
+
+  const handleRawUrlFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      await runRawUrlImport(text, file.name);
+      if (rawUrlsFileInput.current) rawUrlsFileInput.current.value = "";
+    },
+    [runRawUrlImport],
+  );
 
   return (
     <div className="mx-auto max-w-[760px] p-4 sm:p-8">
@@ -274,6 +324,61 @@ export const Options = () => {
               <code className="mx-1">#section</code> becomes its own canonical URL.
             </p>
           </div>
+        </div>
+      </Section>
+
+      <Section title="Import URL list">
+        <p className="text-sm text-muted-foreground">
+          Paste a plain list of URLs (one per line) or upload a
+          <code className="mx-1">.txt</code> / <code className="mx-1">.urls</code> file. Lines
+          beginning with <code>#</code> are treated as comments; blank lines are ignored.
+          Titles are not read from the file — enrichment (if enabled) fetches them later.
+        </p>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="rawUrlsTextarea">URLs</Label>
+          <Textarea
+            id="rawUrlsTextarea"
+            value={rawUrlsDraft}
+            onChange={(e) => setRawUrlsDraft(e.target.value)}
+            placeholder={"# my reading list\nhttps://example.com/one\nhttps://example.com/two"}
+            rows={8}
+            disabled={rawUrlsBusy}
+            spellCheck={false}
+            aria-label="URLs to import, one per line"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleRawUrlTextImport}
+            disabled={rawUrlsBusy || rawUrlsDraft.trim().length === 0}
+          >
+            <Upload /> Import pasted list
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => rawUrlsFileInput.current?.click()}
+            disabled={rawUrlsBusy}
+          >
+            <Upload /> Upload file…
+          </Button>
+          <input
+            ref={rawUrlsFileInput}
+            type="file"
+            accept=".txt,.urls,text/plain"
+            className="hidden"
+            aria-label="upload URL list file"
+            aria-hidden="true"
+            tabIndex={-1}
+            onChange={handleRawUrlFileChange}
+          />
+          {rawUrlsStatus && (
+            <span className="text-xs text-muted-foreground" role="status" aria-live="polite">
+              {rawUrlsStatus}
+            </span>
+          )}
         </div>
       </Section>
 

@@ -11,3 +11,4 @@ export type BasicImportReport = {
 export { importGoodreadsHtml, parseGoodreadsHtml } from "./goodreads";
 export { importPocketCsv, parsePocketCsv } from "./pocket";
 export { importRawUrlList, parseRawUrlList } from "./rawUrlList";
+export { importRawUrls, parseRawUrls } from "./rawUrls";
