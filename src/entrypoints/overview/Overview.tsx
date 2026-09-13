@@ -685,6 +685,9 @@ export const Overview = () => {
             type="file"
             accept=".json,.csv,.html,.htm,.txt,.urls"
             className="hidden"
+            aria-label="import bookmarks file"
+            aria-hidden="true"
+            tabIndex={-1}
             onChange={handleFileInputChange}
           />
 

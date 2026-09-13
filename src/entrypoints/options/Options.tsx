@@ -214,7 +214,7 @@ export const Options = () => {
               value={settings.defaultStatus}
               onValueChange={(v) => update({ defaultStatus: v as ReadStatus })}
             >
-              <SelectTrigger>
+              <SelectTrigger aria-label="Default status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -327,7 +327,7 @@ function SelectField<T extends string>({
     <div className="flex flex-col gap-1.5">
       <Label>{label}</Label>
       <Select value={value} onValueChange={(v) => onChange(v as T)}>
-        <SelectTrigger>
+        <SelectTrigger aria-label={label}>
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

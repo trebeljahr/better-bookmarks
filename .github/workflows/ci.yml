@@ -31,6 +31,10 @@ jobs:
       - name: Biome check
         run: pnpm check
 
+      # Runs the full vitest suite, which includes the axe-based
+      # accessibility smoke at src/entrypoints/*/__tests__/a11y.test.tsx.
+      # CI fails only on serious or critical violations — see
+      # docs/ACCESSIBILITY.md for the policy.
       - name: Test
         run: pnpm test
 
