@@ -15,6 +15,9 @@ export function SiteFooter() {
           <Link href="/privacy" className="hover:text-foreground">
             Privacy
           </Link>
+          <Link href="/imprint" className="hover:text-foreground">
+            Imprint
+          </Link>
           <Link href="/press" className="hover:text-foreground">
             Press
           </Link>
