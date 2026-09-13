@@ -115,3 +115,32 @@ export function tokenizeDomain(domain: string | null | undefined): string[] {
   }
   return out;
 }
+
+// Unicode-aware word matcher used by the inverted-index tokenizer.
+// Matches runs of one or more letters optionally followed by digits
+// (\p{L}+\p{N}*), so `word`, `word17`, `模型`, `Café` all pass; pure digits
+// and standalone punctuation/emoji do not. `u` flag opts into Unicode
+// property escapes.
+const INVERTED_WORD_RE = /\p{L}+\p{N}*/gu;
+
+/**
+ * Tokenize free-form text for the inverted-index (`searchIndex`) store.
+ *
+ * - Lowercases input (locale-independent).
+ * - Splits on any character that is not part of `\p{L}+\p{N}*`.
+ * - Enforces a minimum token length of 2 (so single-letter noise doesn't
+ *   inflate the postings list).
+ * - No stopword list for v1 — cheaper false positives than a bad list.
+ *
+ * Handles Unicode scripts (Latin, Cyrillic, CJK) natively via the `u`
+ * flag; emoji and pure-digit sequences produce no tokens.
+ */
+export function tokenizeInverted(input: string | null | undefined): string[] {
+  if (!input) return [];
+  const out: string[] = [];
+  for (const match of input.toLowerCase().matchAll(INVERTED_WORD_RE)) {
+    const t = match[0];
+    if (t.length >= 2) out.push(t);
+  }
+  return out;
+}

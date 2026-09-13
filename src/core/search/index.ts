@@ -6,9 +6,18 @@
  * caring.
  */
 
-export { indexBookmark, reindexAll, removeBookmark } from "./indexer";
+export {
+  buildInvertedIndex,
+  fullReindex,
+  indexBookmark,
+  reindexAll,
+  removeBookmark,
+  removeFromIndex,
+  type SearchIndexField,
+} from "./indexer";
 export { parseQuery, type Query, type RatingFilter, type RatingOp } from "./query";
 export { runQuery, type SearchOptions, search } from "./runner";
+export { tokenizeInverted } from "./tokenize";
 export {
   ensureSearchIndexInitialized,
   isSearchIndexerSuppressed,

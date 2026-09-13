@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { tokenize, tokenizeDomain } from "./tokenize";
+import { tokenize, tokenizeDomain, tokenizeInverted } from "./tokenize";
 
 describe("tokenize", () => {
   it("returns empty array for null/undefined/empty", () => {
@@ -79,6 +79,96 @@ describe("tokenize", () => {
 
   it("handles numbers", () => {
     expect(tokenize("react 17 vs react 19")).toEqual(["react", "17", "vs", "react", "19"]);
+  });
+});
+
+describe("tokenizeInverted", () => {
+  it("returns empty array for null/undefined/empty", () => {
+    expect(tokenizeInverted("")).toEqual([]);
+    expect(tokenizeInverted(null)).toEqual([]);
+    expect(tokenizeInverted(undefined)).toEqual([]);
+  });
+
+  it("lowercases tokens", () => {
+    expect(tokenizeInverted("Hello World")).toEqual(["hello", "world"]);
+  });
+
+  it("splits on whitespace and punctuation", () => {
+    expect(tokenizeInverted("one, two! three?four/five")).toEqual([
+      "one",
+      "two",
+      "three",
+      "four",
+      "five",
+    ]);
+  });
+
+  it("enforces min length 2 (drops single-letter tokens)", () => {
+    // "how's it going" → ["how", "s", "it", "going"] via the legacy tokenizer.
+    // The inverted-index tokenizer drops the length-1 "s".
+    expect(tokenizeInverted("how's it going")).toEqual(["how", "it", "going"]);
+    expect(tokenizeInverted("a b cd e f gh")).toEqual(["cd", "gh"]);
+  });
+
+  it("keeps letters followed by digits (word17) but not pure digits", () => {
+    // Spec regex is \p{L}+\p{N}*, so pure digits do NOT match; a digit
+    // that leads the token (`2v`) matches only the trailing letters,
+    // which then fail the min-length-2 check.
+    expect(tokenizeInverted("react17 vs 19 or v2 or 2v")).toEqual([
+      "react17",
+      "vs",
+      "or",
+      "v2",
+      "or",
+    ]);
+    // Sanity: no bare "19" in output.
+    expect(tokenizeInverted("react 19")).toEqual(["react"]);
+  });
+
+  it("tokenizes CJK characters (each ideograph is its own token via runs)", () => {
+    // Chinese: 机器学习模型 = "machine learning model" — one contiguous run.
+    expect(tokenizeInverted("机器学习模型")).toEqual(["机器学习模型"]);
+    // Mixed script: run breaks at the space.
+    expect(tokenizeInverted("研究 论文")).toEqual(["研究", "论文"]);
+    // Japanese: hiragana + katakana + kanji.
+    expect(tokenizeInverted("こんにちは カタカナ 漢字")).toEqual([
+      "こんにちは",
+      "カタカナ",
+      "漢字",
+    ]);
+    // Korean.
+    expect(tokenizeInverted("안녕하세요 세계")).toEqual(["안녕하세요", "세계"]);
+  });
+
+  it("handles other Unicode scripts (Cyrillic, Greek, Arabic, accents)", () => {
+    expect(tokenizeInverted("Привет мир")).toEqual(["привет", "мир"]);
+    expect(tokenizeInverted("Καλημέρα κόσμε")).toEqual(["καλημέρα", "κόσμε"]);
+    expect(tokenizeInverted("مرحبا بالعالم")).toEqual(["مرحبا", "بالعالم"]);
+    expect(tokenizeInverted("Café résumé naïve")).toEqual(["café", "résumé", "naïve"]);
+  });
+
+  it("skips emoji entirely — they produce no tokens", () => {
+    expect(tokenizeInverted("🚀🔥💯")).toEqual([]);
+    expect(tokenizeInverted("hello 🚀 world")).toEqual(["hello", "world"]);
+    expect(tokenizeInverted("👨‍👩‍👧‍👦 family")).toEqual(["family"]);
+  });
+
+  it("strips inline punctuation instead of keeping it in tokens", () => {
+    // Legacy tokenizer keeps `node.js` as one token; the inverted tokenizer
+    // splits on the dot because `.` is not a letter/digit.
+    expect(tokenizeInverted("node.js vue.js api/v1")).toEqual([
+      "node",
+      "js",
+      "vue",
+      "js",
+      "api",
+      "v1",
+    ]);
+  });
+
+  it("survives pure-punctuation and control-character input", () => {
+    expect(tokenizeInverted("!!! ??? ...")).toEqual([]);
+    expect(tokenizeInverted("\t\n \r")).toEqual([]);
   });
 });
 
