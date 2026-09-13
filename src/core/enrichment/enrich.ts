@@ -9,6 +9,7 @@
 
 import type { Bookmark, ContentType } from "../../shared/types";
 import { updateBookmark } from "../storage/bookmarks";
+import { detectContentType } from "./contentType";
 import { fetchAndParseMeta, type MetaResult } from "./fetcher";
 
 export type EnrichResult = {
@@ -91,9 +92,17 @@ export async function enrichBookmark(
     patch.necessaryTime = meta.readingTimeMin;
   }
 
-  if (bookmark.contentType === "unknown") {
+  // og:type wins over the URL-pattern first pass but never over a user
+  // choice. A stored value is treated as auto-derived when it matches what
+  // `detectContentType` would produce for this canonical URL (or is still
+  // the "unknown" default); anything else is assumed user-set and left
+  // alone.
+  const urlGuess = detectContentType(bookmark.canonicalUrl);
+  const currentIsAutoGuess =
+    bookmark.contentType === "unknown" || bookmark.contentType === urlGuess;
+  if (currentIsAutoGuess) {
     const mapped = mapOgTypeToContentType(meta.ogType);
-    if (mapped) patch.contentType = mapped;
+    if (mapped && mapped !== bookmark.contentType) patch.contentType = mapped;
   }
 
   patch.enrichedAt = now;

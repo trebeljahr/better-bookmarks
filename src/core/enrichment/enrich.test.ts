@@ -169,6 +169,38 @@ describe("enrichBookmark", () => {
     expect(updated?.contentType).toBe("paper");
   });
 
+  it("upsertBookmark seeds contentType from URL patterns", async () => {
+    const bm = await seed({ rawUrl: "https://github.com/octocat/hello-world" });
+    expect(bm.contentType).toBe("repo");
+  });
+
+  it("og:type overrides the URL-pattern guess when the guess is still in place", async () => {
+    // Fresh bookmark on a URL the offline heuristic classes as "repo".
+    // Live fetch reveals og:type=article — that must win over the URL
+    // guess so we don't leave a wrong label behind after network enrichment.
+    const bm = await seed({ rawUrl: "https://github.com/octocat/hello-world" });
+    expect(bm.contentType).toBe("repo");
+    await enrichBookmark(bm, {
+      fetcher: fetcherReturning({ ok: true, ogType: "article" }),
+    });
+    const updated = await getBookmarkById(bm.id);
+    expect(updated?.contentType).toBe("article");
+  });
+
+  it("preserves a user-set contentType even when og:type disagrees with the URL guess", async () => {
+    // URL guess says "repo", user manually curated as "book", og:type
+    // says "article". The user's choice must survive; og:type is not
+    // allowed to overwrite deliberate curation.
+    const bm = await seed({ rawUrl: "https://github.com/octocat/hello-world" });
+    await getDB().bookmarks.update(bm.id, { contentType: "book" });
+    const reloaded = (await getBookmarkById(bm.id)) as Bookmark;
+    await enrichBookmark(reloaded, {
+      fetcher: fetcherReturning({ ok: true, ogType: "article" }),
+    });
+    const updated = await getBookmarkById(bm.id);
+    expect(updated?.contentType).toBe("book");
+  });
+
   it("records enrichedAt on failure but reports updated:false with reason", async () => {
     const bm = await seed({ rawUrl: "https://example.com/d" });
     const res = await enrichBookmark(bm, {

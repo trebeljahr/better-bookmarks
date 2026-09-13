@@ -39,4 +39,27 @@ describe("detectContentType", () => {
       expect(detectContentType(url)).toBe(expected);
     });
   }
+
+  // Task-listed patterns — the offline first pass that runs at capture
+  // time. Grouped here so any future rule change is caught before we ship
+  // a spec regression.
+  describe("first-pass URL patterns (no network)", () => {
+    const patternCases: Array<[string, ReturnType<typeof detectContentType>]> = [
+      ["https://arxiv.org/abs/2401.99999", "paper"],
+      ["https://www.youtube.com/watch?v=dQw4w9WgXcQ", "video"],
+      ["https://youtu.be/dQw4w9WgXcQ", "video"],
+      ["https://github.com/octocat/hello-world", "repo"],
+      ["https://en.wikipedia.org/wiki/Web_browser", "article"],
+      ["https://news.ycombinator.com/item?id=42", "thread"],
+      ["https://twitter.com/jack/status/20", "thread"],
+      ["https://x.com/jack/status/20", "thread"],
+      ["https://medium.com/@author/some-post", "article"],
+      ["https://someone.substack.com/p/some-title", "article"],
+    ];
+    for (const [url, expected] of patternCases) {
+      it(`${url} -> ${expected}`, () => {
+        expect(detectContentType(url)).toBe(expected);
+      });
+    }
+  });
 });

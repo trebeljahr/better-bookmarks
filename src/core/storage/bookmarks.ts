@@ -1,6 +1,7 @@
 import { ulid } from "@/core/util/ulid";
 import type { Bookmark, CaptureSource, ContentType, ReadStatus } from "../../shared/types";
 import { type CanonicalizeResult, canonicalize } from "../canonicalizer";
+import { detectContentType } from "../enrichment/contentType";
 import { getDB } from "./db";
 
 export type UpsertInput = {
@@ -47,7 +48,7 @@ export async function upsertBookmark(input: UpsertInput): Promise<UpsertResult> 
       tags: dedupTags(input.tags ?? []),
       rating: input.rating ?? null,
       necessaryTime: input.necessaryTime ?? null,
-      contentType: input.contentType ?? "unknown",
+      contentType: input.contentType ?? detectContentType(c.canonical),
       language: input.language ?? null,
       status: input.status ?? "unread",
       readAt: null,
