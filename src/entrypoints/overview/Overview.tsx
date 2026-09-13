@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { loadSampleBookmarks } from "@/core/dev/sampleBookmarks";
 import {
   exportJson,
   exportNetscape,
@@ -254,6 +255,18 @@ export const Overview = () => {
       window.open("/health.html", "_blank");
     }
   };
+
+  const handleLoadSampleBookmarks = useCallback(async () => {
+    setStatus("loading sample bookmarks…");
+    try {
+      const report = await loadSampleBookmarks();
+      setStatus(
+        `sample loaded: ${report.created} new, ${report.merged} merged (dedup collapsed ${report.dedupCollapsed} of ${report.attempted})`,
+      );
+    } catch (err) {
+      setStatus(`sample load failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  }, []);
 
   const handleBookmarkThisTab = useCallback(async () => {
     if (!chrome?.tabs?.query) return;
@@ -653,6 +666,17 @@ export const Overview = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+            {import.meta.env.DEV && (
+              <Button
+                variant="outline"
+                size="sm"
+                aria-label="load 100 sample bookmarks (dev only)"
+                title="Populates IndexedDB with 100 curated sample bookmarks — dev builds only."
+                onClick={handleLoadSampleBookmarks}
+              >
+                Load 100 sample bookmarks (DEV)
+              </Button>
+            )}
             {status && <span className="text-xs text-muted-foreground">{status}</span>}
           </div>
 
