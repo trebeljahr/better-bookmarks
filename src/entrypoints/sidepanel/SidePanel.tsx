@@ -6,11 +6,12 @@
  * which want the wider tab layout.
  */
 
-import { ExternalLink, Pencil, Star, Trash2 } from "lucide-react";
+import { ExternalLink, Keyboard, Pencil, Star, Trash2 } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { SearchBar } from "@/components/SearchBar";
+import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,6 +20,7 @@ import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
 import { deleteBookmark as deleteBookmarkRecord, updateBookmark } from "@/core/storage/bookmarks";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useSearch } from "@/hooks/useSearch";
+import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { cn } from "@/lib/utils";
 
 wireSearchIndexer();
@@ -37,6 +39,7 @@ export const SidePanel = () => {
   const { query, setQuery, results, parseError } = useSearch();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const listRef = useRef<FixedSizeList | null>(null);
+  const { open: shortcutHelpOpen, setOpen: setShortcutHelpOpen } = useShortcutHelp();
 
   const tagsFromBookmarks = useMemo(() => getTagsFromBookmarks(bookmarks), [bookmarks]);
 
@@ -145,7 +148,18 @@ export const SidePanel = () => {
 
   return (
     <div className="box-border flex h-screen flex-col gap-2 p-3">
-      <h1 className="text-base font-semibold">Better Bookmarks</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="flex-1 text-base font-semibold">Better Bookmarks</h1>
+        <Button
+          variant="ghost"
+          size="icon-xs"
+          aria-label="keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+          onClick={() => setShortcutHelpOpen(true)}
+        >
+          <Keyboard />
+        </Button>
+      </div>
       <p className="text-xs text-muted-foreground">
         {loading ? "loading…" : `${bookmarks.length} total · ${displayed.length} showing`}
       </p>
@@ -188,6 +202,8 @@ export const SidePanel = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      <ShortcutHelp open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
     </div>
   );
 };

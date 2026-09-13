@@ -2,9 +2,10 @@
  * Options / settings page.
  */
 
-import { CloudUpload } from "lucide-react";
+import { CloudUpload, Keyboard } from "lucide-react";
 import type * as React from "react";
 import { useCallback, useEffect, useState } from "react";
+import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,7 @@ import { runBackupOnce } from "@/core/backup";
 import { countBookmarks } from "@/core/storage/bookmarks";
 import { getDB } from "@/core/storage/db";
 import { getSettings, setSettings } from "@/core/storage/settings";
+import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import type { ConflictPolicy, FolderMirrorPolicy, ReadStatus, Settings } from "@/shared/types";
 import { DEFAULT_SETTINGS } from "@/shared/types";
 
@@ -77,6 +79,7 @@ export const Options = () => {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [backupStatus, setBackupStatus] = useState<string>("");
   const [extraStrippedDraft, setExtraStrippedDraft] = useState("");
+  const { open: shortcutHelpOpen, setOpen: setShortcutHelpOpen } = useShortcutHelp();
 
   useEffect(() => {
     (async () => {
@@ -106,6 +109,7 @@ export const Options = () => {
     return (
       <div className="p-6">
         <p>Loading…</p>
+        <ShortcutHelp open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
       </div>
     );
   }
@@ -147,7 +151,18 @@ export const Options = () => {
 
   return (
     <div className="mx-auto max-w-[760px] p-4 sm:p-8">
-      <h1 className="mb-1 text-2xl font-semibold">Settings</h1>
+      <div className="mb-1 flex items-center gap-2">
+        <h1 className="flex-1 text-2xl font-semibold">Settings</h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+          onClick={() => setShortcutHelpOpen(true)}
+        >
+          <Keyboard />
+        </Button>
+      </div>
       <p className="mb-4 text-sm text-muted-foreground">
         All changes save automatically. Settings live in chrome.storage.local; bookmark data lives
         in IndexedDB.
@@ -311,6 +326,8 @@ export const Options = () => {
           </span>
         )}
       </div>
+
+      <ShortcutHelp open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
     </div>
   );
 };

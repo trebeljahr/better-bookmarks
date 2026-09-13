@@ -4,6 +4,7 @@ import {
   ExternalLink,
   Filter,
   HeartPulse,
+  Keyboard,
   Pencil,
   Settings as SettingsIcon,
   Star,
@@ -18,6 +19,7 @@ import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
 import { type ActiveChip, FilterBar, type SortMode } from "@/components/FilterBar";
 import { FolderTreeSidebar } from "@/components/FolderTreeSidebar";
+import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { TagManager } from "@/components/TagManager";
 import { TagTreeSidebar } from "@/components/TagTreeSidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -59,6 +61,7 @@ import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useFolders } from "@/hooks/useFolders";
 import { useSearch } from "@/hooks/useSearch";
+import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { useTags } from "@/hooks/useTags";
 import { cn } from "@/lib/utils";
 import type { ReadStatus } from "@/shared/types";
@@ -147,6 +150,7 @@ export const Overview = () => {
   const [status, setStatus] = useState<string>("");
   const [tagManagerOpen, setTagManagerOpen] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
+  const { open: shortcutHelpOpen, setOpen: setShortcutHelpOpen } = useShortcutHelp();
   const fileInput = useRef<HTMLInputElement>(null);
   const listRef = useRef<FixedSizeList | null>(null);
 
@@ -624,6 +628,15 @@ export const Overview = () => {
         <Button variant="ghost" size="icon" aria-label="health" onClick={openHealth}>
           <HeartPulse />
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+          onClick={() => setShortcutHelpOpen(true)}
+        >
+          <Keyboard />
+        </Button>
       </div>
       <p className="text-sm text-muted-foreground">
         {loading
@@ -809,6 +822,8 @@ export const Overview = () => {
           )}
         </SheetContent>
       </Sheet>
+
+      <ShortcutHelp open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
     </div>
   );
 };
