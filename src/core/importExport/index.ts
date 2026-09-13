@@ -8,6 +8,7 @@ export type BasicImportReport = {
   rejected: number;
 };
 
+export type { ParsedGoodreadsEntry } from "./goodreads";
 export { importGoodreadsHtml, parseGoodreadsHtml } from "./goodreads";
 export { importPocketCsv, parsePocketCsv } from "./pocket";
 export { importRawUrlList, parseRawUrlList } from "./rawUrlList";

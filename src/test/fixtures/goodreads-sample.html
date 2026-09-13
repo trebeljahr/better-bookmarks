@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Goodreads — My Books (sample export)</title>
+  </head>
+  <body>
+    <!--
+      Synthetic Goodreads "My Books" library page. Structure mirrors the real
+      export closely enough that the parser exercises every code path:
+        * .field.title anchor to /book/show/<id>
+        * .staticStars with p10 / p0 spans (counted to derive stars)
+        * .field.shelves rendered as either <a> tags (real Goodreads) or
+          plain comma-separated text (some third-party mirrors)
+        * .field.review with either a plain span or a truncated + full pair
+        * a mix of ratings (0 to 5 stars), reviews, and shelf combinations
+      No PII. All titles are real published books but the reviews and shelf
+      names are invented.
+    -->
+    <table id="books" class="table" role="table">
+      <thead>
+        <tr>
+          <th class="field cover">cover</th>
+          <th class="field title">title</th>
+          <th class="field author">author</th>
+          <th class="field rating">my rating</th>
+          <th class="field shelves">shelves</th>
+          <th class="field review">review</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr id="review_1" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/13496.A_Game_of_Thrones" title="A Game of Thrones (A Song of Ice and Fire, #1)">A Game of Thrones</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/346732.George_R_R_Martin">Martin, George R.R.</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="it was amazing">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=fantasy">fantasy</a>,
+              <a href="/review/list/1?shelf=favorites">favorites</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value">
+              <span id="freeTextreview1">A brutal opening to an epic saga. Perfect winter read.</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr id="review_2" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/3.Harry_Potter_and_the_Sorcerer_s_Stone" title="Harry Potter and the Sorcerer&#39;s Stone">Harry Potter and the Sorcerer&#39;s Stone</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/1077326.J_K_Rowling">Rowling, J.K.</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="really liked it">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p0"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=fantasy">fantasy</a>,
+              <a href="/review/list/1?shelf=young-adult">young-adult</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value"></div>
+          </td>
+        </tr>
+
+        <tr id="review_3" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/40961427-atomic-habits" title="Atomic Habits">Atomic Habits</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/7327369.James_Clear">Clear, James</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="liked it">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=self-help">self-help</a>,
+              <a href="/review/list/1?shelf=productivity">productivity</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value">
+              <span id="freeTextreview3">Practical. Two chapters do the heavy lifting; the rest reinforces.</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr id="review_4" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/23692271-sapiens?ref=nav_sb_ss" title="Sapiens: A Brief History of Humankind">Sapiens</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/395812.Yuval_Noah_Harari">Harari, Yuval Noah</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="it was amazing">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=nonfiction">nonfiction</a>,
+              <a href="/review/list/1?shelf=history">history</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value">
+              <span id="freeTextreview4">Big claims, big pictures. Read chapter one twice.</span>
+              <span id="freeTextContainerreview4">Big claims, big pictures. Read chapter one twice, then the last chapter, then work backwards through the middle.</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr id="review_5" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="https://www.goodreads.com/book/show/5107.The_Catcher_in_the_Rye" title="The Catcher in the Rye">The Catcher in the Rye</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/819789.J_D_Salinger">Salinger, J.D.</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="it was ok">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=classics">classics</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value">
+              <span id="freeTextreview5">Never landed for me.</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr id="review_6" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/6483624-the-name-of-the-wind" title="The Name of the Wind (The Kingkiller Chronicle, #1)">The Name of the Wind</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/108424.Patrick_Rothfuss">Rothfuss, Patrick</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="did not like it">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=fantasy">fantasy</a>,
+              <a href="/review/list/1?shelf=abandoned">abandoned</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value">
+              <span id="freeTextreview6">Put it down at page 200.</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr id="review_7" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/119322.The_Stand" title="The Stand">The Stand</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/3389.Stephen_King">King, Stephen</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="">
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">to-read, horror, epic</div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value"></div>
+          </td>
+        </tr>
+
+        <tr id="review_8" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/40097951-project-hail-mary" title="Project Hail Mary">Project Hail Mary</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/4763.Andy_Weir">Weir, Andy</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="really liked it">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p0"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=science-fiction">science-fiction</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value">
+              <span id="freeTextreview8">Rocky bits work. Cheeseburger, cheeseburger.</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr id="review_9" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/5470.1984" title="1984">1984</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/3706.George_Orwell">Orwell, George</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="it was amazing">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=classics">classics</a>,
+              <a href="/review/list/1?shelf=dystopia">dystopia</a>,
+              <a href="/review/list/1?shelf=favorites">favorites</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value">
+              <span id="freeTextreview9">The appendix on Newspeak is the point.</span>
+            </div>
+          </td>
+        </tr>
+
+        <tr id="review_10" class="bookalike review">
+          <td class="field cover"><div class="value"></div></td>
+          <td class="field title">
+            <label>title</label>
+            <div class="value">
+              <a href="/book/show/45892.The_C_Programming_Language" title="The C Programming Language">The C Programming Language</a>
+            </div>
+          </td>
+          <td class="field author">
+            <label>author</label>
+            <div class="value"><a href="/author/show/2916.Brian_W_Kernighan">Kernighan, Brian W.</a></div>
+          </td>
+          <td class="field rating">
+            <label>my rating</label>
+            <div class="value">
+              <span class="staticStars notranslate" title="liked it">
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p10"></span>
+                <span class="staticStar p0"></span>
+                <span class="staticStar p0"></span>
+              </span>
+            </div>
+          </td>
+          <td class="field shelves">
+            <label>shelves</label>
+            <div class="value">
+              <a href="/review/list/1?shelf=read">read</a>,
+              <a href="/review/list/1?shelf=programming">programming</a>,
+              <a href="/review/list/1?shelf=reference">reference</a>
+            </div>
+          </td>
+          <td class="field review">
+            <label>review</label>
+            <div class="value">
+              <span id="freeTextreview10">Terse, exact, dated in spots. The exercises still teach.</span>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </body>
+</html>

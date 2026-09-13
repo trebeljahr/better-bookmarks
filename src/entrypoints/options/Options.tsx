@@ -2,7 +2,7 @@
  * Options / settings page.
  */
 
-import { CloudUpload, Keyboard, Upload } from "lucide-react";
+import { BookOpen, CloudUpload, Keyboard, Upload } from "lucide-react";
 import type * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
@@ -21,7 +21,7 @@ import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { runBackupOnce } from "@/core/backup";
-import { importRawUrls } from "@/core/importExport";
+import { importGoodreadsHtml, importRawUrls } from "@/core/importExport";
 import { countBookmarks } from "@/core/storage/bookmarks";
 import { getDB } from "@/core/storage/db";
 import { getSettings, setSettings } from "@/core/storage/settings";
@@ -85,6 +85,8 @@ export const Options = () => {
   const [rawUrlsBusy, setRawUrlsBusy] = useState<boolean>(false);
   const [rawUrlsStatus, setRawUrlsStatus] = useState<string>("");
   const rawUrlsFileInput = useRef<HTMLInputElement>(null);
+  const [goodreadsStatus, setGoodreadsStatus] = useState<string>("");
+  const goodreadsInputRef = useRef<HTMLInputElement | null>(null);
   const { open: shortcutHelpOpen, setOpen: setShortcutHelpOpen } = useShortcutHelp();
 
   useEffect(() => {
@@ -146,6 +148,28 @@ export const Options = () => {
       setBackupStatus(`saved ${fileName} (${formatBytes(byteSize)})`);
     } catch (err) {
       setBackupStatus(`failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+  };
+
+  const handleGoodreadsImportClick = () => {
+    goodreadsInputRef.current?.click();
+  };
+
+  const handleGoodreadsFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setGoodreadsStatus(`importing ${file.name}…`);
+    try {
+      const text = await file.text();
+      const report = await importGoodreadsHtml(text);
+      setGoodreadsStatus(
+        `Goodreads: ${report.imported} new, ${report.merged} merged, ${report.rejected} rejected`,
+      );
+      await refreshStats();
+    } catch (err) {
+      setGoodreadsStatus(`import failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      if (goodreadsInputRef.current) goodreadsInputRef.current.value = "";
     }
   };
 
@@ -415,6 +439,39 @@ export const Options = () => {
             <CloudUpload /> Back up now
           </Button>
           {backupStatus && <span className="text-xs text-muted-foreground">{backupStatus}</span>}
+        </div>
+      </Section>
+
+      <Section title="Import Goodreads library">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleGoodreadsImportClick}
+              aria-label="Import Goodreads Library HTML"
+            >
+              <BookOpen /> Import Goodreads Library HTML
+            </Button>
+            {goodreadsStatus && (
+              <span className="text-xs text-muted-foreground">{goodreadsStatus}</span>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Point this at a saved Goodreads "My Books" page. One row per book: the title, the book's
+            Goodreads page, star rating (mapped 1-5 → 2-10 here), shelves as tags, and your review
+            as the note.
+          </p>
+          {/* Hidden native input so the button owns keyboard focus + label. */}
+          <input
+            ref={goodreadsInputRef}
+            type="file"
+            accept=".html,.htm,text/html"
+            aria-hidden="true"
+            tabIndex={-1}
+            className="hidden"
+            onChange={handleGoodreadsFileChange}
+          />
         </div>
       </Section>
 
