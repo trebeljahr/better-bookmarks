@@ -1,9 +1,10 @@
-import type { CanonicalizationOverrides } from "../../shared/types";
+import type { CanonicalizationOverrides, Settings } from "../../shared/types";
 import { amazon } from "./amazon";
 import { arxiv } from "./arxiv";
 import { github } from "./github";
 import { google } from "./google";
 import { hackernews } from "./hackernews";
+import { LOCALE_PREFIX_RULES, stripLocalePrefix } from "./localePrefixes";
 import { medium } from "./medium";
 import { reddit } from "./reddit";
 import { GLOBAL_TRACKING_PARAMS, UNBOOKMARKABLE_SCHEMES } from "./rules";
@@ -57,8 +58,20 @@ export function canonicalize(
   stripDefaultPort(parsed);
   stripGlobalTrackingParams(parsed, overrides.extraStrippedParams);
 
+  // D10: per-domain locale-prefix stripping. Off by default — the
+  // rule set is empty. Runs before per-domain strategies so a
+  // strategy sees the localised path already trimmed.
+  stripLocalePrefix(parsed, LOCALE_PREFIX_RULES);
+
   const domainOverride = overrides.perDomain[parsed.hostname] ?? {};
-  const ctx: StrategyContext = { keepFragments: domainOverride.keepFragments === true };
+  // D9: a global `keepWikipediaFragments` toggle forces
+  // `keepFragments = true` on any wikipedia subdomain, regardless of
+  // whether a per-domain override is set for that exact hostname.
+  const wikipediaGlobalKeep =
+    overrides.keepWikipediaFragments === true && matchWikipedia(parsed.hostname);
+  const ctx: StrategyContext = {
+    keepFragments: domainOverride.keepFragments === true || wikipediaGlobalKeep,
+  };
 
   const strategy = DOMAIN_STRATEGIES.find(({ match }) => match(parsed.hostname));
   let working: URL | null = parsed;
@@ -81,6 +94,23 @@ export function canonicalize(
     ok: true,
     canonical: working.toString(),
     domain: working.hostname,
+  };
+}
+
+/**
+ * Build canonicalization overrides from Settings. The single seam between
+ * chrome.storage-shaped settings and the pure canonicalize() function.
+ *
+ * Callers that create or match Bookmark records against a canonical URL
+ * (upsert, sync handlers, initial import, JSON import, legacy migration)
+ * fetch settings once and pass the result of this helper as the second
+ * argument to canonicalize().
+ */
+export function overridesFromSettings(settings: Settings): CanonicalizationOverrides {
+  return {
+    extraStrippedParams: settings.canonicalizationOverrides.extraStrippedParams,
+    perDomain: settings.canonicalizationOverrides.perDomain,
+    keepWikipediaFragments: settings.keepWikipediaFragments === true,
   };
 }
 

@@ -1,7 +1,11 @@
 import type { DomainStrategy } from "./index";
 
+// `/pdf/<id>` and `/pdf/<id>.pdf` both collapse to `/abs/<id>`. If the
+// user bookmarked a specific version (`/pdf/2401.12345v2[.pdf]`), the
+// version suffix is preserved on the abs form (`/abs/2401.12345v2`).
+// See DECISIONS D8: version is meaningful identity; only the render
+// format changes.
 const PDF_PATTERN = /^\/pdf\/([\w.-]+?)(?:\.pdf)?$/i;
-const VERSIONED_ID = /^(\d{4}\.\d{4,5})v\d+$/;
 
 export const arxiv: DomainStrategy = (url, ctx) => {
   url.hostname = "arxiv.org";
@@ -9,14 +13,6 @@ export const arxiv: DomainStrategy = (url, ctx) => {
   const pdfMatch = url.pathname.match(PDF_PATTERN);
   if (pdfMatch) {
     url.pathname = `/abs/${pdfMatch[1]}`;
-  }
-
-  const absMatch = url.pathname.match(/^\/abs\/([\w.-]+)$/);
-  if (absMatch) {
-    const versioned = absMatch[1].match(VERSIONED_ID);
-    if (versioned) {
-      url.pathname = `/abs/${versioned[1]}`;
-    }
   }
 
   if (!ctx.keepFragments) {

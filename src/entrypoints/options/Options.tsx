@@ -245,6 +245,21 @@ export const Options = () => {
             In addition to the shipped tracking-param blacklist (utm_*, fbclid, gclid, …).
           </p>
         </div>
+        <div className="flex items-start gap-2">
+          <Switch
+            id="keepWikipediaFragments"
+            checked={settings.keepWikipediaFragments}
+            onCheckedChange={(v) => update({ keepWikipediaFragments: v })}
+          />
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="keepWikipediaFragments">Keep Wikipedia section fragments</Label>
+            <p className="text-xs text-muted-foreground">
+              Off (default): the same Wikipedia page bookmarked at two different sections collapses
+              to one record. On: each
+              <code className="mx-1">#section</code> becomes its own canonical URL.
+            </p>
+          </div>
+        </div>
       </Section>
 
       <Section title="Auto-backup">

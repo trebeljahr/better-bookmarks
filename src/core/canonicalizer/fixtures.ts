@@ -192,9 +192,26 @@ export const FIXTURES: CanonicalizationFixture[] = [
     expected: "https://arxiv.org/abs/2401.12345",
   },
   {
-    name: "arxiv: strips version suffix",
+    // D8: version suffix is part of paper identity, not just render
+    // format. `/pdf/…v2` and `/abs/…v2` collapse to `/abs/…v2` — NOT
+    // to `/abs/…` — so v1 and v2 remain separate bookmark records.
+    name: "arxiv: pdf with version -> abs with version",
+    input: "https://arxiv.org/pdf/2401.12345v2",
+    expected: "https://arxiv.org/abs/2401.12345v2",
+  },
+  {
+    // D8 (updated): the abs form keeps whatever version tag the URL
+    // came in with. Previously this fixture asserted the version was
+    // stripped; that was wrong — different versions of the same
+    // paper are different content.
+    name: "arxiv: keeps version suffix on abs",
     input: "https://arxiv.org/abs/2401.12345v2",
-    expected: "https://arxiv.org/abs/2401.12345",
+    expected: "https://arxiv.org/abs/2401.12345v2",
+  },
+  {
+    name: "arxiv: keeps version suffix on pdf.pdf",
+    input: "https://arxiv.org/pdf/2401.12345v3.pdf",
+    expected: "https://arxiv.org/abs/2401.12345v3",
   },
 
   {

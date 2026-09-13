@@ -117,10 +117,14 @@ and may rewrite anything.
 ### Wikipedia (`*.wikipedia.org`)
 
 - Drop fragment by default (section anchors are not page identity).
-- Override: options exposes a per-domain "keep fragments" toggle
-  (see [DECISIONS.md](DECISIONS.md) D9). When flipped on for
-  Wikipedia, the fragment is preserved and each `#section` becomes
-  its own canonical URL.
+- Override: options exposes a global **Keep Wikipedia section
+  fragments** toggle backed by `Settings.keepWikipediaFragments`
+  (default `false`; see [DECISIONS.md](DECISIONS.md) D9). When on,
+  the fragment is preserved on every wikipedia subdomain and each
+  `#section` becomes its own canonical URL. Same effect as setting
+  the per-domain `keepFragments` override for `en.wikipedia.org`,
+  `de.wikipedia.org`, … one at a time — the setting is the
+  wildcard.
 
 ### Amazon (`amazon.*`)
 
@@ -141,11 +145,14 @@ and may rewrite anything.
 
 ### arXiv (`arxiv.org`)
 
-- Collapse `/pdf/<id>` (with or without `.pdf` suffix, with or
-  without version tag) to `/abs/<id>` (see
-  [DECISIONS.md](DECISIONS.md) D8). PDF is a render format; `/abs/`
-  is identity.
-- Drop the query.
+- Collapse `/pdf/<id>` (with or without `.pdf` suffix) to
+  `/abs/<id>` (see [DECISIONS.md](DECISIONS.md) D8). PDF is a
+  render format; `/abs/` is identity.
+- **Keep the version suffix.** `/pdf/2401.12345v2[.pdf]` collapses
+  to `/abs/2401.12345v2`, not `/abs/2401.12345`. Different
+  versions of a paper are different content — the fixtures pin
+  this. An unversioned URL stays unversioned; the strategy never
+  adds a version tag.
 - Fragment dropped.
 
 ### Hacker News (`news.ycombinator.com`)
@@ -163,8 +170,16 @@ record, but different languages often have genuinely different
 content (see [DECISIONS.md](DECISIONS.md) D10).
 
 - Global default: leave locale prefixes alone.
-- Per-domain rule: sites explicitly added to the locale-strip list
-  in options get the leading `/<locale>/` removed before matching.
+- The `core/canonicalizer/localePrefixes.ts` module exposes a
+  `LOCALE_PREFIX_RULES` list of `{ host, locales }` entries and a
+  `stripLocalePrefix()` hook the pipeline runs before per-domain
+  strategies. Add a new rule to that list to enable stripping for a
+  host — the match is on the full hostname (not the registrable
+  domain).
+- **No built-in domain enables it in the shipped defaults.** The
+  list ships empty. One commented-out example rule for `nextjs.org`
+  is kept in the module as a reference for future maintainers; do
+  not uncomment it without also adding fixture coverage.
 
 ### Default fallback
 

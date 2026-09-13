@@ -174,11 +174,24 @@ export type Settings = {
   // Persisted dismissals so the same finding doesn't keep reappearing.
   // Dismissals are device-local (never mirrored to chrome.storage.sync).
   healthDismissedFindings: HealthDismissedFinding[];
+  // URL canonicalization — see docs/URL_NORMALIZATION.md and DECISIONS D9.
+  // When true, section fragments on *.wikipedia.org URLs survive
+  // canonicalization (each `#section` becomes its own canonical URL).
+  // Default false: fragments are stripped so a page bookmarked twice at
+  // different sections collapses to one record.
+  keepWikipediaFragments: boolean;
 };
 
 export type CanonicalizationOverrides = {
   extraStrippedParams: string[];
   perDomain: Record<string, { keepFragments?: boolean; stripLocale?: boolean }>;
+  /**
+   * Global toggle for section-fragment retention on `*.wikipedia.org`. See
+   * DECISIONS D9. When true, the wikipedia strategy behaves as if the
+   * per-domain `keepFragments` override was set for every wikipedia
+   * subdomain.
+   */
+  keepWikipediaFragments?: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -206,4 +219,5 @@ export const DEFAULT_SETTINGS: Settings = {
   healthEnabledScanners: {},
   healthBrokenLinkCheckEnabled: false,
   healthDismissedFindings: [],
+  keepWikipediaFragments: false,
 };
