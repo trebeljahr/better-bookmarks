@@ -2,7 +2,7 @@ import type { DomainStrategy } from "./index";
 
 const DROP_PARAMS = new Set(["source", "sk", "gi", "responsesOpen"]);
 
-export const medium: DomainStrategy = (url) => {
+export const medium: DomainStrategy = (url, ctx) => {
   const toDelete: string[] = [];
   for (const key of url.searchParams.keys()) {
     if (DROP_PARAMS.has(key)) {
@@ -12,5 +12,6 @@ export const medium: DomainStrategy = (url) => {
   for (const key of toDelete) {
     url.searchParams.delete(key);
   }
+  if (toDelete.length > 0) ctx.emit("medium:strip-share-params");
   return url;
 };

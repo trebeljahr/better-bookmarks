@@ -25,6 +25,7 @@ import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { useEdges } from "@/hooks/useEdges";
 import type { Bookmark, ContentType, EdgeType, ReadStatus } from "@/shared/types";
 import { ConnectionsPanel } from "./ConnectionsPanel";
+import { WhyDuplicateTooltip } from "./WhyDuplicateTooltip";
 
 type Props = {
   bookmark: Bookmark;
@@ -123,12 +124,18 @@ export function BookmarkDetail({
         </Button>
       </div>
 
-      <div>
+      <div className="flex flex-col gap-1">
         <p className="break-all text-xs text-muted-foreground">{bookmark.canonicalUrl}</p>
         {bookmark.canonicalUrl !== bookmark.originalUrl && (
-          <p className="break-all text-xs text-muted-foreground/70">
-            original: {bookmark.originalUrl}
-          </p>
+          <>
+            <p className="break-all text-xs text-muted-foreground/70">
+              original: {bookmark.originalUrl}
+            </p>
+            <WhyDuplicateTooltip
+              originalUrl={bookmark.originalUrl}
+              canonicalUrl={bookmark.canonicalUrl}
+            />
+          </>
         )}
       </div>
 

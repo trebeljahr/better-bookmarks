@@ -226,6 +226,29 @@ Fixture rows do not get deleted — when a rule is intentionally
 changed, the fixture row's expected value is updated in the same
 commit and the change is reviewable.
 
+## Rule ids and the "Why is this a duplicate?" tooltip
+
+Every rule that actually mutates a URL emits a stable id
+(`domain:transform`, e.g. `youtube:strip-non-video-params`) onto the
+canonicalize() result as `appliedRules`. Ids and their user-facing
+descriptions live in `src/core/canonicalizer/rules.ts`
+(`RULE_REGISTRY`). The bookmark detail view renders a
+`WhyDuplicateTooltip` next to the canonical URL that re-runs
+canonicalize() on the original URL and lists one bullet per applied
+rule id → description — so users can inspect, per bookmark, exactly
+which transforms collapsed the raw URL into the canonical one.
+
+When adding or renaming a rule id:
+
+1. Emit it from the strategy — `ctx.emit("myrule:transform")`.
+2. Add a `RULE_REGISTRY` entry: id + user-friendly description.
+3. Add a fixture row in `fixtures.ts` that exercises it.
+4. Add a rule-emission assertion in
+   `canonicalizer.test.ts` → `describe("canonicalize — rule-id emission")`.
+
+The `RULE_REGISTRY` test sweeps every fixture, collects every id that
+gets emitted, and fails if any of those ids lacks a description entry.
+
 ## Open questions
 
 Previously listed here: HN fragment canonicalization, arXiv

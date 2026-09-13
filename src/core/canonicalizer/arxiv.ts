@@ -12,11 +12,17 @@ export const arxiv: DomainStrategy = (url, ctx) => {
 
   const pdfMatch = url.pathname.match(PDF_PATTERN);
   if (pdfMatch) {
+    const originalPath = url.pathname;
     url.pathname = `/abs/${pdfMatch[1]}`;
+    ctx.emit("arxiv:pdf-to-abs");
+    if (/\.pdf$/i.test(originalPath)) {
+      ctx.emit("arxiv:strip-pdf-extension");
+    }
   }
 
-  if (!ctx.keepFragments) {
+  if (!ctx.keepFragments && url.hash !== "") {
     url.hash = "";
+    ctx.emit("arxiv:strip-fragment");
   }
   return url;
 };
