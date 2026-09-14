@@ -4,6 +4,7 @@ import { canonicalize } from "../canonicalizer";
 import { dedupTags, getBookmarkByCanonicalUrl, updateBookmark } from "../storage/bookmarks";
 import { getDB } from "../storage/db";
 import { getSettings } from "../storage/settings";
+import { getFieldPolicy } from "./conflictPolicyCache";
 import { resolveTitleUrl } from "./conflictResolver";
 import { inFlight } from "./inFlight";
 import {
@@ -13,6 +14,7 @@ import {
   touchEventAt,
   upsertMapping,
 } from "./mapping";
+import { type ConflictField, enqueueConflict } from "./pendingConflicts";
 
 /**
  * Inbound Chrome bookmark event handlers. These are called from the
@@ -158,30 +160,34 @@ export async function handleChanged(node: InboundChanged, now = Date.now()): Pro
   const nextTitle = node.title ?? mapping.lastKnownTitle;
   const nextUrl = node.url ?? mapping.lastKnownUrl;
 
-  const resolution = resolveTitleUrl(
-    bookmark,
-    { title: nextTitle, url: nextUrl, eventAt: now },
-    settings.conflictPolicy,
-  );
+  if (settings.conflictPolicy === "ask") {
+    await applyAskPolicy(bookmark, { chromeTitle: nextTitle, chromeUrl: nextUrl, now });
+  } else {
+    const resolution = resolveTitleUrl(
+      bookmark,
+      { title: nextTitle, url: nextUrl, eventAt: now },
+      settings.conflictPolicy,
+    );
 
-  let canonical = bookmark.canonicalUrl;
-  let originalUrl = bookmark.originalUrl;
-  let domain = bookmark.domain;
-  if (resolution.source === "chrome" && node.url !== undefined) {
-    const c = canonicalize(node.url);
-    if (c.ok) {
-      canonical = c.canonical;
-      originalUrl = node.url;
-      domain = c.domain;
+    let canonical = bookmark.canonicalUrl;
+    let originalUrl = bookmark.originalUrl;
+    let domain = bookmark.domain;
+    if (resolution.source === "chrome" && node.url !== undefined) {
+      const c = canonicalize(node.url);
+      if (c.ok) {
+        canonical = c.canonical;
+        originalUrl = node.url;
+        domain = c.domain;
+      }
     }
-  }
 
-  await updateBookmark(bookmark.id, {
-    title: resolution.title,
-    originalUrl,
-    domain,
-    ...(canonical !== bookmark.canonicalUrl ? { canonicalUrl: canonical } : {}),
-  } as Partial<Bookmark>);
+    await updateBookmark(bookmark.id, {
+      title: resolution.title,
+      originalUrl,
+      domain,
+      ...(canonical !== bookmark.canonicalUrl ? { canonicalUrl: canonical } : {}),
+    } as Partial<Bookmark>);
+  }
 
   await upsertMapping({
     chromeId: mapping.chromeId,
@@ -193,6 +199,62 @@ export async function handleChanged(node: InboundChanged, now = Date.now()): Pro
     lastKnownParentId: mapping.lastKnownParentId,
     eventAt: now,
   });
+}
+
+/**
+ * `ask` D2 fallback. For each field that Chrome and the store disagree on
+ * we first consult the short-lived per-field policy cache (seeded by the
+ * "Apply to all future conflicts on this field for 24h" checkbox in the
+ * modal). Cached "chrome" applies Chrome's value silently; cached "store"
+ * keeps the store side silently. Fields with no cached directive are
+ * enqueued as one `PendingConflictRow` for the overview page to surface.
+ */
+async function applyAskPolicy(
+  bookmark: Bookmark,
+  input: { chromeTitle: string; chromeUrl: string; now: number },
+): Promise<void> {
+  const { chromeTitle, chromeUrl, now } = input;
+  const chromeCanonical = canonicalize(chromeUrl);
+  const chromeCanonicalUrl = chromeCanonical.ok ? chromeCanonical.canonical : bookmark.canonicalUrl;
+
+  const conflicts: ConflictField[] = [];
+  if (chromeTitle !== bookmark.title) conflicts.push("title");
+  if (chromeCanonicalUrl !== bookmark.canonicalUrl) conflicts.push("url");
+  if (conflicts.length === 0) return;
+
+  const patch: Partial<Bookmark> = {};
+  const remaining: ConflictField[] = [];
+
+  for (const field of conflicts) {
+    const cached = await getFieldPolicy(field, now);
+    if (cached === "chrome") {
+      if (field === "title") {
+        patch.title = chromeTitle;
+      } else if (chromeCanonical.ok) {
+        patch.originalUrl = chromeUrl;
+        patch.canonicalUrl = chromeCanonical.canonical;
+        patch.domain = chromeCanonical.domain;
+      }
+    } else if (cached === "store") {
+      // keep store side silently — no patch needed
+    } else {
+      remaining.push(field);
+    }
+  }
+
+  if (Object.keys(patch).length > 0) {
+    await updateBookmark(bookmark.id, patch as Partial<Bookmark>);
+  }
+
+  if (remaining.length > 0) {
+    await enqueueConflict({
+      bookmarkId: bookmark.id,
+      chromeSide: { title: chromeTitle, url: chromeUrl },
+      storeSide: { title: bookmark.title, url: bookmark.originalUrl },
+      fields: remaining,
+      enqueuedAt: now,
+    });
+  }
 }
 
 export async function handleRemoved(chromeId: string, now = Date.now()): Promise<void> {

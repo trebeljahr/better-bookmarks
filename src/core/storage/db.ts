@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable, type Table } from "dexie";
 import type { Bookmark, ChromeMapping, Edge, PageSnapshot, Tag } from "../../shared/types";
+import type { PendingConflictRow } from "../sync/pendingConflicts";
 
 export type Posting = {
   term: string;
@@ -33,6 +34,7 @@ export type BookmarkDB = Dexie & {
   postings: Table<Posting>;
   searchIndex: Table<SearchIndexRow>;
   pageSnapshots: EntityTable<PageSnapshot, "bookmarkId">;
+  pendingConflicts: EntityTable<PendingConflictRow, "id">;
 };
 
 let cached: BookmarkDB | null = null;
@@ -58,6 +60,13 @@ export function getDB(): BookmarkDB {
   // recency without a full table walk.
   db.version(4).stores({
     pageSnapshots: "bookmarkId, capturedAt",
+  });
+  // v5: pending user-resolvable conflicts (D2 `ask` fallback). One row
+  // per (bookmarkId, unresolved-field-set) surfaced by `ConflictResolverModal`.
+  // `bookmarkId` is indexed so the enqueue path can dedupe prior rows for
+  // the same bookmark; `enqueuedAt` for ordering the queue.
+  db.version(5).stores({
+    pendingConflicts: "id, bookmarkId, enqueuedAt",
   });
   cached = db;
   return db;

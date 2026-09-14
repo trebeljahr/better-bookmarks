@@ -17,6 +17,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
+import {
+  type ConflictResolutionInput,
+  ConflictResolverModal,
+} from "@/components/ConflictResolverModal";
 import { type ActiveChip, FilterBar, type SortMode } from "@/components/FilterBar";
 import { FolderTreeSidebar } from "@/components/FolderTreeSidebar";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
@@ -57,9 +61,11 @@ import {
   setTagParent,
   upsertTag,
 } from "@/core/storage/tags";
+import { resolvePendingConflict } from "@/core/sync/resolvePendingConflict";
 import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useFolders } from "@/hooks/useFolders";
+import { usePendingConflicts } from "@/hooks/usePendingConflicts";
 import { useSearch } from "@/hooks/useSearch";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { useTags } from "@/hooks/useTags";
@@ -151,8 +157,47 @@ export const Overview = () => {
   const [tagManagerOpen, setTagManagerOpen] = useState<boolean>(false);
   const [sidebarOpen, setSidebarOpen] = useState<boolean>(false);
   const { open: shortcutHelpOpen, setOpen: setShortcutHelpOpen } = useShortcutHelp();
+  const { conflicts: pendingConflicts } = usePendingConflicts();
+  const [skippedConflictIds, setSkippedConflictIds] = useState<Set<string>>(new Set());
   const fileInput = useRef<HTMLInputElement>(null);
   const listRef = useRef<FixedSizeList | null>(null);
+
+  // Show the oldest queued conflict the user has not skipped this session.
+  // Skipping just hides one row until the modal is dismissed and re-opened
+  // (a new inbound conflict, or the page reloaded), so a bad choice can't
+  // corrupt the queue.
+  const activeConflict = useMemo(() => {
+    for (const c of pendingConflicts) if (!skippedConflictIds.has(c.id)) return c;
+    return null;
+  }, [pendingConflicts, skippedConflictIds]);
+
+  const visibleConflictCount = useMemo(
+    () => pendingConflicts.filter((c) => !skippedConflictIds.has(c.id)).length,
+    [pendingConflicts, skippedConflictIds],
+  );
+
+  const handleResolveConflict = useCallback(
+    async (input: ConflictResolutionInput) => {
+      const conflict = pendingConflicts.find((c) => c.id === input.conflictId);
+      if (!conflict) return;
+      await resolvePendingConflict({
+        conflict,
+        choices: input.choices,
+        applyToFuture: input.applyToFuture,
+      });
+      setStatus(`resolved conflict for bookmark ${conflict.bookmarkId}`);
+    },
+    [pendingConflicts],
+  );
+
+  const handleSkipConflict = useCallback(() => {
+    if (!activeConflict) return;
+    setSkippedConflictIds((prev) => {
+      const next = new Set(prev);
+      next.add(activeConflict.id);
+      return next;
+    });
+  }, [activeConflict]);
 
   const tagsFromBookmarks = useMemo(() => getTagsFromBookmarks(bookmarks), [bookmarks]);
 
@@ -824,6 +869,13 @@ export const Overview = () => {
       </Sheet>
 
       <ShortcutHelp open={shortcutHelpOpen} onOpenChange={setShortcutHelpOpen} />
+
+      <ConflictResolverModal
+        conflict={activeConflict}
+        pendingCount={visibleConflictCount}
+        onResolve={handleResolveConflict}
+        onSkip={handleSkipConflict}
+      />
     </div>
   );
 };
