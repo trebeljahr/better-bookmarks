@@ -12,7 +12,13 @@ export type UseEdgesResult = {
 };
 
 /**
- * Live view of one bookmark's manual edges + auto-suggested edges.
+ * Live view of one bookmark's stored edges (manual + auto-*) plus the
+ * unstored auto-suggested candidates from the suggester.
+ *
+ * `edges` includes every persisted edge incident to `bookmarkId`, so the
+ * detail view can group them into Manual vs Auto sections and offer the
+ * "unlink auto = delete + reject pair" behavior. `suggestions` remains
+ * the unstored candidate list surfaced by `suggestEdgesFor`.
  *
  * Edges and suggestions are refreshed on mount, whenever `bookmarkId`
  * changes, and whenever the underlying Dexie `edges` store is mutated by
@@ -32,7 +38,7 @@ export function useEdges(bookmarkId: string): UseEdgesResult {
       return;
     }
     const [nextEdges, nextSuggestions] = await Promise.all([
-      listEdgesFor(bookmarkId),
+      listEdgesFor(bookmarkId, { includeSuggested: true }),
       suggestEdgesFor(bookmarkId),
     ]);
     setEdges(nextEdges);
@@ -46,7 +52,7 @@ export function useEdges(bookmarkId: string): UseEdgesResult {
 
     const run = async () => {
       const [nextEdges, nextSuggestions] = await Promise.all([
-        listEdgesFor(bookmarkId),
+        listEdgesFor(bookmarkId, { includeSuggested: true }),
         suggestEdgesFor(bookmarkId),
       ]);
       if (!mounted) return;

@@ -20,10 +20,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { createEdge, deleteEdge } from "@/core/edges/crud";
+import { rejectEdgePair } from "@/core/edges/rejected";
 import type { SuggestedEdge } from "@/core/edges/suggest";
 import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { useEdges } from "@/hooks/useEdges";
-import type { Bookmark, ContentType, EdgeType, ReadStatus } from "@/shared/types";
+import type { Bookmark, ContentType, Edge, EdgeType, ReadStatus } from "@/shared/types";
 import { ConnectionsPanel } from "./ConnectionsPanel";
 import { WhyDuplicateTooltip } from "./WhyDuplicateTooltip";
 
@@ -110,8 +111,14 @@ export function BookmarkDetail({
     await refresh();
   };
 
-  const handleUnlink = async (edgeId: string) => {
-    await deleteEdge(edgeId);
+  const handleUnlink = async (edge: Edge) => {
+    // Auto-source edges get delete + a persistent rejection so the
+    // suggester never proposes the same pair again. Manual edges are
+    // just deleted — the user can always re-add them by hand.
+    await deleteEdge(edge.id);
+    if (edge.source !== "manual") {
+      await rejectEdgePair(edge.fromId, edge.toId);
+    }
     await refresh();
   };
 

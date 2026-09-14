@@ -1,5 +1,5 @@
 import { Check, Link2, Sparkles, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +22,10 @@ import {
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { SuggestedEdge } from "@/core/edges/suggest";
+import { search as defaultSearch } from "@/core/search";
 import type { Bookmark, Edge, EdgeType } from "@/shared/types";
+
+type SearchFn = (query: string, opts?: { limit?: number }) => Promise<Bookmark[]>;
 
 type Props = {
   bookmark: Bookmark;
@@ -30,8 +33,12 @@ type Props = {
   edges: Edge[];
   suggestions: SuggestedEdge[];
   onLink: (toId: string, type: EdgeType, note?: string) => void;
-  onUnlink: (edgeId: string) => void;
+  onUnlink: (edge: Edge) => void;
   onAcceptSuggestion: (suggestion: SuggestedEdge) => void;
+  /**
+   * Injectable for tests. Defaults to the Phase 3 `search()` runner.
+   */
+  searchFn?: SearchFn;
 };
 
 const EDGE_TYPE_OPTIONS: ReadonlyArray<{ value: EdgeType; label: string }> = [
@@ -42,6 +49,9 @@ const EDGE_TYPE_OPTIONS: ReadonlyArray<{ value: EdgeType; label: string }> = [
   { value: "supersedes", label: "Supersedes" },
   { value: "translates", label: "Translation of" },
 ];
+
+const PICKER_LIMIT = 20;
+const PICKER_DEBOUNCE_MS = 120;
 
 type LinkOption = {
   id: string;
@@ -57,6 +67,7 @@ export function ConnectionsPanel({
   onLink,
   onUnlink,
   onAcceptSuggestion,
+  searchFn,
 }: Props) {
   const [open, setOpen] = useState(false);
   const [selectedTarget, setSelectedTarget] = useState<LinkOption | null>(null);
@@ -69,16 +80,32 @@ export function ConnectionsPanel({
     return map;
   }, [allBookmarks]);
 
-  const linkOptions = useMemo<LinkOption[]>(() => {
-    const linkedIds = new Set<string>();
-    for (const e of edges) {
-      linkedIds.add(e.fromId);
-      linkedIds.add(e.toId);
+  // Group stored edges by source so the panel can render them under
+  // separate "Manual" and "Auto" headings. Auto is anything the
+  // suggester promoted (`source` starts with "auto-") or any other
+  // non-manual source we may add in the future.
+  const { manualEdges, autoEdges } = useMemo(() => {
+    const manual: Edge[] = [];
+    const auto: Edge[] = [];
+    for (const edge of edges) {
+      if (edge.source === "manual") manual.push(edge);
+      else auto.push(edge);
     }
-    return allBookmarks
-      .filter((b) => b.id !== bookmark.id && !linkedIds.has(b.id))
-      .map((b) => ({ id: b.id, label: b.title || b.canonicalUrl, domain: b.domain }));
-  }, [allBookmarks, bookmark.id, edges]);
+    return { manualEdges: manual, autoEdges: auto };
+  }, [edges]);
+
+  // Ids we should exclude from the picker: the bookmark itself + every
+  // one already linked from either direction. Recomputed with edges so
+  // freshly-linked targets disappear from the search results.
+  const excludeIds = useMemo(() => {
+    const s = new Set<string>();
+    s.add(bookmark.id);
+    for (const e of edges) {
+      s.add(e.fromId);
+      s.add(e.toId);
+    }
+    return s;
+  }, [bookmark.id, edges]);
 
   const handleSubmitLink = () => {
     if (!selectedTarget) return;
@@ -98,42 +125,25 @@ export function ConnectionsPanel({
               No connections yet. Link this bookmark to another below.
             </p>
           ) : (
-            <ul className="flex list-none flex-wrap gap-1.5 p-0">
-              {edges.map((edge) => {
-                const otherId = edge.fromId === bookmark.id ? edge.toId : edge.fromId;
-                const other = byId.get(otherId);
-                const label = other?.title || other?.canonicalUrl || otherId;
-                const directionHint =
-                  edge.directed && edge.fromId === bookmark.id
-                    ? " →"
-                    : edge.directed && edge.toId === bookmark.id
-                      ? " ←"
-                      : "";
-                return (
-                  <li key={edge.id}>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Badge variant="outline" className="gap-1 pr-1">
-                          <span className="max-w-[200px] truncate">
-                            {edge.type}
-                            {directionHint}: {label}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => onUnlink(edge.id)}
-                            aria-label="remove connection"
-                            className="rounded-sm opacity-60 hover:opacity-100"
-                          >
-                            <X className="size-3" />
-                          </button>
-                        </Badge>
-                      </TooltipTrigger>
-                      <TooltipContent>{edge.note || edge.type}</TooltipContent>
-                    </Tooltip>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="flex flex-col gap-3">
+              <EdgeGroup
+                heading="Manual"
+                subjectId={bookmark.id}
+                edges={manualEdges}
+                byId={byId}
+                onUnlink={onUnlink}
+                emptyLabel="No manual connections yet."
+              />
+              <EdgeGroup
+                heading="Auto"
+                subjectId={bookmark.id}
+                edges={autoEdges}
+                byId={byId}
+                onUnlink={onUnlink}
+                emptyLabel="No auto connections."
+                showAutoHint
+              />
+            </div>
           )}
         </section>
 
@@ -144,33 +154,23 @@ export function ConnectionsPanel({
           <div className="flex flex-col gap-2">
             <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start font-normal">
-                  {selectedTarget ? selectedTarget.label : "Search bookmarks…"}
+                <Button
+                  variant="outline"
+                  className="w-full justify-start font-normal"
+                  aria-label="link to another bookmark"
+                >
+                  {selectedTarget ? selectedTarget.label : "Link to another bookmark…"}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[320px] p-0" align="start">
-                <Command>
-                  <CommandInput placeholder="Search by title…" />
-                  <CommandList>
-                    <CommandEmpty>No matches.</CommandEmpty>
-                    <CommandGroup>
-                      {linkOptions.map((opt) => (
-                        <CommandItem
-                          key={opt.id}
-                          value={`${opt.label} ${opt.domain}`}
-                          onSelect={() => {
-                            setSelectedTarget(opt);
-                            setOpen(false);
-                          }}
-                          className="flex-col items-start gap-0"
-                        >
-                          <span className="text-sm">{opt.label}</span>
-                          <span className="text-xs text-muted-foreground">{opt.domain}</span>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </CommandList>
-                </Command>
+                <BookmarkSearchPicker
+                  excludeIds={excludeIds}
+                  searchFn={searchFn ?? defaultSearch}
+                  onPick={(opt) => {
+                    setSelectedTarget(opt);
+                    setOpen(false);
+                  }}
+                />
               </PopoverContent>
             </Popover>
             <div className="flex flex-wrap items-center gap-2">
@@ -243,5 +243,162 @@ export function ConnectionsPanel({
         </section>
       </div>
     </TooltipProvider>
+  );
+}
+
+type EdgeGroupProps = {
+  heading: string;
+  subjectId: string;
+  edges: Edge[];
+  byId: Map<string, Bookmark>;
+  onUnlink: (edge: Edge) => void;
+  emptyLabel: string;
+  showAutoHint?: boolean;
+};
+
+function EdgeGroup({
+  heading,
+  subjectId,
+  edges,
+  byId,
+  onUnlink,
+  emptyLabel,
+  showAutoHint,
+}: EdgeGroupProps) {
+  const headingId = `bb-conn-group-${heading.toLowerCase()}`;
+  return (
+    // biome-ignore lint/a11y/useSemanticElements: fieldset would need a legend + form context; a labelled group reads the same to AT.
+    <div role="group" aria-labelledby={headingId} aria-label={`${heading} connections`}>
+      <h4
+        id={headingId}
+        className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        {heading}
+      </h4>
+      {edges.length === 0 ? (
+        <p className="text-xs text-muted-foreground/80">{emptyLabel}</p>
+      ) : (
+        <ul className="flex list-none flex-wrap gap-1.5 p-0">
+          {edges.map((edge) => {
+            const otherId = edge.fromId === subjectId ? edge.toId : edge.fromId;
+            const other = byId.get(otherId);
+            const label = other?.title || other?.canonicalUrl || otherId;
+            const directionHint =
+              edge.directed && edge.fromId === subjectId
+                ? " →"
+                : edge.directed && edge.toId === subjectId
+                  ? " ←"
+                  : "";
+            const tooltipBody = showAutoHint
+              ? `${edge.note || edge.type} · removing hides this pair from future suggestions`
+              : edge.note || edge.type;
+            return (
+              <li key={edge.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="gap-1 pr-1">
+                      <span className="max-w-[200px] truncate">
+                        {edge.type}
+                        {directionHint}: {label}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onUnlink(edge)}
+                        aria-label={`remove ${heading.toLowerCase()} connection to ${label}`}
+                        className="rounded-sm opacity-60 hover:opacity-100"
+                      >
+                        <X className="size-3" />
+                      </button>
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>{tooltipBody}</TooltipContent>
+                </Tooltip>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+type BookmarkSearchPickerProps = {
+  excludeIds: Set<string>;
+  searchFn: SearchFn;
+  onPick: (opt: LinkOption) => void;
+};
+
+/**
+ * Popover body: a live search over the Phase 3 `search()` runner. cmdk's
+ * internal filter is turned off (`shouldFilter={false}`) so the query
+ * flows straight through to the ranked search backend and back into the
+ * list. Empty query returns the most recent bookmarks (search() falls
+ * back to `updatedAt desc`), which gives users a useful default set.
+ */
+function BookmarkSearchPicker({ excludeIds, searchFn, onPick }: BookmarkSearchPickerProps) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<Bookmark[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  // Guard against stale responses when the user types faster than
+  // `search()` resolves — every effect run bumps `runIdRef` and only the
+  // most recent id is allowed to write results.
+  const runIdRef = useRef(0);
+
+  useEffect(() => {
+    const runId = ++runIdRef.current;
+    setLoading(true);
+    const handle = setTimeout(async () => {
+      try {
+        const r = await searchFn(query, { limit: PICKER_LIMIT + excludeIds.size });
+        if (runId !== runIdRef.current) return;
+        setResults(r);
+      } catch (err) {
+        if (runId !== runIdRef.current) return;
+        console.error("connections search failed", err);
+        setResults([]);
+      } finally {
+        if (runId === runIdRef.current) setLoading(false);
+      }
+    }, PICKER_DEBOUNCE_MS);
+    return () => {
+      clearTimeout(handle);
+    };
+  }, [query, searchFn, excludeIds]);
+
+  const options = useMemo<LinkOption[]>(() => {
+    const out: LinkOption[] = [];
+    for (const b of results) {
+      if (excludeIds.has(b.id)) continue;
+      out.push({ id: b.id, label: b.title || b.canonicalUrl, domain: b.domain });
+      if (out.length >= PICKER_LIMIT) break;
+    }
+    return out;
+  }, [results, excludeIds]);
+
+  return (
+    <Command shouldFilter={false}>
+      <CommandInput placeholder="Search bookmarks…" value={query} onValueChange={setQuery} />
+      <CommandList>
+        {loading ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">Searching…</p>
+        ) : options.length === 0 ? (
+          <CommandEmpty>No matches.</CommandEmpty>
+        ) : (
+          <CommandGroup>
+            {options.map((opt) => (
+              <CommandItem
+                key={opt.id}
+                value={opt.id}
+                onSelect={() => onPick(opt)}
+                className="flex-col items-start gap-0"
+              >
+                <span className="text-sm">{opt.label}</span>
+                <span className="text-xs text-muted-foreground">{opt.domain}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        )}
+      </CommandList>
+    </Command>
   );
 }

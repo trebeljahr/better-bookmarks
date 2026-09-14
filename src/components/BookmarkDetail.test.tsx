@@ -1,22 +1,25 @@
 // @vitest-environment happy-dom
 
 /**
- * BookmarkDetail keyboard wiring.
+ * BookmarkDetail keyboard wiring and unlink routing.
  *
  * The drawer swallows Cmd/Ctrl+Enter as a "save now" chord so a user
  * editing the title or note can commit without reaching for the mouse.
- * This test dirties a field and asserts the chord calls `onSave` with
- * the mutated bookmark.
+ * It also owns the unlink flow: manual edges are just deleted, auto
+ * edges additionally record a rejected pair so the suggester stops
+ * proposing that pair.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
-import type { Bookmark } from "@/shared/types";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { Bookmark, Edge } from "@/shared/types";
+
+let mockEdges: Edge[] = [];
 
 // The detail drawer imports edges hooks that reach IndexedDB — stub
 // them so the render tree stays deterministic.
 vi.mock("@/hooks/useEdges", () => ({
   useEdges: () => ({
-    edges: [],
+    edges: mockEdges,
     suggestions: [],
     refresh: async () => {},
     loading: false,
@@ -27,9 +30,24 @@ vi.mock("@/hooks/useBookmarkDnd", () => ({
   useBookmarkDragSource: () => ({}),
 }));
 
+const createEdgeMock = vi.fn(async () => "edge-id");
+const deleteEdgeMock = vi.fn(async () => {});
+const rejectEdgePairMock = vi.fn(async () => ({ pair: "", createdAt: 0 }));
+
 vi.mock("@/core/edges/crud", () => ({
-  createEdge: async () => "edge-id",
-  deleteEdge: async () => {},
+  createEdge: (...args: unknown[]) => createEdgeMock(...args),
+  deleteEdge: (id: string) => deleteEdgeMock(id),
+}));
+
+vi.mock("@/core/edges/rejected", () => ({
+  rejectEdgePair: (a: string, b: string) => rejectEdgePairMock(a, b),
+}));
+
+// The ConnectionsPanel imports the search runner (which pulls in Dexie
+// under the hood). Replace it with a stub so the render tree doesn't
+// touch IndexedDB.
+vi.mock("@/core/search", () => ({
+  search: async () => [],
 }));
 
 const { render, cleanup, fireEvent, act } = await import("@testing-library/react");
@@ -52,6 +70,13 @@ const FIXTURE: Bookmark = {
   updatedAt: 1,
   capturedFrom: "manual",
 };
+
+beforeEach(() => {
+  mockEdges = [];
+  createEdgeMock.mockClear();
+  deleteEdgeMock.mockClear();
+  rejectEdgePairMock.mockClear();
+});
 
 afterEach(() => cleanup());
 
@@ -134,5 +159,76 @@ describe("BookmarkDetail keyboard shortcuts", () => {
     fireEvent.change(titleInput, { target: { value: "Edited" } });
     fireEvent.keyDown(document, { key: "Enter" });
     expect(onSave).not.toHaveBeenCalled();
+  });
+});
+
+const OTHER: Bookmark = {
+  ...FIXTURE,
+  id: "b2",
+  originalUrl: "https://example.com/b",
+  canonicalUrl: "https://example.com/b",
+  title: "Other",
+};
+
+function makeEdge(overrides: Partial<Edge> = {}): Edge {
+  return {
+    id: "e1",
+    fromId: FIXTURE.id,
+    toId: OTHER.id,
+    type: "related",
+    note: "",
+    directed: false,
+    createdAt: 1,
+    source: "manual",
+    ...overrides,
+  };
+}
+
+describe("BookmarkDetail unlink routing", () => {
+  it("manual edge: unlink calls deleteEdge and does NOT reject the pair", async () => {
+    mockEdges = [makeEdge({ id: "manual-1", source: "manual" })];
+    const { getByLabelText } = render(
+      <BookmarkDetail
+        bookmark={FIXTURE}
+        allBookmarks={[FIXTURE, OTHER]}
+        possibleTags={[]}
+        onSave={async () => {}}
+        onDelete={async () => {}}
+        onClose={() => {}}
+      />,
+    );
+    const btn = getByLabelText(/remove manual connection to Other/i);
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    expect(deleteEdgeMock).toHaveBeenCalledWith("manual-1");
+    expect(rejectEdgePairMock).not.toHaveBeenCalled();
+  });
+
+  it("auto edge: unlink calls deleteEdge AND rejectEdgePair for the pair", async () => {
+    mockEdges = [
+      makeEdge({
+        id: "auto-1",
+        source: "auto-tag",
+        fromId: FIXTURE.id,
+        toId: OTHER.id,
+      }),
+    ];
+    const { getByLabelText } = render(
+      <BookmarkDetail
+        bookmark={FIXTURE}
+        allBookmarks={[FIXTURE, OTHER]}
+        possibleTags={[]}
+        onSave={async () => {}}
+        onDelete={async () => {}}
+        onClose={() => {}}
+      />,
+    );
+    const btn = getByLabelText(/remove auto connection to Other/i);
+    await act(async () => {
+      fireEvent.click(btn);
+    });
+    expect(deleteEdgeMock).toHaveBeenCalledWith("auto-1");
+    expect(rejectEdgePairMock).toHaveBeenCalledWith(FIXTURE.id, OTHER.id);
   });
 });
