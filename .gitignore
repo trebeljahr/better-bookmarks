@@ -3,6 +3,9 @@ node_modules/
 dist/
 tmp/
 
+# benchmark output — regenerated per run
+src/core/search/.search-bench-results.json
+
 # WXT
 .wxt/
 .output/
