@@ -14,7 +14,12 @@ import {
 import { DEAD_LINK_ALARM_NAME, installDeadLinkAlarm, runDeadLinkSweep } from "@/core/maintenance";
 import { migrateLegacyStore } from "@/core/migration/legacyToV1";
 import { installOmnibox } from "@/core/omnibox";
-import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
+import {
+  ensureInvertedIndexInitialized,
+  ensureSearchIndexInitialized,
+  wireInvertedIndexer,
+  wireSearchIndexer,
+} from "@/core/search";
 import { ensureOffscreen } from "@/core/semantic";
 import { getBookmarkByRawUrl } from "@/core/storage/bookmarks";
 import { startSync } from "@/core/sync";
@@ -97,6 +102,13 @@ export default defineBackground(() => {
   wireSearchIndexer();
   ensureSearchIndexInitialized().catch((err) =>
     console.error("ensureSearchIndexInitialized failed", err),
+  );
+
+  // Boot inverted-index (per-field termFreq store): debounced live sync +
+  // full reindex on startup when the store looks thin vs the corpus.
+  wireInvertedIndexer();
+  ensureInvertedIndexInitialized().catch((err) =>
+    console.error("ensureInvertedIndexInitialized failed", err),
   );
 
   // Boot the semantic-embed offscreen document. Idempotent: ensureOffscreen()

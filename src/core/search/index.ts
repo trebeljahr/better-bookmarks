@@ -19,9 +19,14 @@ export { parseQuery, type Query, type RatingFilter, type RatingOp } from "./quer
 export { runQuery, type SearchOptions, search } from "./runner";
 export { tokenizeInverted } from "./tokenize";
 export {
+  ensureInvertedIndexInitialized,
   ensureSearchIndexInitialized,
+  flushInvertedIndexNowForTests,
   isSearchIndexerSuppressed,
+  pendingInvertedIndexTimersForTests,
+  resetInvertedWiringForTests,
   resetSearchWiringForTests,
   setSearchIndexerSuppressed,
+  wireInvertedIndexer,
   wireSearchIndexer,
 } from "./wire";

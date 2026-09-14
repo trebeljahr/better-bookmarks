@@ -13,7 +13,14 @@
 
 import type { Bookmark } from "../../shared/types";
 import { getDB } from "../storage/db";
-import { indexBookmark, reindexAll, removeBookmark } from "./indexer";
+import {
+  buildInvertedIndex,
+  fullReindex,
+  indexBookmark,
+  reindexAll,
+  removeBookmark,
+  removeFromIndex,
+} from "./indexer";
 
 let wired = false;
 let suppressed = 0;
@@ -101,4 +108,140 @@ export function resetSearchWiringForTests(): void {
   wired = false;
   initialReindexPromise = null;
   suppressed = 0;
+}
+
+// ---------------------------------------------------------------------------
+// Inverted-index (`searchIndex`) wiring.
+//
+// The postings hooks above maintain the legacy weighted-field store; these
+// hooks maintain the per-field `termFreq` store that backs the frequency
+// scoring path. Both stores coexist during the transition — a change to a
+// bookmark schedules both a postings write and a debounced searchIndex write.
+//
+// Per-bookmark debounce (200 ms): a burst of edits (autocomplete typing,
+// bulk tag apply, sync-driven fanout) collapses into one rebuild per
+// bookmark. The debounced flush re-reads the current bookmark from Dexie
+// so a create-then-delete inside the window resolves to "remove rows",
+// and an update-after-update to "index the latest version".
+// ---------------------------------------------------------------------------
+
+const INDEX_DEBOUNCE_MS = 200;
+const INITIAL_INDEX_HEURISTIC = 0.5;
+
+const invertedIndexTimers = new Map<string, ReturnType<typeof setTimeout>>();
+let invertedWired = false;
+let invertedInitPromise: Promise<void> | null = null;
+
+async function flushInvertedIndex(bookmarkId: string): Promise<void> {
+  if (!bookmarkId) return;
+  const db = getDB();
+  const bookmark = await db.bookmarks.get(bookmarkId);
+  if (!bookmark) {
+    await removeFromIndex(bookmarkId);
+    return;
+  }
+  const rows = buildInvertedIndex(bookmark);
+  await db.transaction("rw", db.searchIndex, async () => {
+    await db.searchIndex.where("bookmarkId").equals(bookmarkId).delete();
+    if (rows.length > 0) {
+      await db.searchIndex.bulkPut(rows);
+    }
+  });
+}
+
+function scheduleInvertedIndex(bookmarkId: string): void {
+  if (!bookmarkId) return;
+  if (suppressed > 0) return;
+  const existing = invertedIndexTimers.get(bookmarkId);
+  if (existing) clearTimeout(existing);
+  const timer = setTimeout(() => {
+    invertedIndexTimers.delete(bookmarkId);
+    flushInvertedIndex(bookmarkId).catch((err) => {
+      console.error("inverted-index flush failed", err);
+    });
+  }, INDEX_DEBOUNCE_MS);
+  invertedIndexTimers.set(bookmarkId, timer);
+}
+
+export function wireInvertedIndexer(): void {
+  if (invertedWired) return;
+  invertedWired = true;
+
+  const db = getDB();
+
+  db.bookmarks.hook("creating", function (this, _primKey, obj, _trans) {
+    scheduleInvertedIndex((obj as Bookmark).id);
+  });
+
+  db.bookmarks.hook("updating", function (this, _mods, primKey, _obj, _trans) {
+    scheduleInvertedIndex(primKey as string);
+  });
+
+  db.bookmarks.hook("deleting", function (this, primKey, _obj, _trans) {
+    // Debounced flush re-reads the row; a missing bookmark falls through to
+    // `removeFromIndex`, keeping the same code path for delete and upsert.
+    scheduleInvertedIndex(primKey as string);
+  });
+}
+
+/**
+ * Startup backfill for the inverted-index store. If the `searchIndex` row
+ * count is meaningfully below what a healthy corpus should produce
+ * (< bookmarks.count() × 0.5 as a rough heuristic), rebuild the whole
+ * store via `fullReindex`. The rebuild walks the corpus in 500-row chunks
+ * and logs progress via `console.info` so a large backfill is visible in
+ * the service-worker log.
+ *
+ * Idempotent and concurrent-safe: repeat callers see the same promise.
+ */
+export function ensureInvertedIndexInitialized(): Promise<void> {
+  if (invertedInitPromise) return invertedInitPromise;
+  invertedInitPromise = (async () => {
+    const db = getDB();
+    try {
+      const [indexCount, bookmarkCount] = await Promise.all([
+        db.searchIndex.count(),
+        db.bookmarks.count(),
+      ]);
+      if (bookmarkCount === 0) return;
+      if (indexCount >= bookmarkCount * INITIAL_INDEX_HEURISTIC) return;
+
+      console.info(
+        `[search] inverted index thin: ${indexCount} rows for ${bookmarkCount} bookmarks — starting full reindex`,
+      );
+      const result = await fullReindex((done, total) => {
+        console.info(`[search] fullReindex progress: ${done}/${total}`);
+      });
+      console.info(`[search] fullReindex complete: ${result.indexed} bookmarks`);
+    } catch (err) {
+      console.error("inverted-index backfill failed", err);
+      invertedInitPromise = null;
+    }
+  })();
+  return invertedInitPromise;
+}
+
+export function resetInvertedWiringForTests(): void {
+  invertedWired = false;
+  invertedInitPromise = null;
+  for (const t of invertedIndexTimers.values()) clearTimeout(t);
+  invertedIndexTimers.clear();
+}
+
+/**
+ * Test hook: bypass the debounce and flush a specific bookmark's pending
+ * write synchronously. Only meant for tests that need to observe the flush
+ * without pumping fake timers.
+ */
+export function flushInvertedIndexNowForTests(bookmarkId: string): Promise<void> {
+  const t = invertedIndexTimers.get(bookmarkId);
+  if (t) {
+    clearTimeout(t);
+    invertedIndexTimers.delete(bookmarkId);
+  }
+  return flushInvertedIndex(bookmarkId);
+}
+
+export function pendingInvertedIndexTimersForTests(): number {
+  return invertedIndexTimers.size;
 }
