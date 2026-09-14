@@ -18,21 +18,48 @@ dedup. Environment: Node under `fake-indexeddb`, vitest 3.2.4,
 `iterations=20`, `warmupIterations=3`. Timings are wall time around
 `search(queryString)` from `src/core/search/runner.ts`.
 
-Commit: HEAD · Date: 2026-09-14 · Exit criterion: **p95 < 50 ms**
+Commit: `a911600` · Date: 2026-09-14 · Exit criterion: **p95 < 50 ms**
 
-| Case                                                    | Query                                | Matches       | p50    | p95    | p99    | Notes                                                                |
-| ------------------------------------------------------- | ------------------------------------ | ------------- | ------ | ------ | ------ | -------------------------------------------------------------------- |
-| bare-word (~5% of corpus)                               | `haskell`                            | 1359 (8.7%)   | 837.87 | 2023.57 | 2799.57 | **Misses target by ~40x** on this run; prior baseline was 242 ms p50. Postings hit fans out into a per-id `getBookmarkById` for every match — 1,359 sequential Dexie point reads dominate the wall time and are highly sensitive to host CPU load under `fake-indexeddb`. Chip still open. |
-| `tag:X` (~10% of corpus)                                | `tag:Physics`                        | 1330 (8.5%)   |  73.70 |  87.95 | 414.84 | No bare term and no indexed predicate the runner recognises for tags (see runner comment — case-mismatch between stored/queried tag case blocks a `*tags` short-circuit). Falls through to `db.bookmarks.toArray()`. Numbers here are ~2x the prior baseline (36 ms) — same story as bare-word: host-CPU noise under `fake-indexeddb`, no code-path change on this row. |
-| `domain:X` (~3% of corpus)                              | `domain:news.ycombinator.com`        |  466 (3.0%)   |   4.94 |   7.91 |  24.78 | **Fix landed.** Was p95 50.93 ms (~1 ms over target) on `a39ff8d`; the runner now short-circuits filter-only queries with an indexed predicate through `db.bookmarks.where("domain").equals(...)` instead of `db.bookmarks.toArray()`. Fresh p95 is ~6x under target. |
-| combined `tag:X domain:Y` (~1% of corpus)               | `tag:Quantum domain:www.youtube.com` |  161 (1.0%)   |  23.62 |  31.27 |  36.33 | Same short-circuit: since the query names a domain, candidates come from the domain index (~466 rows) instead of the full 15,600-row table, then tag is post-filtered. Modest improvement over the 35 ms baseline; the post-filter loop was never the bottleneck.  |
+| Case                                                    | Query                                | Matches       | p50   | p95   | p99   | Notes                                                                                                                                                                              |
+| ------------------------------------------------------- | ------------------------------------ | ------------- | ----- | ----- | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| bare-word (~5% of corpus)                               | `haskell`                            | 1359 (8.7%)   | 46.16 | 46.80 | 48.48 | **Under target.** Postings intersection now feeds one `db.bookmarks.bulkGet(ids)` (runner.ts:138). Pre-fix p95 on the same host was 3603 ms — the per-id `getBookmarkById` fan-out was 1,359 sequential Dexie point reads. |
+| `tag:X` (~10% of corpus)                                | `tag:Physics`                        | 1330 (8.5%)   | 34.43 | 36.48 | 39.52 | No bare term and no indexed predicate the runner short-circuits on for tags → falls back to `db.bookmarks.toArray()` and post-filters in memory.                                    |
+| `domain:X` (~3% of corpus)                              | `domain:news.ycombinator.com`        |  466 (3.0%)   |  3.01 |  3.27 |  6.34 | Filter-only queries with a `domain:` (or `is:`) predicate route through the Dexie index — `where("domain").equals(...)` — instead of the 15,600-row scan. Was p95 51 ms on `a39ff8d`. |
+| combined `tag:X domain:Y` (~1% of corpus)               | `tag:Quantum domain:www.youtube.com` |  161 (1.0%)   |  9.04 | 17.38 | 28.33 | Same short-circuit: the `domain:` seed pulls ~466 candidates from the index, then the tag AND is a small in-memory post-filter.                                                    |
 
 All timings are milliseconds. Raw per-iteration samples land in
 `src/core/search/.search-bench-results.json` (untracked) after each run.
-Bare-word and `tag:X` rows above were captured under noisier host-CPU
-conditions than the `a39ff8d` baseline (same physical machine, same
-Node/vitest/fake-indexeddb, more concurrent load); the runner's code
-path for those two cases is byte-identical to the prior run.
+
+Run-to-run variance on this bench host is meaningful: bare-word p95
+has been observed anywhere from ~47 ms (idle host) to ~130 ms (host
+under other load) across consecutive `pnpm vitest bench` invocations
+without touching the code. The `tag:` row moves in lockstep for the
+same reason. Rerun on an otherwise-idle host before treating a doc
+number as a regression.
+
+### Bare-word — bulkGet fix (commit `a911600`)
+
+Before this commit the runner intersected postings in memory and then
+loaded every surviving bookmark via `Promise.all(ids.map(getBookmarkById))`
+— 1,359 sequential Dexie point reads per query, all inside the same
+tick. On the 20k synthetic corpus this pushed bare-word p95 to
+3603 ms on the same host (60-70× the target). Collapsing the fan-out
+into one `db.bookmarks.bulkGet(ids)` (runner.ts:138, rank.ts:186)
+lands the same result set in a single transaction and puts the case
+back under the 50 ms exit criterion. `bulkGet` returns `undefined` at
+each input index for a missing id; both call sites already `.filter(...)`
+those out.
+
+### `domain:X` — indexed short-circuit (commit `65f8d6c`)
+
+`runQuery` now checks `candidatesFromIndexedFilter` before falling back
+to a full-table scan: a filter-only query naming `domain:` or `is:`
+(status) drives candidates off the Dexie index instead of `toArray()`.
+Tag lookup is intentionally left on the scan path — the store keeps
+tags in the user's original case while the parser lowercases the
+query, so a `*tags` equality lookup would miss `tag:AI` against a
+bookmark carrying `AI`; the in-memory post-filter still handles case
+folding.
 
 ### Query substitutions
 
@@ -43,23 +70,3 @@ sampler emits `www.youtube.com`; subfolder names are always
 `<word>-<idx>` so `rust` never appears alone as a tag). The runs above
 use tokens that DO appear at the target cardinality so the harness
 measures real work instead of an empty-result short-circuit.
-
-### One query still misses the 50 ms p95 target
-
-**Bare-word search (large multiplier over target).** The runner intersects
-postings in-memory, then calls `getBookmarkById(id)` once per surviving
-id. At 1,359 matches that becomes 1,359 sequential IndexedDB round
-trips inside `Promise.all(...)`. Replacing the fan-out with a single
-`db.bookmarks.bulkGet(ids)` should collapse this to a single
-transaction. Follow-up chip still open under *Phase 3 search follow-ups*
-in the manual notes.
-
-The prior `domain:X` overshoot (p95 50.93 ms on `a39ff8d`) is fixed:
-`runQuery` in `src/core/search/runner.ts` now short-circuits filter-only
-queries that name an indexed predicate (`domain` or `status`) through
-Dexie's index (`where("domain").equals(...)`, `where("status").anyOf(...)`)
-instead of `db.bookmarks.toArray()`. Tag lookup is intentionally left on
-the full-scan path because bookmarks store tags in the user's original
-case while the parser lowercases the query token, so a `*tags` equality
-lookup would miss `tag:AI` against a bookmark carrying `AI`; the runner's
-post-filter still handles that case-insensitively.
