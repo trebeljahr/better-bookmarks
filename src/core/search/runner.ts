@@ -16,7 +16,7 @@
 
 import type { Bookmark } from "../../shared/types";
 import { getBookmarkById } from "../storage/bookmarks";
-import { getDB, type Posting } from "../storage/db";
+import { type BookmarkDB, getDB, type Posting } from "../storage/db";
 import { bookmarkIdsInFolders } from "../storage/folders";
 import { getPostingsForTerm } from "./indexer";
 import { type Query, ratingMatches } from "./query";
@@ -38,6 +38,36 @@ function ratingBoost(rating: number | null): number {
   const r = rating ?? 0;
   // Floor at a tiny constant so unrated bookmarks still rank, just lower.
   return Math.max(Math.log(1 + r / 2), 0.01);
+}
+
+/**
+ * Filter-only short-circuit: when the query has no bare terms but names
+ * an indexed predicate (`domain` or `status`), narrow candidates via the
+ * Dexie index instead of scanning every row. The remaining filters
+ * (excludeTags, rating, folders, untagged, cross-cutting tag AND) still
+ * post-filter over this smaller set.
+ *
+ * Tag lookup is intentionally not routed through `*tags` here: bookmarks
+ * store tags in the user's original case while the parser lowercases the
+ * query token, so an index equality lookup would miss `tag:AI` against a
+ * bookmark carrying `AI`. The full-scan fallback keeps its case-insensitive
+ * post-filter path.
+ *
+ * Returns `null` when no indexed predicate applies, so the caller falls
+ * through to the full-table scan.
+ */
+async function candidatesFromIndexedFilter(q: Query, db: BookmarkDB): Promise<Bookmark[] | null> {
+  if (q.domains.length > 0) {
+    return q.domains.length === 1
+      ? db.bookmarks.where("domain").equals(q.domains[0]!).toArray()
+      : db.bookmarks.where("domain").anyOf(q.domains).toArray();
+  }
+  if (q.statuses.length > 0) {
+    return q.statuses.length === 1
+      ? db.bookmarks.where("status").equals(q.statuses[0]!).toArray()
+      : db.bookmarks.where("status").anyOf(q.statuses).toArray();
+  }
+  return null;
 }
 
 /**
@@ -92,7 +122,9 @@ export async function runQuery(q: Query, opts: SearchOptions = {}): Promise<Book
     if (termScores.size === 0) return [];
   }
 
-  // Candidate bookmark ids: either the term-intersection result, or "all".
+  // Candidate bookmark ids: either the term-intersection result, an
+  // index-narrowed slice when the query is filter-only with at least one
+  // indexed predicate, or "all".
   const db = getDB();
   let candidates: Bookmark[];
   if (termScores) {
@@ -101,7 +133,7 @@ export async function runQuery(q: Query, opts: SearchOptions = {}): Promise<Book
       (b): b is Bookmark => b !== undefined,
     );
   } else {
-    candidates = await db.bookmarks.toArray();
+    candidates = (await candidatesFromIndexedFilter(q, db)) ?? (await db.bookmarks.toArray());
   }
 
   // Resolve folder filters into a bookmark-id allow list (union of
