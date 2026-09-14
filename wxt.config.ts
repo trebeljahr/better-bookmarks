@@ -42,7 +42,6 @@ export default defineConfig({
       "bookmarks",
       "downloads",
       "alarms",
-      "activeTab",
       "sidePanel",
       "contextMenus",
       "offscreen",

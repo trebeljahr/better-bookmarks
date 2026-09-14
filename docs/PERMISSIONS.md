@@ -2,7 +2,9 @@
 
 Every Chrome permission requested by `wxt.config.ts` is listed below with the API
 surface that justifies it (from `grep` over `src/`). One-sentence rationale each.
-Audited 2026-09-08 against manifest v1.0.
+Audited 2026-09-08 against manifest v1.0. `activeTab` removed 2026-09-14
+after a follow-up grep confirmed zero callers (see the removal commit
+recorded in `CHANGELOG.md`).
 
 ## Manifest `permissions`
 
@@ -11,7 +13,7 @@ Audited 2026-09-08 against manifest v1.0.
 - **bookmarks** — Used by `src/core/sync/reconcile.ts`, `src/core/sync/outbound.ts`, `src/core/sync/initialImport.ts`, `src/core/sync/index.ts`, and `src/core/backup/chromeTreeBackup.ts` to read the Chrome bookmarks tree, mirror our edits back into Chrome, and snapshot the raw tree for backup.
 - **downloads** — Used by `src/core/backup/autoBackup.ts` and `src/core/backup/chromeTreeBackup.ts` to write JSON backups to `~/Downloads` and prune old rolling-N entries via `chrome.downloads.search`/`erase`.
 - **alarms** — Used by `src/core/enrichment/scheduleAlarm.ts`, `src/core/maintenance/scheduleAlarm.ts`, `src/core/backup/scheduleAlarm.ts`, and the dispatcher in `src/entrypoints/background.ts` to schedule the periodic enrichment sweep, dead-link check, and auto-backup.
-- **activeTab** — NO CALLERS. No `chrome.scripting.*`, `chrome.tabs.executeScript`, `insertCSS`, or activeTab-gated API is used in `src/`. Removal candidate — tracked in the GitHub issue linked from the PR that landed this file. Do not remove silently; a downstream feature (e.g. a future "capture current tab HTML" button) may have been the original motivation.
+- **activeTab** — REMOVED 2026-09-14 (closes issue #1; see `CHANGELOG.md`). Zero callers of `chrome.scripting.*`, `chrome.tabs.executeScript`, or `insertCSS`; all tab access uses the declared `tabs` permission plus `<all_urls>` host_permissions. Re-add only if a temporary-grant flow (e.g. capture current tab HTML) lands.
 - **sidePanel** — Used by `src/entrypoints/background.ts` (the `open_sidepanel` command handler) to call `chrome.sidePanel.open({ windowId })` from the service worker.
 - **contextMenus** — Used by `src/core/contextMenu/contextMenuHandler.ts` to register the "Add to Better Bookmarks" / "Add with note" / per-tag right-click menu items and dispatch their clicks.
 - **offscreen** — Used by `src/core/semantic/bridge.ts` and `src/entrypoints/background.ts` to spawn the offscreen document that runs `@huggingface/transformers` (WebAssembly + Web Workers, which the MV3 service worker cannot host directly).

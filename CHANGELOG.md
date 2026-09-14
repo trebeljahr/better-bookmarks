@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Removed
+
+- Dropped the `activeTab` manifest permission. The permissions audit
+  (`docs/PERMISSIONS.md`) found zero callers of any `activeTab`-gated API —
+  no `chrome.scripting.*`, no `chrome.tabs.executeScript`, no `insertCSS` — so
+  the extension's install prompt no longer asks for it. All tab access still
+  runs through the declared `tabs` permission plus `<all_urls>`
+  host_permissions. Closes trebeljahr/better-bookmarks#1.
+
 ## [1.0.0-rc.1] — 2026-09-13
 
 First release candidate. Summarises the full development cycle since project
