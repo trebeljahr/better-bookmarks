@@ -3,7 +3,7 @@
  */
 
 import { ExternalLink, Trash2 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Tags from "@/components/Tags";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,16 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { acceptAutoEdge, acceptAutoEdges, rejectAutoEdge } from "@/core/edges/actions";
 import { createEdge, deleteEdge } from "@/core/edges/crud";
 import { rejectEdgePair } from "@/core/edges/rejected";
 import type { SuggestedEdge } from "@/core/edges/suggest";
 import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { useEdges } from "@/hooks/useEdges";
+import { useSuggestedConnections } from "@/hooks/useSuggestedConnections";
 import type { Bookmark, ContentType, Edge, EdgeType, ReadStatus } from "@/shared/types";
 import { ConnectionsPanel } from "./ConnectionsPanel";
+import { SuggestedConnectionsPanel } from "./SuggestedConnectionsPanel";
 import { WhyDuplicateTooltip } from "./WhyDuplicateTooltip";
 
 type Props = {
@@ -64,6 +67,12 @@ export function BookmarkDetail({
 }: Props) {
   const [draft, setDraft] = useState<Bookmark>(bookmark);
   const { edges, suggestions, refresh } = useEdges(bookmark.id);
+  const { edges: autoEdges } = useSuggestedConnections({ bookmarkId: bookmark.id, limit: 10 });
+  const bookmarksById = useMemo(() => {
+    const m = new Map<string, Bookmark>();
+    for (const b of allBookmarks) m.set(b.id, b);
+    return m;
+  }, [allBookmarks]);
 
   useEffect(() => {
     setDraft(bookmark);
@@ -131,6 +140,22 @@ export function BookmarkDetail({
       directed: s.directed,
       source: "manual",
     });
+    await refresh();
+  };
+
+  const handleAcceptAuto = async (e: Edge) => {
+    await acceptAutoEdge(e.id);
+    await refresh();
+  };
+
+  const handleRejectAuto = async (e: Edge) => {
+    await rejectAutoEdge(e);
+    await refresh();
+  };
+
+  const handleBatchAcceptAuto = async (es: readonly Edge[]) => {
+    if (es.length === 0) return;
+    await acceptAutoEdges(es.map((e) => e.id));
     await refresh();
   };
 
@@ -310,6 +335,18 @@ export function BookmarkDetail({
         onLink={handleLink}
         onUnlink={handleUnlink}
         onAcceptSuggestion={handleAcceptSuggestion}
+      />
+
+      <Separator />
+
+      <SuggestedConnectionsPanel
+        title="Suggested connections (auto)"
+        emptyMessage="No auto-suggestions for this bookmark yet. The background sweep runs on a schedule and surfaces high-signal pairs here."
+        edges={autoEdges}
+        bookmarksById={bookmarksById}
+        onAccept={handleAcceptAuto}
+        onReject={handleRejectAuto}
+        onBatchAccept={handleBatchAcceptAuto}
       />
     </div>
   );

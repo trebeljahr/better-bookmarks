@@ -24,6 +24,7 @@ import {
 import { type ActiveChip, FilterBar, type SortMode } from "@/components/FilterBar";
 import { FolderTreeSidebar } from "@/components/FolderTreeSidebar";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
+import { SuggestedConnectionsPanel } from "@/components/SuggestedConnectionsPanel";
 import { TagManager } from "@/components/TagManager";
 import { TagTreeSidebar } from "@/components/TagTreeSidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -39,6 +40,7 @@ import {
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
 import { bulkAddTag, bulkDelete, bulkRemoveTag, bulkSetRating, bulkSetStatus } from "@/core/bulk";
 import { loadSampleBookmarks } from "@/core/dev/sampleBookmarks";
+import { acceptAutoEdge, acceptAutoEdges, rejectAutoEdge } from "@/core/edges/actions";
 import {
   exportJson,
   exportNetscape,
@@ -69,11 +71,12 @@ import { useFolders } from "@/hooks/useFolders";
 import { usePendingConflicts } from "@/hooks/usePendingConflicts";
 import { useSearch } from "@/hooks/useSearch";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
+import { useSuggestedConnections } from "@/hooks/useSuggestedConnections";
 import { useTags } from "@/hooks/useTags";
 import { readHashParams, writeHashParams } from "@/lib/hash";
 import { formatRelativeTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
-import type { ReadStatus } from "@/shared/types";
+import type { Edge, ReadStatus } from "@/shared/types";
 
 wireSearchIndexer();
 ensureSearchIndexInitialized().catch((err) =>
@@ -561,6 +564,29 @@ export const Overview = () => {
     setStatus(`deleted ${result.deleted} bookmarks`);
   }, [bulkSelected, clearBulk]);
 
+  // Global "Suggested connections" panel — top-K auto edges across the
+  // corpus, ranked by strength. The panel renders whatever the sweep has
+  // written; the accept/reject handlers below persist the user's calls.
+  const { edges: globalSuggestedEdges } = useSuggestedConnections({ limit: 10 });
+  const bookmarksById = useMemo(() => {
+    const m = new Map<string, Bookmark>();
+    for (const b of bookmarks) m.set(b.id, b);
+    return m;
+  }, [bookmarks]);
+  const handleAcceptSuggestedEdge = useCallback(async (edge: Edge) => {
+    await acceptAutoEdge(edge.id);
+    setStatus("suggestion accepted");
+  }, []);
+  const handleRejectSuggestedEdge = useCallback(async (edge: Edge) => {
+    await rejectAutoEdge(edge);
+    setStatus("suggestion rejected");
+  }, []);
+  const handleBatchAcceptSuggested = useCallback(async (edges: readonly Edge[]) => {
+    if (edges.length === 0) return;
+    const result = await acceptAutoEdges(edges.map((e) => e.id));
+    setStatus(`accepted ${result.upgraded} suggestions`);
+  }, []);
+
   const handleSaveDetail = async (updated: Bookmark) => {
     await updateBookmark(updated.id, {
       title: updated.title,
@@ -1006,6 +1032,18 @@ export const Overview = () => {
               onDelete={handleBulkDelete}
               onDropAdd={addIdsToBulk}
             />
+          )}
+
+          {globalSuggestedEdges.length > 0 && (
+            <div className="rounded-md border bg-card p-3">
+              <SuggestedConnectionsPanel
+                edges={globalSuggestedEdges}
+                bookmarksById={bookmarksById}
+                onAccept={handleAcceptSuggestedEdge}
+                onReject={handleRejectSuggestedEdge}
+                onBatchAccept={handleBatchAcceptSuggested}
+              />
+            </div>
           )}
 
           <div className="rounded-md border">
