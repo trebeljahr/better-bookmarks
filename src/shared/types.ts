@@ -106,6 +106,19 @@ export type Edge = {
   directed: boolean;
   createdAt: number;
   source: EdgeSource;
+  /**
+   * Numeric score for auto-suggested edges (D13). Higher = stronger
+   * signal. Undefined on manual edges. Written by the background
+   * auto-suggester so the UI can rank; ignored for the manual flow.
+   */
+  strength?: number;
+  /**
+   * Human/machine-readable factors that produced an auto edge, e.g.
+   * `['sharedTag:react','sharedDomain','textSimilarity:0.62']`. Undefined
+   * on manual edges. Kept as a plain string list so a factor can encode
+   * its own value without a discriminated union per rule kind.
+   */
+  sourceRules?: string[];
 };
 
 /**
@@ -225,6 +238,12 @@ export type Settings = {
   searchWeightRating: number;
   searchWeightTagMatch: number;
   searchWeightTermFreq: number;
+  // Auto-edge suggester (D13). When true the SW runs a chunked pair-scan
+  // on a chrome.alarms schedule and persists candidates as `auto-*`
+  // edges. Off produces no automatic suggestions but manual edges and
+  // the read-side `suggestEdgesFor` still work.
+  autoEdgeSuggestEnabled: boolean;
+  autoEdgeSuggestIntervalMin: number;
 };
 
 export type CanonicalizationOverrides = {
@@ -270,4 +289,6 @@ export const DEFAULT_SETTINGS: Settings = {
   searchWeightRating: 0.2,
   searchWeightTagMatch: 0.3,
   searchWeightTermFreq: 0.2,
+  autoEdgeSuggestEnabled: true,
+  autoEdgeSuggestIntervalMin: 720,
 };

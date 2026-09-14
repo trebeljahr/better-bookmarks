@@ -7,6 +7,11 @@ import {
 import { wireUnreadBadge } from "@/core/badge";
 import { installContextMenu } from "@/core/contextMenu";
 import {
+  AUTO_EDGE_SUGGEST_ALARM_NAME,
+  installAutoEdgeSuggestAlarm,
+  runAutoEdgeSuggestSweepIfEnabled,
+} from "@/core/edges";
+import {
   ENRICHMENT_ALARM_NAME,
   installEnrichmentAlarm,
   runEnrichmentSweepIfEnabled,
@@ -126,11 +131,18 @@ export default defineBackground(() => {
       runDeadLinkSweep().catch((err) => console.error("dead-link sweep failed", err));
     } else if (alarm.name === ENRICHMENT_ALARM_NAME) {
       runEnrichmentSweepIfEnabled().catch((err) => console.error("enrichment sweep failed", err));
+    } else if (alarm.name === AUTO_EDGE_SUGGEST_ALARM_NAME) {
+      runAutoEdgeSuggestSweepIfEnabled().catch((err) =>
+        console.error("auto-edge-suggest sweep failed", err),
+      );
     }
   });
   installBackupAlarm().catch((err) => console.error("installBackupAlarm failed", err));
   installDeadLinkAlarm().catch((err) => console.error("installDeadLinkAlarm failed", err));
   installEnrichmentAlarm().catch((err) => console.error("installEnrichmentAlarm failed", err));
+  installAutoEdgeSuggestAlarm().catch((err) =>
+    console.error("installAutoEdgeSuggestAlarm failed", err),
+  );
 
   // Omnibox: register `bb` keyword listeners.
   installOmnibox();
