@@ -5,6 +5,8 @@ import {
   Filter,
   HeartPulse,
   Keyboard,
+  List as ListIcon,
+  Network as NetworkIcon,
   Pencil,
   Settings as SettingsIcon,
   Star,
@@ -13,7 +15,7 @@ import {
   Upload,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { BulkActionsBar } from "@/components/BulkActionsBar";
@@ -65,11 +67,13 @@ import {
   upsertTag,
 } from "@/core/storage/tags";
 import { resolvePendingConflict } from "@/core/sync/resolvePendingConflict";
+import { useAllEdges } from "@/hooks/useAllEdges";
 import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useFolders } from "@/hooks/useFolders";
 import { usePendingConflicts } from "@/hooks/usePendingConflicts";
 import { useSearch } from "@/hooks/useSearch";
+import { useSettings } from "@/hooks/useSettings";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { useSuggestedConnections } from "@/hooks/useSuggestedConnections";
 import { useTags } from "@/hooks/useTags";
@@ -84,6 +88,13 @@ ensureSearchIndexInitialized().catch((err) =>
 );
 
 const FILTER_ONLY_LIMIT = 2000;
+
+// Dynamic import so the graph module (SVG renderer, simulation math)
+// only loads when the user actually opens the tab. Keeps the default
+// overview bundle small when settings.graphViewEnabled is off.
+const GraphView = lazy(() => import("@/components/GraphView"));
+
+type ViewMode = "list" | "graph";
 
 function getTagsFromBookmarks(bookmarks: Bookmark[]): string[] {
   const all = new Set<string>();
@@ -165,6 +176,18 @@ export const Overview = () => {
   const { open: shortcutHelpOpen, setOpen: setShortcutHelpOpen } = useShortcutHelp();
   const { conflicts: pendingConflicts } = usePendingConflicts();
   const [skippedConflictIds, setSkippedConflictIds] = useState<Set<string>>(new Set());
+  const { settings } = useSettings();
+  const graphViewEnabled = settings.graphViewEnabled;
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  // If the setting is turned off while the graph tab is active, fall
+  // back to the list so we don't get stuck rendering a disabled tab.
+  useEffect(() => {
+    if (!graphViewEnabled && viewMode === "graph") setViewMode("list");
+  }, [graphViewEnabled, viewMode]);
+  // The graph needs every edge in the store to intersect with the
+  // visible subset. Only mount the hook when the setting is enabled
+  // so the Dexie live subscription costs nothing on the default path.
+  const { edges: allEdges } = useAllEdges({ enabled: graphViewEnabled });
   const fileInput = useRef<HTMLInputElement>(null);
   const listRef = useRef<FixedSizeList | null>(null);
   const selectionHydrated = useRef(false);
@@ -1046,18 +1069,71 @@ export const Overview = () => {
             </div>
           )}
 
-          <div className="rounded-md border">
-            <FixedSizeList
-              ref={listRef}
-              height={Math.min(700, Math.max(300, window.innerHeight - 280))}
-              width="100%"
-              itemSize={72}
-              itemCount={displayed.length}
-              overscanCount={5}
+          {graphViewEnabled && (
+            <div
+              className="flex items-center gap-1 rounded-md border bg-muted/30 p-1 self-start"
+              role="tablist"
+              aria-label="overview view mode"
             >
-              {renderRow}
-            </FixedSizeList>
-          </div>
+              <Button
+                variant={viewMode === "list" ? "default" : "ghost"}
+                size="sm"
+                role="tab"
+                aria-selected={viewMode === "list"}
+                aria-controls="overview-list-panel"
+                onClick={() => setViewMode("list")}
+              >
+                <ListIcon /> List
+              </Button>
+              <Button
+                variant={viewMode === "graph" ? "default" : "ghost"}
+                size="sm"
+                role="tab"
+                aria-selected={viewMode === "graph"}
+                aria-controls="overview-graph-panel"
+                onClick={() => setViewMode("graph")}
+              >
+                <NetworkIcon /> Graph
+              </Button>
+            </div>
+          )}
+
+          {viewMode === "list" || !graphViewEnabled ? (
+            <div
+              id="overview-list-panel"
+              role="tabpanel"
+              aria-label="bookmark list"
+              className="rounded-md border"
+            >
+              <FixedSizeList
+                ref={listRef}
+                height={Math.min(700, Math.max(300, window.innerHeight - 280))}
+                width="100%"
+                itemSize={72}
+                itemCount={displayed.length}
+                overscanCount={5}
+              >
+                {renderRow}
+              </FixedSizeList>
+            </div>
+          ) : (
+            <div id="overview-graph-panel" role="tabpanel" aria-label="bookmark graph">
+              <Suspense
+                fallback={
+                  <div className="rounded-md border p-8 text-center text-sm text-muted-foreground">
+                    Loading graph…
+                  </div>
+                }
+              >
+                <GraphView
+                  visibleBookmarks={displayed}
+                  allEdges={allEdges}
+                  tags={tagRecords}
+                  onOpenBookmark={(id) => setSelectedId(id)}
+                />
+              </Suspense>
+            </div>
+          )}
         </div>
       </div>
 

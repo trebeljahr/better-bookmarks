@@ -244,6 +244,12 @@ export type Settings = {
   // the read-side `suggestEdgesFor` still work.
   autoEdgeSuggestEnabled: boolean;
   autoEdgeSuggestIntervalMin: number;
+  // Overview graph view. Off by default. When true, the overview renders
+  // an extra "Graph" tab whose module is dynamically imported so the
+  // list-only default bundle stays small. Node = bookmark, edge = Edge;
+  // only the currently-visible query subset is drawn, capped at
+  // GRAPH_NODE_CAP with a hidden-count badge and a console.info log.
+  graphViewEnabled: boolean;
 };
 
 export type CanonicalizationOverrides = {
@@ -291,4 +297,5 @@ export const DEFAULT_SETTINGS: Settings = {
   searchWeightTermFreq: 0.2,
   autoEdgeSuggestEnabled: true,
   autoEdgeSuggestIntervalMin: 720,
+  graphViewEnabled: false,
 };

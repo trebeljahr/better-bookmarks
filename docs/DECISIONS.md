@@ -313,3 +313,30 @@ Today: free strings on the bookmark record.
 
 **Recommendation: case-insensitive match, display-case preserved.**
 Implementation: secondary index on `lowercaseName`.
+
+---
+
+## D19. Graph view: hand-rolled vs. d3-force — **DECIDED: hand-rolled**
+
+Phase-4 exit criteria included an optional "force-directed layout
+over a filtered subset" (see [ROADMAP.md](ROADMAP.md#phase-4—connections-and-graph)).
+
+**Choice A — hand-rolled velocity-Verlet in `src/core/graph/layout.ts`**
+- Pros: zero dep, ~2 KB shipped, no unbounded worker-off-main-thread
+  contract to satisfy, testable as a pure function (no DOM),
+  deterministic seed via `initialLayout`.
+- Cons: no Barnes-Hut → O(N^2) repulsion; only viable because we
+  cap the drawable subset at `GRAPH_NODE_CAP = 200`.
+
+**Choice B — d3-force**
+- Pros: battle-tested, quadtree repulsion, extensible force graph.
+- Cons: `d3-force` alone is ~30 KB gz once you also pull the
+  quadtree; the ticket's own bar was "< 30 KB gz — otherwise
+  hand-rolled".
+
+**Recommendation: hand-rolled**, gated behind `settings.graphViewEnabled`
+(default false) with the module dynamically imported so the default
+overview bundle pays nothing. Cap at 200 visible nodes, dropped
+count logged via `console.info` and surfaced as a "N nodes hidden"
+badge. Revisit if we ever want a >1k-node view — that's the point
+where a proper Barnes-Hut engine earns its keep.

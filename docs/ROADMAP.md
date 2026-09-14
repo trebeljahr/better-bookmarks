@@ -94,7 +94,9 @@ Goal: bookmarks gain context by linking to each other.
    rank (see [DECISIONS.md](DECISIONS.md) D13).
 4. "Suggested connections" panel in the overview.
 5. Graph view (optional): force-directed layout over a filtered
-   subset.
+   subset. Shipped in `src/core/graph/*` + `src/components/GraphView.tsx`,
+   gated by `settings.graphViewEnabled` (default off). See
+   [DECISIONS.md](DECISIONS.md#d19-graph-view-hand-rolled-vs-d3-force--decided-hand-rolled).
 
 Exit criteria: a bookmark detail view shows its edges and at least
 three useful auto-suggestions on a typical record.

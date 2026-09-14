@@ -472,6 +472,25 @@ export const Options = () => {
         </div>
       </Section>
 
+      <Section title="Graph view (experimental)">
+        <div className="flex items-start gap-2">
+          <Switch
+            id="graphViewEnabled"
+            checked={settings.graphViewEnabled}
+            onCheckedChange={(v) => update({ graphViewEnabled: v })}
+          />
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="graphViewEnabled">Show a graph view on the overview page</Label>
+            <p className="text-xs text-muted-foreground">
+              Adds a "Graph" tab beside the list. Nodes are bookmarks, edges are the connections you
+              created (manual and auto-suggested); edge width scales with strength. Only the
+              currently-visible search result is drawn, capped at 200 nodes. The graph module is
+              only loaded when you switch this on, so leaving it off has no bundle cost.
+            </p>
+          </div>
+        </div>
+      </Section>
+
       <Section title="Auto-backup">
         <div className="flex items-center gap-2">
           <Switch
