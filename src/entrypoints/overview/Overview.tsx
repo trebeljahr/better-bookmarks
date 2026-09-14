@@ -679,6 +679,15 @@ export const Overview = () => {
         }
       }
       if (isTypingTarget(ev.target)) return;
+      // Ignore chords that carry a modifier — those are reserved for
+      // native or browser-command bindings (Cmd+Enter, Ctrl+F, …). Only
+      // bare single-key strokes drive the overview shortcut map.
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      // Silence single-letter shortcuts while a modal is on top. Those
+      // surfaces own their own key handling (detail: Cmd+Enter to save;
+      // tag manager & help overlay: Esc to close) and pass-through
+      // "d" would still delete the row underneath the sheet.
+      if (selectedId || tagManagerOpen || shortcutHelpOpen) return;
 
       switch (ev.key) {
         case "j":
@@ -719,17 +728,90 @@ export const Overview = () => {
           if (b) window.open(b.originalUrl, "_blank", "noopener,noreferrer");
           break;
         }
+        case "n": {
+          ev.preventDefault();
+          void handleBookmarkThisTab();
+          break;
+        }
+        case "a": {
+          ev.preventDefault();
+          if (displayed.length === 0) break;
+          addIdsToBulk(displayed.map((b) => b.id));
+          setStatus(`selected all ${displayed.length} visible bookmarks`);
+          break;
+        }
+        case "t": {
+          ev.preventDefault();
+          const ids =
+            bulkSelected.size > 0
+              ? Array.from(bulkSelected)
+              : displayed[cursorIndex]
+                ? [displayed[cursorIndex].id]
+                : [];
+          if (ids.length === 0) break;
+          const tag = window.prompt(
+            `Add tag to ${ids.length} bookmark${ids.length === 1 ? "" : "s"}:`,
+          );
+          if (!tag) break;
+          const trimmed = tag.trim();
+          if (!trimmed) break;
+          if (bulkSelected.size > 0) {
+            void handleBulkAddTag(trimmed);
+          } else {
+            const b = displayed[cursorIndex];
+            if (!b) break;
+            if (b.tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) {
+              setStatus(`"${trimmed}" already tags this bookmark`);
+              break;
+            }
+            void (async () => {
+              await upsertTag({ name: trimmed });
+              await updateBookmark(b.id, { tags: [...b.tags, trimmed] });
+              setStatus(`added tag "${trimmed}"`);
+            })();
+          }
+          break;
+        }
+        case "d": {
+          ev.preventDefault();
+          const ids =
+            bulkSelected.size > 0
+              ? Array.from(bulkSelected)
+              : displayed[cursorIndex]
+                ? [displayed[cursorIndex].id]
+                : [];
+          if (ids.length === 0) break;
+          const confirmed = window.confirm(
+            `Delete ${ids.length} bookmark${ids.length === 1 ? "" : "s"}? This cannot be undone.`,
+          );
+          if (!confirmed) break;
+          if (bulkSelected.size > 0) {
+            void handleBulkDelete();
+          } else {
+            void (async () => {
+              for (const id of ids) await deleteBookmarkRecord(id);
+              setStatus(`deleted ${ids.length} bookmark${ids.length === 1 ? "" : "s"}`);
+            })();
+          }
+          break;
+        }
       }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [
-    bulkSelected.size,
+    addIdsToBulk,
+    bulkSelected,
     clearBulk,
     cursorIndex,
     displayed,
+    handleBookmarkThisTab,
+    handleBulkAddTag,
+    handleBulkDelete,
     selectAllVisible,
     selectedId,
+    shortcutHelpOpen,
+    tagManagerOpen,
     toggleBulkAt,
   ]);
 
@@ -832,7 +914,7 @@ export const Overview = () => {
       <p className="text-sm text-muted-foreground">
         {loading
           ? "loading…"
-          : `${bookmarks.length} bookmarks total, ${displayed.length} showing · /focus, j/k move, Enter/e open, x select, o open URL, Esc clear`}
+          : `${bookmarks.length} bookmarks total, ${displayed.length} showing · /focus, j/k move, Enter/e open, n new, x select, a select all, t tag, d delete, o open URL, Esc clear, ? help`}
       </p>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-[260px_1fr]">

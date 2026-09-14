@@ -21,6 +21,7 @@ import {
 const KNOWN_SURFACES: ReadonlySet<ShortcutSurface> = new Set([
   "overview",
   "sidepanel",
+  "options",
   "detail",
   "everywhere",
 ]);

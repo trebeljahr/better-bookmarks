@@ -8,9 +8,9 @@
  *    and the user can rebind them; the strings below are the shipped defaults.
  *
  * 2. **In-app shortcuts** — attached with `keydown`/`onKeyDown` handlers in
- *    React components (grep for `keydown` across `src/`). These are wired up
- *    piecemeal today and will be consolidated in Phase 7; the overlay lists
- *    whatever ships in the current build.
+ *    React components (grep for `keydown` across `src/`). Overview, side
+ *    panel, options and the detail drawer all read from this list; the
+ *    overlay renders straight off it.
  *
  * The `?` help overlay (see `components/ShortcutHelp.tsx`) renders straight
  * off this array, so add new shortcuts here as they land — the overlay stays
@@ -18,7 +18,7 @@
  * both forms as separate entries in `keys` (rendered as "or").
  */
 
-export type ShortcutSurface = "overview" | "sidepanel" | "detail" | "everywhere";
+export type ShortcutSurface = "overview" | "sidepanel" | "options" | "detail" | "everywhere";
 
 export type Shortcut = {
   /** Human-readable key combos, e.g. ["Ctrl+Shift+B"]. Multiple entries are shown as alternates. */
@@ -102,7 +102,7 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
       },
       {
         keys: ["Enter", "e"],
-        description: "Open the detail panel for the cursor row.",
+        description: "Open the detail panel for the cursor row (edit selected).",
         surface: "overview",
       },
       {
@@ -116,6 +116,11 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
         surface: "overview",
       },
       {
+        keys: ["a"],
+        description: "Select all visible rows for bulk actions.",
+        surface: "overview",
+      },
+      {
         keys: ["Esc"],
         description: "Close the detail panel, else clear bulk selection.",
         surface: "overview",
@@ -123,12 +128,59 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
     ],
   },
   {
-    title: "Row & detail actions",
+    title: "Bookmark actions (overview)",
+    shortcuts: [
+      {
+        keys: ["n"],
+        description: "New bookmark — capture the active tab and open its detail drawer.",
+        surface: "overview",
+      },
+      {
+        keys: ["t"],
+        description:
+          "Prompt for a tag and apply it to the bulk selection, or to the cursor row when nothing is selected.",
+        surface: "overview",
+      },
+      {
+        keys: ["d"],
+        description:
+          "Delete (with confirm) the bulk selection, or the cursor row when nothing is selected.",
+        surface: "overview",
+      },
+    ],
+  },
+  {
+    title: "Side panel & options",
     shortcuts: [
       {
         keys: ["Enter"],
         description: "Open the focused row in the side panel.",
         surface: "sidepanel",
+      },
+      {
+        keys: ["/"],
+        description: "Focus the search box.",
+        surface: "sidepanel",
+      },
+      {
+        keys: ["/"],
+        description: "Focus the first search input on the settings page.",
+        surface: "options",
+      },
+    ],
+  },
+  {
+    title: "Row & detail actions",
+    shortcuts: [
+      {
+        keys: ["Ctrl+Enter", "Cmd+Enter"],
+        description: "Save the currently open bookmark detail drawer.",
+        surface: "detail",
+      },
+      {
+        keys: ["Esc"],
+        description: "Close the detail drawer without saving.",
+        surface: "detail",
       },
       {
         keys: ["Enter"],

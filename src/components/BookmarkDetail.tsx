@@ -3,7 +3,7 @@
  */
 
 import { ExternalLink, Trash2 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Tags from "@/components/Tags";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -78,9 +78,25 @@ export function BookmarkDetail({
     draft.contentType !== bookmark.contentType ||
     draft.tags.join(" ") !== bookmark.tags.join(" ");
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     await onSave(draft);
-  };
+  }, [draft, onSave]);
+
+  // Cmd/Ctrl+Enter saves the drawer from anywhere inside it (including
+  // while typing in the title/note/desc inputs). Esc close is provided
+  // by the enclosing Sheet's own key handling.
+  useEffect(() => {
+    const handler = (ev: KeyboardEvent) => {
+      if (ev.key !== "Enter") return;
+      if (!(ev.metaKey || ev.ctrlKey)) return;
+      if (ev.altKey || ev.shiftKey) return;
+      if (!dirty) return;
+      ev.preventDefault();
+      void handleSave();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [dirty, handleSave]);
 
   const handleLink = async (toId: string, type: EdgeType, note?: string) => {
     await createEdge({

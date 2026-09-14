@@ -7,7 +7,7 @@
  */
 
 import { ExternalLink, Keyboard, Pencil, Star, Trash2 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { SearchBar } from "@/components/SearchBar";
@@ -22,6 +22,7 @@ import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useSearch } from "@/hooks/useSearch";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { cn } from "@/lib/utils";
+import { isTypingTarget } from "@/shared/shortcuts";
 
 wireSearchIndexer();
 ensureSearchIndexInitialized().catch((err) =>
@@ -42,6 +43,25 @@ export const SidePanel = () => {
   const { open: shortcutHelpOpen, setOpen: setShortcutHelpOpen } = useShortcutHelp();
 
   const tagsFromBookmarks = useMemo(() => getTagsFromBookmarks(bookmarks), [bookmarks]);
+
+  // `/` focuses the search box (mirrors the overview binding). Gated on
+  // isTypingTarget so a `/` typed inside the search box itself passes
+  // through to the input.
+  useEffect(() => {
+    const handler = (ev: KeyboardEvent) => {
+      if (ev.key !== "/") return;
+      if (isTypingTarget(ev.target)) return;
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      const input = document.querySelector<HTMLInputElement>(
+        'input[aria-label="search bookmarks"]',
+      );
+      if (!input) return;
+      ev.preventDefault();
+      input.focus();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   const selected = useMemo(
     () => (selectedId ? (bookmarks.find((b) => b.id === selectedId) ?? null) : null),

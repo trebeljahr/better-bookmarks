@@ -26,6 +26,7 @@ import { countBookmarks } from "@/core/storage/bookmarks";
 import { getDB } from "@/core/storage/db";
 import { getSettings, setSettings } from "@/core/storage/settings";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
+import { isTypingTarget } from "@/shared/shortcuts";
 import type { ConflictPolicy, FolderMirrorPolicy, ReadStatus, Settings } from "@/shared/types";
 import { DEFAULT_SETTINGS } from "@/shared/types";
 
@@ -113,6 +114,77 @@ export const Options = () => {
     refreshStats();
   }, [refreshStats]);
 
+  // `/` focuses the first search input on the settings page. Options
+  // has no primary search box yet — the handler still hunts for one so
+  // any surface-level search added later ("filter settings", "find in
+  // URL list") picks the shortcut up without extra wiring. Falls back
+  // to focusing the first search-labelled input, or the first Input on
+  // the page if none is found.
+  useEffect(() => {
+    const handler = (ev: KeyboardEvent) => {
+      if (ev.key !== "/") return;
+      if (isTypingTarget(ev.target)) return;
+      if (ev.metaKey || ev.ctrlKey || ev.altKey) return;
+      const search =
+        document.querySelector<HTMLInputElement>(
+          'input[type="search"], input[aria-label*="search" i], input[placeholder*="search" i]',
+        ) ?? null;
+      if (!search) return;
+      ev.preventDefault();
+      search.focus();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
+
+  // All useCallbacks live above the `if (!settings)` early return so
+  // the hook count stays stable between the loading and loaded renders
+  // (React's Rules of Hooks — anything conditional after this point
+  // would trip "Rendered more hooks than during the previous render.").
+  const runRawUrlImport = useCallback(
+    async (text: string, source: string) => {
+      const trimmed = text.trim();
+      if (trimmed.length === 0) {
+        setRawUrlsStatus("nothing to import — paste URLs or choose a file");
+        return;
+      }
+      setRawUrlsBusy(true);
+      setRawUrlsStatus(`importing ${source}…`);
+      try {
+        const report = await importRawUrls(trimmed);
+        const parts = [`${report.imported} new`, `${report.merged} merged`];
+        if (report.rejected > 0) parts.push(`${report.rejected} skipped`);
+        setRawUrlsStatus(`imported ${source}: ${parts.join(", ")}`);
+        // Refresh the store counts card so the new totals show up
+        // without a manual reload.
+        await refreshStats();
+      } catch (err) {
+        setRawUrlsStatus(`import failed: ${err instanceof Error ? err.message : String(err)}`);
+      } finally {
+        setRawUrlsBusy(false);
+      }
+    },
+    [refreshStats],
+  );
+
+  const handleRawUrlTextImport = useCallback(async () => {
+    await runRawUrlImport(rawUrlsDraft, "pasted list");
+    // Only clear the textarea when the import ran through (i.e. the
+    // input wasn't empty to begin with).
+    if (rawUrlsDraft.trim().length > 0) setRawUrlsDraft("");
+  }, [rawUrlsDraft, runRawUrlImport]);
+
+  const handleRawUrlFileChange = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const text = await file.text();
+      await runRawUrlImport(text, file.name);
+      if (rawUrlsFileInput.current) rawUrlsFileInput.current.value = "";
+    },
+    [runRawUrlImport],
+  );
+
   if (!settings) {
     return (
       <div className="p-6">
@@ -178,50 +250,6 @@ export const Options = () => {
     await update(DEFAULT_SETTINGS);
     setExtraStrippedDraft("");
   };
-
-  const runRawUrlImport = useCallback(
-    async (text: string, source: string) => {
-      const trimmed = text.trim();
-      if (trimmed.length === 0) {
-        setRawUrlsStatus("nothing to import — paste URLs or choose a file");
-        return;
-      }
-      setRawUrlsBusy(true);
-      setRawUrlsStatus(`importing ${source}…`);
-      try {
-        const report = await importRawUrls(trimmed);
-        const parts = [`${report.imported} new`, `${report.merged} merged`];
-        if (report.rejected > 0) parts.push(`${report.rejected} skipped`);
-        setRawUrlsStatus(`imported ${source}: ${parts.join(", ")}`);
-        // Refresh the store counts card so the new totals show up
-        // without a manual reload.
-        await refreshStats();
-      } catch (err) {
-        setRawUrlsStatus(`import failed: ${err instanceof Error ? err.message : String(err)}`);
-      } finally {
-        setRawUrlsBusy(false);
-      }
-    },
-    [refreshStats],
-  );
-
-  const handleRawUrlTextImport = useCallback(async () => {
-    await runRawUrlImport(rawUrlsDraft, "pasted list");
-    // Only clear the textarea when the import ran through (i.e. the
-    // input wasn't empty to begin with).
-    if (rawUrlsDraft.trim().length > 0) setRawUrlsDraft("");
-  }, [rawUrlsDraft, runRawUrlImport]);
-
-  const handleRawUrlFileChange = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      const text = await file.text();
-      await runRawUrlImport(text, file.name);
-      if (rawUrlsFileInput.current) rawUrlsFileInput.current.value = "";
-    },
-    [runRawUrlImport],
-  );
 
   return (
     <div className="mx-auto max-w-[760px] p-4 sm:p-8">
