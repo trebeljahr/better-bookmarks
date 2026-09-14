@@ -69,14 +69,22 @@ the Hugging Face Hub CDN (`huggingface.co`) on first use, then caches them
 in the browser cache (`env.useBrowserCache = true`) so subsequent boots are
 offline.
 
-**When:** The offscreen document runs `warmup()` on load
-(`src/entrypoints/offscreen/main.ts:3`), and the background service worker
-boots that document via `ensureOffscreen()` on startup
-(`src/entrypoints/background.ts:105`). Net effect: the extension downloads
-the model automatically on first service-worker boot after install, not on
-an explicit user opt-in. See open GitHub issue for the plan to gate this
-behind a setting so it matches the "enable now?" first-run flow described in
-`docs/SEMANTIC_SEARCH.md`.
+**When:** Only after the user opts in. `semanticSearchEnabled` defaults to
+`false` in `DEFAULT_SETTINGS` (`src/shared/types.ts`). On service-worker
+boot, `background.ts` reads the flag before touching the offscreen
+document — when the flag is off, `ensureOffscreen()` is never called, the
+offscreen document is never created, and no request to `huggingface.co`
+is made. When the user flips the flag on (either through the
+"Enable now" button in the sidepanel banner or the toggle in
+Options → Semantic search), the extension creates the offscreen
+document, the transformers.js pipeline warms up, and the ~33 MB model
+files are fetched from the Hugging Face CDN with visible progress in
+the banner (backed by transformers.js `progress_callback` events
+rebroadcast over `chrome.runtime`). The download is a one-time event —
+`env.useBrowserCache = true` means subsequent SW boots load from the
+browser cache and stay offline. The banner persists a
+`semanticSearchBannerDismissedAt` timestamp so "Not now" silences the
+prompt until the user re-visits Options.
 
 **Where the request goes:** `huggingface.co` (declared in
 `wxt.config.ts` under `host_permissions`). The WASM/JS runtime files
@@ -91,10 +99,11 @@ Whatever standard headers Hugging Face's CDN logs (IP, User-Agent, Referer
 for the extension origin) will be visible to them for the duration of the
 download.
 
-**How to disable today:** not user-facing yet. Interim workaround: run the
-extension offline on first boot to prevent the initial download, or block
-`huggingface.co` in your network. A settings toggle is tracked in the GH
-issue.
+**How to disable:** the default. `semanticSearchEnabled: false` in
+`DEFAULT_SETTINGS`. To turn it back off after enabling, toggle
+Options → *Semantic search* off. Off leaves any already-cached model
+files in the browser cache but stops the extension from touching them
+on subsequent boots.
 
 ### 4. Auto-backup writes — `src/core/backup/autoBackup.ts`
 

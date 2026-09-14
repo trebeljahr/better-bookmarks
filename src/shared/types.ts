@@ -244,6 +244,19 @@ export type Settings = {
   // the read-side `suggestEdgesFor` still work.
   autoEdgeSuggestEnabled: boolean;
   autoEdgeSuggestIntervalMin: number;
+  // Semantic search (see docs/SEMANTIC_SEARCH.md and docs/PRIVACY.md §3).
+  // Off by default. When false, the extension does NOT create the embedder
+  // offscreen document and never downloads the ~33 MB transformers.js model
+  // from huggingface.co. When flipped to true, the background boots the
+  // offscreen document and the transformers pipeline warms up, which
+  // triggers the one-time model download.
+  semanticSearchEnabled: boolean;
+  // Client-side "not now" flag for the sidepanel/options first-run banner
+  // that offers to enable semantic search. Timestamp (ms) of the most
+  // recent dismissal; 0 means "never dismissed". A dismissal silences the
+  // banner until the user re-enables it manually in Options. Independent
+  // of `semanticSearchEnabled` — dismissing does not opt the user in.
+  semanticSearchBannerDismissedAt: number;
   // Overview graph view. Off by default. When true, the overview renders
   // an extra "Graph" tab whose module is dynamically imported so the
   // list-only default bundle stays small. Node = bookmark, edge = Edge;
@@ -297,5 +310,7 @@ export const DEFAULT_SETTINGS: Settings = {
   searchWeightTermFreq: 0.2,
   autoEdgeSuggestEnabled: true,
   autoEdgeSuggestIntervalMin: 720,
+  semanticSearchEnabled: false,
+  semanticSearchBannerDismissedAt: 0,
   graphViewEnabled: false,
 };

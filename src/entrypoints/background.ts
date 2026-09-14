@@ -25,7 +25,7 @@ import {
   wireInvertedIndexer,
   wireSearchIndexer,
 } from "@/core/search";
-import { ensureOffscreen } from "@/core/semantic";
+import { ensureOffscreenIfEnabled } from "@/core/semantic";
 import { getBookmarkByRawUrl } from "@/core/storage/bookmarks";
 import { startSync } from "@/core/sync";
 
@@ -116,10 +116,16 @@ export default defineBackground(() => {
     console.error("ensureInvertedIndexInitialized failed", err),
   );
 
-  // Boot the semantic-embed offscreen document. Idempotent: ensureOffscreen()
-  // calls chrome.offscreen.hasDocument() before creating. The doc lazy-warms
-  // the transformers.js pipeline on first message.
-  ensureOffscreen().catch((err) => console.error("ensureOffscreen failed", err));
+  // Boot the semantic-embed offscreen document only when the user has
+  // opted in. Off by default (see docs/PRIVACY.md §3): creating the
+  // offscreen document warms up the transformers.js pipeline, which
+  // downloads ~33 MB from huggingface.co. `ensureOffscreenIfEnabled`
+  // reads `settings.semanticSearchEnabled` and returns `false` without
+  // touching `chrome.offscreen` when the flag is off, so a fresh
+  // install makes zero network calls beyond the other opt-in features.
+  // The Options / sidepanel opt-in paths call `warmupSemanticSearch`
+  // directly so the user does not have to wait for the next SW boot.
+  ensureOffscreenIfEnabled().catch((err) => console.error("ensureOffscreenIfEnabled failed", err));
 
   // Periodic alarms: auto-backup, dead-link sweep, enrichment sweep. install()
   // calls register/refresh each alarm based on current settings.

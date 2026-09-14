@@ -1,2 +1,9 @@
-export { type EmbedResponse, embedViaOffscreen, ensureOffscreen } from "./bridge";
-export { DEFAULT_MODEL } from "./model";
+export {
+  type EmbedResponse,
+  embedViaOffscreen,
+  ensureOffscreen,
+  ensureOffscreenIfEnabled,
+  subscribeSemanticProgress,
+  warmupSemanticSearch,
+} from "./bridge";
+export { DEFAULT_MODEL, type ModelProgressEvent } from "./model";

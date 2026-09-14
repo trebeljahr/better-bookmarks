@@ -30,6 +30,21 @@ vi.mock("@/hooks/useSearch", () => ({
   }),
 }));
 
+vi.mock("@/core/storage/settings", () => ({
+  getSettings: async () => (await import("@/shared/types")).DEFAULT_SETTINGS,
+  setSettings: async (patch: unknown) => ({
+    ...(await import("@/shared/types")).DEFAULT_SETTINGS,
+    ...(patch as object),
+  }),
+}));
+
+vi.mock("@/core/semantic", () => ({
+  ensureOffscreen: async () => undefined,
+  ensureOffscreenIfEnabled: async () => false,
+  warmupSemanticSearch: async () => undefined,
+  subscribeSemanticProgress: () => () => {},
+}));
+
 vi.mock("@/core/search", () => ({
   wireSearchIndexer: () => {},
   ensureSearchIndexInitialized: () => Promise.resolve(),

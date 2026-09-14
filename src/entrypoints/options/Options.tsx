@@ -5,6 +5,7 @@
 import { BookOpen, CloudUpload, Keyboard, Upload } from "lucide-react";
 import type * as React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { SemanticSearchBanner } from "@/components/SemanticSearchBanner";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { runBackupOnce } from "@/core/backup";
 import { importGoodreadsHtml, importRawUrls } from "@/core/importExport";
+import { ensureOffscreen } from "@/core/semantic";
 import { countBookmarks } from "@/core/storage/bookmarks";
 import { getDB } from "@/core/storage/db";
 import { getSettings, setSettings } from "@/core/storage/settings";
@@ -432,6 +434,37 @@ export const Options = () => {
             </span>
           )}
         </div>
+      </Section>
+
+      <Section title="Semantic search">
+        <div className="flex items-start gap-2">
+          <Switch
+            id="semanticSearchEnabled"
+            checked={settings.semanticSearchEnabled}
+            onCheckedChange={async (v) => {
+              await update({ semanticSearchEnabled: v });
+              if (v) {
+                // Kick the offscreen document immediately so the model
+                // download starts in this same tab and the banner's
+                // progress bar has something to show. Off-flips leave
+                // the doc alone; the next SW boot skips creation.
+                ensureOffscreen().catch((err) => console.error("ensureOffscreen failed", err));
+              }
+            }}
+          />
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="semanticSearchEnabled">
+              Enable semantic search (finds bookmarks by meaning, not just keywords)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Off by default. When on, the extension downloads
+              <code className="mx-1">Xenova/bge-small-en-v1.5</code>(~33 MB) from huggingface.co
+              once and caches it in the browser. No bookmark text is sent — only a request for the
+              model file. See docs/PRIVACY.md §3.
+            </p>
+          </div>
+        </div>
+        <SemanticSearchBanner onSettingsChange={setLocalSettings} />
       </Section>
 
       <Section title="Enrichment (network)">

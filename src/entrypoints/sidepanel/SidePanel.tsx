@@ -11,6 +11,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { FixedSizeList, type ListChildComponentProps } from "react-window";
 import { BookmarkDetail } from "@/components/BookmarkDetail";
 import { SearchBar } from "@/components/SearchBar";
+import { SemanticSearchBanner } from "@/components/SemanticSearchBanner";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -183,6 +184,8 @@ export const SidePanel = () => {
       <p className="text-xs text-muted-foreground">
         {loading ? "loading…" : `${bookmarks.length} total · ${displayed.length} showing`}
       </p>
+
+      <SemanticSearchBanner />
 
       <SearchBar
         query={query}

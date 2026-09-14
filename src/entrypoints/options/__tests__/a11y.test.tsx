@@ -37,6 +37,13 @@ vi.mock("@/core/backup", () => ({
   runBackupOnce: async () => ({ fileName: "test.json", byteSize: 0 }),
 }));
 
+vi.mock("@/core/semantic", () => ({
+  ensureOffscreen: async () => undefined,
+  ensureOffscreenIfEnabled: async () => false,
+  warmupSemanticSearch: async () => undefined,
+  subscribeSemanticProgress: () => () => {},
+}));
+
 const { render, cleanup, waitFor } = await import("@testing-library/react");
 const { Options } = await import("@/entrypoints/options/Options");
 
