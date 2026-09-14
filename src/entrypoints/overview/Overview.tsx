@@ -37,6 +37,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@/components/ui/sheet";
+import { bulkAddTag, bulkDelete, bulkRemoveTag, bulkSetRating, bulkSetStatus } from "@/core/bulk";
 import { loadSampleBookmarks } from "@/core/dev/sampleBookmarks";
 import {
   exportJson,
@@ -69,6 +70,7 @@ import { usePendingConflicts } from "@/hooks/usePendingConflicts";
 import { useSearch } from "@/hooks/useSearch";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { useTags } from "@/hooks/useTags";
+import { readHashParams, writeHashParams } from "@/lib/hash";
 import { cn } from "@/lib/utils";
 import type { ReadStatus } from "@/shared/types";
 
@@ -161,6 +163,10 @@ export const Overview = () => {
   const [skippedConflictIds, setSkippedConflictIds] = useState<Set<string>>(new Set());
   const fileInput = useRef<HTMLInputElement>(null);
   const listRef = useRef<FixedSizeList | null>(null);
+  const selectionHydrated = useRef(false);
+  // Anchor for shift-click range extension. Reset whenever selection is
+  // cleared so the next plain click becomes the new anchor.
+  const rangeAnchor = useRef<number | null>(null);
 
   // Show the oldest queued conflict the user has not skipped this session.
   // Skipping just hides one row until the modal is dismissed and re-opened
@@ -230,11 +236,9 @@ export const Overview = () => {
   useEffect(() => {
     if (loading) return;
     const apply = () => {
-      const hash = window.location.hash;
-      const match = /[#&]edit=([^&]+)/.exec(hash);
-      if (!match) return;
-      const id = decodeURIComponent(match[1]);
-      if (bookmarks.some((b) => b.id === id)) {
+      const params = readHashParams();
+      const id = params.get("edit");
+      if (id && bookmarks.some((b) => b.id === id)) {
         setSelectedId(id);
       }
     };
@@ -242,6 +246,34 @@ export const Overview = () => {
     window.addEventListener("hashchange", apply);
     return () => window.removeEventListener("hashchange", apply);
   }, [loading, bookmarks]);
+
+  // Rehydrate the bulk selection from `#sel=<id>,<id>,…` on the first load
+  // after `useBookmarks` finishes. Anything the hash names but the store
+  // doesn't have (deleted bookmark, stale link) is silently dropped so the
+  // selection can't grow from a refresh past what exists.
+  useEffect(() => {
+    if (loading || selectionHydrated.current) return;
+    selectionHydrated.current = true;
+    const params = readHashParams();
+    const raw = params.get("sel");
+    if (!raw) return;
+    const known = new Set(bookmarks.map((b) => b.id));
+    const filtered = raw.split(",").filter((id) => id && known.has(id));
+    if (filtered.length > 0) setBulkSelected(new Set(filtered));
+  }, [loading, bookmarks]);
+
+  // Persist the bulk selection back to the URL hash. `writeHashParams` uses
+  // `history.replaceState`, so it does not fire a `hashchange` — the edit-id
+  // listener above won't loop on us.
+  useEffect(() => {
+    const params = readHashParams();
+    if (bulkSelected.size === 0) {
+      params.delete("sel");
+    } else {
+      params.set("sel", Array.from(bulkSelected).join(","));
+    }
+    writeHashParams(params);
+  }, [bulkSelected]);
 
   async function handleFileImport(file: File) {
     setStatus(`importing ${file.name}…`);
@@ -384,7 +416,10 @@ export const Overview = () => {
     });
   }, []);
 
-  const clearBulk = useCallback(() => setBulkSelected(new Set()), []);
+  const clearBulk = useCallback(() => {
+    setBulkSelected(new Set());
+    rangeAnchor.current = null;
+  }, []);
 
   const addIdsToBulk = useCallback((ids: string[]) => {
     setBulkSelected((prev) => {
@@ -394,39 +429,122 @@ export const Overview = () => {
     });
   }, []);
 
+  /**
+   * Toggle a row's membership in the bulk selection. When `shift` is true
+   * and there is a live anchor, every row from anchor to `index` (inclusive)
+   * is added to the selection — matches the "select a range" gesture common
+   * to file managers and mail clients.
+   */
+  const toggleBulkAt = useCallback(
+    (index: number, shift: boolean) => {
+      const row = displayed[index];
+      if (!row) return;
+      if (shift && rangeAnchor.current !== null && rangeAnchor.current !== index) {
+        const lo = Math.min(rangeAnchor.current, index);
+        const hi = Math.max(rangeAnchor.current, index);
+        const rangeIds: string[] = [];
+        for (let i = lo; i <= hi; i++) {
+          const b = displayed[i];
+          if (b) rangeIds.push(b.id);
+        }
+        setBulkSelected((prev) => {
+          const next = new Set(prev);
+          for (const id of rangeIds) next.add(id);
+          return next;
+        });
+      } else {
+        toggleBulk(row.id);
+      }
+      rangeAnchor.current = index;
+    },
+    [displayed, toggleBulk],
+  );
+
+  const selectAllVisible = useCallback(() => {
+    setBulkSelected((prev) => {
+      const next = new Set(prev);
+      for (const b of displayed) next.add(b.id);
+      return next;
+    });
+  }, [displayed]);
+
+  const selectedTitles = useMemo(() => {
+    if (bulkSelected.size === 0) return [] as string[];
+    const byId = new Map(bookmarks.map((b) => [b.id, b] as const));
+    const titles: string[] = [];
+    // Iterate the selection in insertion order to keep the preview stable
+    // as the user shift-adds more items. Cap at 3 — the modal only shows
+    // that many anyway.
+    let taken = 0;
+    for (const id of bulkSelected) {
+      if (taken >= 3) break;
+      const b = byId.get(id);
+      if (b) {
+        titles.push(b.title || b.canonicalUrl);
+        taken++;
+      }
+    }
+    return titles;
+  }, [bulkSelected, bookmarks]);
+
   const handleBulkAddTag = useCallback(
     async (tag: string) => {
       const trimmed = tag.trim();
       if (!trimmed) return;
+      const ids = Array.from(bulkSelected);
+      // Make sure the tag record exists first (color, parent, etc). The
+      // bookmark write itself is transactional inside `bulkAddTag`.
       await upsertTag({ name: trimmed });
-      const affected = bookmarks.filter((b) => bulkSelected.has(b.id));
-      for (const b of affected) {
-        if (b.tags.some((t) => t.toLowerCase() === trimmed.toLowerCase())) continue;
-        await updateBookmark(b.id, { tags: [...b.tags, trimmed] });
-      }
-      setStatus(`added tag "${trimmed}" to ${affected.length} bookmarks`);
+      const result = await bulkAddTag(ids, trimmed);
+      setStatus(`added tag "${trimmed}" to ${result.updated} bookmarks`);
     },
-    [bookmarks, bulkSelected],
+    [bulkSelected],
+  );
+
+  const handleBulkRemoveTag = useCallback(
+    async (tag: string) => {
+      const trimmed = tag.trim();
+      if (!trimmed) return;
+      const ids = Array.from(bulkSelected);
+      const result = await bulkRemoveTag(ids, trimmed);
+      setStatus(`removed tag "${trimmed}" from ${result.updated} bookmarks`);
+    },
+    [bulkSelected],
+  );
+
+  const handleBulkSetRating = useCallback(
+    async (rating: number | null) => {
+      const ids = Array.from(bulkSelected);
+      const result = await bulkSetRating(ids, rating);
+      setStatus(
+        rating === null
+          ? `cleared rating on ${result.updated} bookmarks`
+          : `set rating ${rating} on ${result.updated} bookmarks`,
+      );
+    },
+    [bulkSelected],
   );
 
   const handleBulkSetStatus = useCallback(
     async (next: ReadStatus) => {
       const ids = Array.from(bulkSelected);
-      for (const id of ids) {
-        await updateBookmark(id, { status: next });
-      }
-      setStatus(`set status "${next}" on ${ids.length} bookmarks`);
+      const result = await bulkSetStatus(ids, next);
+      setStatus(`set status "${next}" on ${result.updated} bookmarks`);
     },
     [bulkSelected],
   );
 
+  const handleBulkMarkRead = useCallback(async () => {
+    const ids = Array.from(bulkSelected);
+    const result = await bulkSetStatus(ids, "read");
+    setStatus(`marked ${result.updated} bookmarks as read`);
+  }, [bulkSelected]);
+
   const handleBulkDelete = useCallback(async () => {
     const ids = Array.from(bulkSelected);
-    for (const id of ids) {
-      await deleteBookmarkRecord(id);
-    }
+    const result = await bulkDelete(ids);
     clearBulk();
-    setStatus(`deleted ${ids.length} bookmarks`);
+    setStatus(`deleted ${result.deleted} bookmarks`);
   }, [bulkSelected, clearBulk]);
 
   const handleSaveDetail = async (updated: Bookmark) => {
@@ -539,6 +657,27 @@ export const Overview = () => {
           return;
         }
       }
+      // Cmd/Ctrl-A → select every currently-displayed row. Deliberately
+      // runs even when a text input has focus, since the browser default
+      // (select-all in the input) is less useful than seeding a bulk
+      // action against the filtered result set — but we still bail if
+      // the user is inside a contenteditable region (WYSIWYG edits).
+      if (
+        (ev.metaKey || ev.ctrlKey) &&
+        !ev.shiftKey &&
+        !ev.altKey &&
+        ev.key.toLowerCase() === "a"
+      ) {
+        const target = ev.target;
+        const inTextField =
+          target instanceof HTMLElement &&
+          (target.tagName === "INPUT" || target.tagName === "TEXTAREA");
+        if (!inTextField && displayed.length > 0) {
+          ev.preventDefault();
+          selectAllVisible();
+          return;
+        }
+      }
       if (isTypingTarget(ev.target)) return;
 
       switch (ev.key) {
@@ -571,8 +710,7 @@ export const Overview = () => {
         }
         case "x": {
           ev.preventDefault();
-          const b = displayed[cursorIndex];
-          if (b) toggleBulk(b.id);
+          toggleBulkAt(cursorIndex, ev.shiftKey);
           break;
         }
         case "o": {
@@ -585,7 +723,15 @@ export const Overview = () => {
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [bulkSelected.size, clearBulk, cursorIndex, displayed, selectedId, toggleBulk]);
+  }, [
+    bulkSelected.size,
+    clearBulk,
+    cursorIndex,
+    displayed,
+    selectAllVisible,
+    selectedId,
+    toggleBulkAt,
+  ]);
 
   const renderRow = (props: ListChildComponentProps) => {
     const { index, style } = props;
@@ -605,7 +751,7 @@ export const Overview = () => {
         onCursor={() => setCursorIndex(index)}
         onOpenDetail={() => setSelectedId(bookmark.id)}
         onDelete={() => deleteBookmarkRecord(bookmark.id)}
-        onToggleBulk={() => toggleBulk(bookmark.id)}
+        onToggleBulk={(shift) => toggleBulkAt(index, shift)}
       />
     );
   };
@@ -752,11 +898,14 @@ export const Overview = () => {
           {bulkSelected.size > 0 && (
             <BulkActionsBar
               selectedCount={bulkSelected.size}
-              possibleTags={tagsFromBookmarks}
               selectedIds={Array.from(bulkSelected)}
+              selectedTitles={selectedTitles}
               onClear={clearBulk}
               onAddTag={handleBulkAddTag}
+              onRemoveTag={handleBulkRemoveTag}
+              onSetRating={handleBulkSetRating}
               onSetStatus={handleBulkSetStatus}
+              onMarkRead={handleBulkMarkRead}
               onDelete={handleBulkDelete}
               onDropAdd={addIdsToBulk}
             />
@@ -890,7 +1039,8 @@ type BookmarkRowProps = {
   onCursor: () => void;
   onOpenDetail: () => void;
   onDelete: () => void;
-  onToggleBulk: () => void;
+  /** `shift` is true when the user clicked with Shift held (range-extend). */
+  onToggleBulk: (shift: boolean) => void;
 };
 
 function BookmarkRow({
@@ -932,8 +1082,10 @@ function BookmarkRow({
     >
       <Checkbox
         checked={isChecked}
-        onCheckedChange={onToggleBulk}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleBulk(e.shiftKey);
+        }}
         aria-label={`select ${bookmark.title || bookmark.canonicalUrl}`}
       />
       <Avatar className="size-9 shrink-0">
