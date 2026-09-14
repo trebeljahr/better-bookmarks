@@ -15,7 +15,6 @@
  */
 
 import type { Bookmark } from "../../shared/types";
-import { getBookmarkById } from "../storage/bookmarks";
 import { type BookmarkDB, getDB, type Posting } from "../storage/db";
 import { bookmarkIdsInFolders } from "../storage/folders";
 import { getPostingsForTerm } from "./indexer";
@@ -129,9 +128,10 @@ export async function runQuery(q: Query, opts: SearchOptions = {}): Promise<Book
   let candidates: Bookmark[];
   if (termScores) {
     const ids = Array.from(termScores.keys());
-    candidates = (await Promise.all(ids.map((id) => getBookmarkById(id)))).filter(
-      (b): b is Bookmark => b !== undefined,
-    );
+    // Single bulkGet keeps every point read in one Dexie transaction —
+    // ids missing from the store come back as `undefined` in place.
+    const rows = await db.bookmarks.bulkGet(ids);
+    candidates = rows.filter((b): b is Bookmark => b !== undefined);
   } else {
     candidates = (await candidatesFromIndexedFilter(q, db)) ?? (await db.bookmarks.toArray());
   }

@@ -31,7 +31,7 @@
 
 import type { Bookmark, Settings } from "../../shared/types";
 import { DEFAULT_SETTINGS } from "../../shared/types";
-import { countBookmarks, getBookmarkById, listBookmarks } from "../storage/bookmarks";
+import { countBookmarks, listBookmarks } from "../storage/bookmarks";
 import { getDB, type SearchIndexRow } from "../storage/db";
 import { bookmarkIdsInFolders } from "../storage/folders";
 import { getSettings } from "../storage/settings";
@@ -183,9 +183,10 @@ export async function rank(q: Query, opts: RankOptions = {}): Promise<RankedBook
   let candidates: Bookmark[];
   if (candidateIds !== null) {
     const ids = Array.from(candidateIds);
-    candidates = (await Promise.all(ids.map((id) => getBookmarkById(id)))).filter(
-      (b): b is Bookmark => b !== undefined,
-    );
+    // One bulkGet transaction — orders of magnitude cheaper than a
+    // per-id fan-out on large intersection sets.
+    const rows = await getDB().bookmarks.bulkGet(ids);
+    candidates = rows.filter((b): b is Bookmark => b !== undefined);
   } else {
     candidates = await listBookmarks();
   }
