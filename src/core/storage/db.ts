@@ -1,5 +1,12 @@
 import Dexie, { type EntityTable, type Table } from "dexie";
-import type { Bookmark, ChromeMapping, Edge, PageSnapshot, Tag } from "../../shared/types";
+import type {
+  Bookmark,
+  ChromeMapping,
+  Edge,
+  PageSnapshot,
+  RejectedEdgePair,
+  Tag,
+} from "../../shared/types";
 import type { PendingConflictRow } from "../sync/pendingConflicts";
 
 export type Posting = {
@@ -35,6 +42,7 @@ export type BookmarkDB = Dexie & {
   searchIndex: Table<SearchIndexRow>;
   pageSnapshots: EntityTable<PageSnapshot, "bookmarkId">;
   pendingConflicts: EntityTable<PendingConflictRow, "id">;
+  rejectedEdgePairs: EntityTable<RejectedEdgePair, "pair">;
 };
 
 let cached: BookmarkDB | null = null;
@@ -67,6 +75,14 @@ export function getDB(): BookmarkDB {
   // the same bookmark; `enqueuedAt` for ordering the queue.
   db.version(5).stores({
     pendingConflicts: "id, bookmarkId, enqueuedAt",
+  });
+  // v6: user-rejected edge suggestions. `pair` (PK) is
+  // `"<idA>|<idB>"` with the two ids sorted lexicographically so a
+  // rejection covers both directions with one row. The suggester
+  // filters candidates through this table so a rejected pair never
+  // resurfaces as a suggestion.
+  db.version(6).stores({
+    rejectedEdgePairs: "pair, createdAt",
   });
   cached = db;
   return db;

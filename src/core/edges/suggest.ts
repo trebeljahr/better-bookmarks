@@ -2,6 +2,7 @@ import { ulid } from "@/core/util/ulid";
 import type { Bookmark, Edge, EdgeSource } from "../../shared/types";
 import { getBookmarkById, listBookmarks } from "../storage/bookmarks";
 import { listAllEdges } from "./crud";
+import { loadRejectedPairSet, pairKeyFor } from "./rejected";
 
 /**
  * An edge that has not been written to the store. Returned from the
@@ -39,7 +40,11 @@ export async function suggestEdgesFor(
   const subject = await getBookmarkById(bookmarkId);
   if (!subject) return [];
 
-  const [all, edges] = await Promise.all([listBookmarks(), listAllEdges()]);
+  const [all, edges, rejectedPairs] = await Promise.all([
+    listBookmarks(),
+    listAllEdges(),
+    loadRejectedPairSet(),
+  ]);
   const manualPairs = collectManualPairs(edges);
 
   const subjectTags = lowercaseTagSet(subject.tags);
@@ -55,6 +60,7 @@ export async function suggestEdgesFor(
   for (const other of all) {
     if (other.id === bookmarkId) continue;
     if (hasManualEdge(manualPairs, bookmarkId, other.id)) continue;
+    if (rejectedPairs.has(pairKeyFor(bookmarkId, other.id))) continue;
 
     const sharedTags = intersectTags(other.tags, subjectTags);
     const sameDomain = subject.domain === other.domain && subject.domain !== "";

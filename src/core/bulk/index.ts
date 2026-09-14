@@ -193,10 +193,10 @@ export async function bulkDelete(
   const chunkSize = opts.chunkSize ?? DEFAULT_CHUNK;
   let deleted = 0;
 
-  // Cascade the per-bookmark page snapshot (D15) the same way a single
-  // `deleteBookmark` does — otherwise a bulk delete leaks orphan rows in
-  // `pageSnapshots`.
-  await db.transaction("rw", db.bookmarks, db.pageSnapshots, async () => {
+  // Cascade the per-bookmark page snapshot (D15) and any incident edge
+  // the same way a single `deleteBookmark` does — otherwise a bulk delete
+  // leaks orphan rows in `pageSnapshots` and dangling edges in `edges`.
+  await db.transaction("rw", db.bookmarks, db.pageSnapshots, db.edges, async () => {
     for (let i = 0; i < ids.length; i += chunkSize) {
       const batch = ids.slice(i, i + chunkSize);
       // Count what's actually present before deleting so the return value
@@ -207,6 +207,15 @@ export async function bulkDelete(
         .primaryKeys();
       await db.bookmarks.bulkDelete(batch as string[]);
       await db.pageSnapshots.bulkDelete(batch as string[]);
+      const incidentEdges = await db.edges
+        .where("fromId")
+        .anyOf(batch as string[])
+        .or("toId")
+        .anyOf(batch as string[])
+        .primaryKeys();
+      if (incidentEdges.length > 0) {
+        await db.edges.bulkDelete(incidentEdges as string[]);
+      }
       deleted += present.length;
       if (opts.onChunk) {
         await opts.onChunk(Math.min(i + batch.length, ids.length));

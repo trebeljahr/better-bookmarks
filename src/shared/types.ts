@@ -108,6 +108,19 @@ export type Edge = {
   source: EdgeSource;
 };
 
+/**
+ * A pair of bookmark ids that the user has explicitly rejected as a
+ * suggested edge. `pair` is `"<idA>|<idB>"` with the two ids sorted
+ * lexicographically so a rejection covers both directions with one row.
+ * The suggester filters candidates through this table before returning
+ * results, so once a user says "not a connection" the pair stays out of
+ * the suggestions list forever (until they explicitly un-reject it).
+ */
+export type RejectedEdgePair = {
+  pair: string;
+  createdAt: number;
+};
+
 export type Tag = {
   name: string;
   lowercaseName: string;

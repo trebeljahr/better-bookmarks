@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createEdge, listAllEdges } from "../edges/crud";
 import {
   countBookmarks,
   dedupTags,
@@ -12,8 +13,10 @@ import { getDB, resetDBForTests } from "./db";
 import { getPageSnapshot, putPageSnapshot } from "./pageSnapshots";
 
 beforeEach(async () => {
-  await getDB().bookmarks.clear();
-  await getDB().pageSnapshots.clear();
+  const db = getDB();
+  await db.bookmarks.clear();
+  await db.pageSnapshots.clear();
+  await db.edges.clear();
 });
 
 afterEach(() => {
@@ -106,6 +109,24 @@ describe("deleteBookmark", () => {
     expect(await getPageSnapshot(initial.bookmark.id)).toBeDefined();
     await deleteBookmark(initial.bookmark.id);
     expect(await getPageSnapshot(initial.bookmark.id)).toBeUndefined();
+  });
+
+  it("cascades to every edge that references the deleted bookmark on either end", async () => {
+    const a = await upsertBookmark({ rawUrl: "https://example.com/edge-a" });
+    const b = await upsertBookmark({ rawUrl: "https://example.com/edge-b" });
+    const c = await upsertBookmark({ rawUrl: "https://example.com/edge-c" });
+    if (!a.ok || !b.ok || !c.ok) throw new Error("setup failed");
+    await createEdge({ fromId: a.bookmark.id, toId: b.bookmark.id, type: "related" });
+    await createEdge({ fromId: c.bookmark.id, toId: a.bookmark.id, type: "source" });
+    const survivor = await createEdge({
+      fromId: b.bookmark.id,
+      toId: c.bookmark.id,
+      type: "related",
+    });
+    expect(await listAllEdges()).toHaveLength(3);
+    await deleteBookmark(a.bookmark.id);
+    const remaining = await listAllEdges();
+    expect(remaining.map((e) => e.id)).toEqual([survivor.id]);
   });
 
   it("leaves other bookmarks' snapshots alone", async () => {

@@ -118,6 +118,32 @@ Edges are queryable in both directions. Two indexes:
 For undirected edges (`directed === false`) we store one row and the
 query layer treats it as bidirectional.
 
+Deletion cascades: removing a bookmark drops every edge that
+references it on either end, in the same rw transaction that removes
+the bookmark row. `deleteBookmark` and `bulkDelete` both honor this;
+edges never outlive their endpoints.
+
+## Rejected edge pairs
+
+```ts
+type RejectedEdgePair = {
+  pair: string;      // "<idA>|<idB>" with the two ids sorted lex.
+  createdAt: number;
+};
+```
+
+Set membership by the user: "these two are NOT related, stop
+suggesting them". `pair` is the primary key and normalizes direction
+so a single row covers both a→b and b→a. The suggester loads the
+full set on every run and skips any candidate whose pair-key is
+present. Un-rejection removes the row.
+
+The table is not cascaded on bookmark delete — a rejected row keyed
+on a now-deleted id becomes dead weight rather than dangerous, and
+the (rare) case where a bookmark is re-imported at the same id is
+better served by preserving the rejection than by silently forgetting
+it.
+
 ## Tag
 
 Tags are records, not just strings.

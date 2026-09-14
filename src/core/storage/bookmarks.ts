@@ -112,11 +112,17 @@ export async function getBookmarkByRawUrl(rawUrl: string): Promise<Bookmark | un
 export async function deleteBookmark(id: string): Promise<void> {
   const db = getDB();
   // Cascade the per-bookmark page snapshot (D15) so we don't leak
-  // orphaned rows in `pageSnapshots`. Wrapped in one rw transaction
-  // so a delete is atomic across both stores.
-  await db.transaction("rw", db.bookmarks, db.pageSnapshots, async () => {
+  // orphaned rows in `pageSnapshots`, and every edge that references
+  // the bookmark on either end so we don't leave dangling connections.
+  // Wrapped in one rw transaction so the delete is atomic across
+  // stores.
+  await db.transaction("rw", db.bookmarks, db.pageSnapshots, db.edges, async () => {
     await db.bookmarks.delete(id);
     await db.pageSnapshots.delete(id);
+    const incident = await db.edges.where("fromId").equals(id).or("toId").equals(id).primaryKeys();
+    if (incident.length > 0) {
+      await db.edges.bulkDelete(incident as string[]);
+    }
   });
 }
 

@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Bookmark } from "../../shared/types";
+import { createEdge, listAllEdges } from "../edges/crud";
 import { getDB, resetDBForTests } from "../storage/db";
 import { bulkAddTag, bulkDelete, bulkRemoveTag, bulkSetRating, bulkSetStatus } from "./index";
 
@@ -46,7 +47,9 @@ async function seed(n: number): Promise<Bookmark[]> {
 }
 
 beforeEach(async () => {
-  await getDB().bookmarks.clear();
+  const db = getDB();
+  await db.bookmarks.clear();
+  await db.edges.clear();
 });
 
 afterEach(() => {
@@ -222,6 +225,20 @@ describe("bulkDelete at 1000 bookmarks", { timeout: LARGE_CORPUS_TIMEOUT_MS }, (
 
     expect(result.deleted).toBe(COUNT);
     expect(await getDB().bookmarks.count()).toBe(0);
+  });
+
+  it("cascades to every edge that references a deleted bookmark on either end", async () => {
+    const corpus = await seed(5);
+    const [a, b, c, d, e] = corpus.map((bm) => bm.id);
+    await createEdge({ fromId: a, toId: b, type: "related" });
+    await createEdge({ fromId: c, toId: a, type: "source" });
+    // survivor: only touches ids not being deleted
+    const survivor = await createEdge({ fromId: d, toId: e, type: "related" });
+    expect(await listAllEdges()).toHaveLength(3);
+    const result = await bulkDelete([a], { chunkSize: 100 });
+    expect(result.deleted).toBe(1);
+    const remaining = await listAllEdges();
+    expect(remaining.map((edge) => edge.id)).toEqual([survivor.id]);
   });
 
   it("rolls back cleanly on a simulated mid-op throw (no half-applied state)", async () => {

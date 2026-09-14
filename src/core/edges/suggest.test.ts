@@ -2,12 +2,14 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Bookmark } from "../../shared/types";
 import { getDB, resetDBForTests } from "../storage/db";
 import { createEdge, listAllEdges, listEdgesFor } from "./crud";
+import { rejectEdgePair } from "./rejected";
 import { materializeSuggestion, suggestEdgesFor } from "./suggest";
 
 beforeEach(async () => {
   const db = getDB();
   await db.edges.clear();
   await db.bookmarks.clear();
+  await db.rejectedEdgePairs.clear();
 });
 
 afterEach(() => {
@@ -132,6 +134,18 @@ describe("suggestEdgesFor", () => {
       makeBookmark({ id: "c", domain: "x.com", tags: ["AI", "ML"] }),
     ]);
     await createEdge({ fromId: "b", toId: "a", type: "related", source: "manual" });
+    const suggestions = await suggestEdgesFor("a");
+    expect(suggestions.map((s) => s.toId)).toEqual(["c"]);
+  });
+
+  it("excludes pairs the user has explicitly rejected in either order", async () => {
+    await seed([
+      makeBookmark({ id: "a", domain: "x.com", tags: ["AI", "ML"] }),
+      makeBookmark({ id: "b", domain: "x.com", tags: ["AI", "ML"] }),
+      makeBookmark({ id: "c", domain: "x.com", tags: ["AI", "ML"] }),
+    ]);
+    // Reject b→a; the pair store normalizes the direction.
+    await rejectEdgePair("b", "a");
     const suggestions = await suggestEdgesFor("a");
     expect(suggestions.map((s) => s.toId)).toEqual(["c"]);
   });
