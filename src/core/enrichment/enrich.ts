@@ -10,17 +10,32 @@
 import type { Bookmark, ContentType } from "../../shared/types";
 import { updateBookmark } from "../storage/bookmarks";
 import { detectContentType } from "./contentType";
-import { fetchAndParseMeta, type MetaResult } from "./fetcher";
+import { type FetchAndParseOpts, fetchAndParseMeta, type MetaResult } from "./fetcher";
+import { type CapturePageSnapshotResult, maybeCaptureSnapshotFromSettings } from "./pageSnapshot";
 
 export type EnrichResult = {
   updated: boolean;
   reason?: string;
+  snapshot?: CapturePageSnapshotResult | null;
 };
+
+export type SnapshotCapturer = (opts: {
+  bookmarkId: string;
+  html: string;
+  now: number;
+}) => Promise<CapturePageSnapshotResult | null>;
 
 export type EnrichOptions = {
   force?: boolean;
-  fetcher?: (url: string) => Promise<MetaResult>;
+  fetcher?: (url: string, opts?: FetchAndParseOpts) => Promise<MetaResult>;
   now?: number;
+  /**
+   * Optional override for the page-snapshot capture step (D15). Default
+   * checks `settings.networkEnrichmentEnabled` + `pageSnapshotEnabled`
+   * and writes to the `pageSnapshots` Dexie table. Tests inject a spy
+   * (or a no-op) to keep the enrich unit tests hermetic.
+   */
+  snapshotCapturer?: SnapshotCapturer;
 };
 
 const OG_TYPE_TO_CONTENT_TYPE: Record<string, ContentType> = {
@@ -66,7 +81,12 @@ export async function enrichBookmark(
   opts: EnrichOptions = {},
 ): Promise<EnrichResult> {
   const fetcher = opts.fetcher ?? fetchAndParseMeta;
-  const meta = await fetcher(bookmark.originalUrl);
+  const snapshotCapturer = opts.snapshotCapturer ?? defaultSnapshotCapturer;
+  // Ask for html only when a snapshot capturer is wired. The default
+  // capturer respects settings itself, but even the request for html
+  // is a >0 alloc — we hand the flag through so a test that injects
+  // `snapshotCapturer: null` keeps the meta-only fetch shape.
+  const meta = await fetcher(bookmark.originalUrl, { includeHtml: true });
   const now = opts.now ?? Date.now();
 
   if (!meta.ok) {
@@ -108,6 +128,34 @@ export async function enrichBookmark(
   patch.enrichedAt = now;
 
   await updateBookmark(bookmark.id, patch);
+
+  // Snapshot the page after the meta patch. Order matters only for the
+  // "did we touch this bookmark" trail: enrichedAt is bumped first so a
+  // snapshot failure never leaves us re-enriching the same page on
+  // every sweep. The capturer is expected to swallow its own errors
+  // rather than throw; guard here anyway so a snapshot bug can't take
+  // enrichment down with it.
+  let snapshot: CapturePageSnapshotResult | null = null;
+  if (meta.html) {
+    try {
+      snapshot = await snapshotCapturer({
+        bookmarkId: bookmark.id,
+        html: meta.html,
+        now,
+      });
+    } catch (err) {
+      console.warn("enrichBookmark: snapshot capture failed", bookmark.id, err);
+    }
+  }
+
   const changedFieldCount = Object.keys(patch).length - 1; // exclude enrichedAt
-  return { updated: changedFieldCount > 0 };
+  return { updated: changedFieldCount > 0, snapshot };
+}
+
+async function defaultSnapshotCapturer(opts: {
+  bookmarkId: string;
+  html: string;
+  now: number;
+}): Promise<CapturePageSnapshotResult | null> {
+  return maybeCaptureSnapshotFromSettings(opts);
 }

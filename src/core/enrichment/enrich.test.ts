@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Bookmark } from "../../shared/types";
 import { getBookmarkById, upsertBookmark } from "../storage/bookmarks";
 import { getDB, resetDBForTests } from "../storage/db";
@@ -211,6 +211,71 @@ describe("enrichBookmark", () => {
     const updated = await getBookmarkById(bm.id);
     expect(updated?.enrichedAt).toBe(12345);
     expect(updated?.title).toBe("");
+  });
+
+  it("passes html into the injected snapshot capturer", async () => {
+    const bm = await seed({ rawUrl: "https://example.com/snap" });
+    const calls: Array<{ bookmarkId: string; html: string; now: number }> = [];
+    const res = await enrichBookmark(bm, {
+      fetcher: fetcherReturning({
+        ok: true,
+        title: "Snapshot title",
+        html: "<html><body><main>Body.</main></body></html>",
+      }),
+      now: 555,
+      snapshotCapturer: async ({ bookmarkId, html, now }) => {
+        calls.push({ bookmarkId, html, now });
+        return {
+          captured: true,
+          bookmarkId,
+          byteLength: html.length,
+          storedByteLength: html.length,
+          truncated: false,
+        };
+      },
+    });
+    expect(calls).toHaveLength(1);
+    expect(calls[0].bookmarkId).toBe(bm.id);
+    expect(calls[0].html).toContain("<main>Body.</main>");
+    expect(calls[0].now).toBe(555);
+    expect(res.snapshot?.captured).toBe(true);
+  });
+
+  it("skips the snapshot capturer when the fetcher returns no html", async () => {
+    const bm = await seed({ rawUrl: "https://example.com/nohtml" });
+    const capturer = vi.fn();
+    const res = await enrichBookmark(bm, {
+      fetcher: fetcherReturning({ ok: true, title: "meta only" }),
+      snapshotCapturer: capturer,
+    });
+    expect(capturer).not.toHaveBeenCalled();
+    expect(res.snapshot).toBeNull();
+  });
+
+  it("survives a throwing snapshot capturer", async () => {
+    const bm = await seed({ rawUrl: "https://example.com/throwsnap" });
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const res = await enrichBookmark(bm, {
+      fetcher: fetcherReturning({
+        ok: true,
+        title: "Snapshot title",
+        html: "<html><body><main>Body.</main></body></html>",
+      }),
+      snapshotCapturer: async () => {
+        throw new Error("disk full");
+      },
+    });
+    // Meta patch still landed.
+    const updated = await getBookmarkById(bm.id);
+    expect(updated?.title).toBe("Snapshot title");
+    expect(typeof updated?.enrichedAt).toBe("number");
+    expect(res.snapshot).toBeNull();
+    expect(warnSpy).toHaveBeenCalledWith(
+      "enrichBookmark: snapshot capture failed",
+      bm.id,
+      expect.any(Error),
+    );
+    warnSpy.mockRestore();
   });
 
   it("reports updated:false when meta has no fillable fields", async () => {

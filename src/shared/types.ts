@@ -130,6 +130,22 @@ export type ChromeMapping = {
   lastKnownParentId: string | null;
 };
 
+/**
+ * Extracted readable text for one bookmark. Written by the enrichment
+ * pipeline when both `networkEnrichmentEnabled` and `pageSnapshotEnabled`
+ * are on. One row per bookmark; a fresh capture replaces the previous
+ * row. `text` is capped at PAGE_SNAPSHOT_MAX_BYTES and truncated on the
+ * codepoint boundary; `byteLength` records the pre-truncation UTF-8 byte
+ * count so callers can tell "this page was 3 MB, we kept 500 KB".
+ * Cascade-deleted when the parent bookmark goes away.
+ */
+export type PageSnapshot = {
+  bookmarkId: string;
+  capturedAt: number;
+  text: string;
+  byteLength: number;
+};
+
 export type FolderMirrorPolicy = "off" | "all";
 export type ConflictPolicy = "prefer-chrome" | "prefer-store" | "prefer-newer" | "ask";
 
@@ -158,6 +174,12 @@ export type Settings = {
   networkEnrichmentEnabled: boolean;
   enrichmentSweepIntervalMin: number;
   enrichmentBatchSize: number;
+  // Per-bookmark page snapshot (D15). Off by default. Requires
+  // `networkEnrichmentEnabled` — the snapshot piggy-backs on the same
+  // fetch. Extracted readable text lands in the `pageSnapshots` table
+  // keyed by bookmarkId and is capped at ~500 KB per snapshot. Deleting
+  // the bookmark cascades to its snapshot. See docs/DECISIONS.md D15.
+  pageSnapshotEnabled: boolean;
   // When the user creates a bookmark via Chrome's native Cmd+D / star-icon
   // flow, surface the Better Bookmarks editor by opening the overview tab
   // with `#edit=<id>`. Off by default so the native flow stays silent.
@@ -215,6 +237,7 @@ export const DEFAULT_SETTINGS: Settings = {
   networkEnrichmentEnabled: false,
   enrichmentSweepIntervalMin: 720,
   enrichmentBatchSize: 25,
+  pageSnapshotEnabled: false,
   openOverviewOnNativeBookmark: false,
   healthEnabledScanners: {},
   healthBrokenLinkCheckEnabled: false,

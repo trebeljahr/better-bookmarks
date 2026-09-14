@@ -9,9 +9,11 @@ import {
   upsertBookmark,
 } from "./bookmarks";
 import { getDB, resetDBForTests } from "./db";
+import { getPageSnapshot, putPageSnapshot } from "./pageSnapshots";
 
 beforeEach(async () => {
   await getDB().bookmarks.clear();
+  await getDB().pageSnapshots.clear();
 });
 
 afterEach(() => {
@@ -90,6 +92,41 @@ describe("deleteBookmark", () => {
     if (!initial.ok) throw new Error("setup failed");
     await deleteBookmark(initial.bookmark.id);
     expect(await listBookmarks()).toHaveLength(0);
+  });
+
+  it("cascades to the page snapshot for the deleted bookmark", async () => {
+    const initial = await upsertBookmark({ rawUrl: "https://example.com/snap-cascade" });
+    if (!initial.ok) throw new Error("setup failed");
+    await putPageSnapshot({
+      bookmarkId: initial.bookmark.id,
+      capturedAt: 1,
+      text: "hello",
+      byteLength: 5,
+    });
+    expect(await getPageSnapshot(initial.bookmark.id)).toBeDefined();
+    await deleteBookmark(initial.bookmark.id);
+    expect(await getPageSnapshot(initial.bookmark.id)).toBeUndefined();
+  });
+
+  it("leaves other bookmarks' snapshots alone", async () => {
+    const a = await upsertBookmark({ rawUrl: "https://example.com/keep-1" });
+    const b = await upsertBookmark({ rawUrl: "https://example.com/keep-2" });
+    if (!a.ok || !b.ok) throw new Error("setup failed");
+    await putPageSnapshot({
+      bookmarkId: a.bookmark.id,
+      capturedAt: 1,
+      text: "a",
+      byteLength: 1,
+    });
+    await putPageSnapshot({
+      bookmarkId: b.bookmark.id,
+      capturedAt: 2,
+      text: "b",
+      byteLength: 1,
+    });
+    await deleteBookmark(a.bookmark.id);
+    expect(await getPageSnapshot(a.bookmark.id)).toBeUndefined();
+    expect(await getPageSnapshot(b.bookmark.id)).toBeDefined();
   });
 });
 

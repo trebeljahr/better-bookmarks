@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable, type Table } from "dexie";
-import type { Bookmark, ChromeMapping, Edge, Tag } from "../../shared/types";
+import type { Bookmark, ChromeMapping, Edge, PageSnapshot, Tag } from "../../shared/types";
 
 export type Posting = {
   term: string;
@@ -32,6 +32,7 @@ export type BookmarkDB = Dexie & {
   chromeMappings: EntityTable<ChromeMapping, "chromeId">;
   postings: Table<Posting>;
   searchIndex: Table<SearchIndexRow>;
+  pageSnapshots: EntityTable<PageSnapshot, "bookmarkId">;
 };
 
 let cached: BookmarkDB | null = null;
@@ -50,6 +51,13 @@ export function getDB(): BookmarkDB {
   });
   db.version(3).stores({
     searchIndex: "[term+bookmarkId+field], term, bookmarkId",
+  });
+  // v4: opt-in per-bookmark page snapshot (D15). One row per bookmark
+  // keyed on `bookmarkId`; a fresh capture replaces the previous row.
+  // `capturedAt` is indexed so future features can order/scan by
+  // recency without a full table walk.
+  db.version(4).stores({
+    pageSnapshots: "bookmarkId, capturedAt",
   });
   cached = db;
   return db;

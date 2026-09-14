@@ -148,6 +148,31 @@ describe("fetchAndParseMeta", () => {
     expect(result.reason).toBe("too-large");
   });
 
+  it("returns raw html on the ok result when includeHtml is true", async () => {
+    const body = `<html><head><title>H</title></head><body><p>ok</p></body></html>`;
+    mockFetch({
+      ok: true,
+      headers: { "content-type": "text/html" },
+      body,
+    });
+    const result = await fetchAndParseMeta("https://example.com/inc", { includeHtml: true });
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.html).toBe(body);
+    expect(result.title).toBe("H");
+  });
+
+  it("omits html on the ok result when includeHtml is not set", async () => {
+    const body = `<html><body><p>ok</p></body></html>`;
+    mockFetch({
+      ok: true,
+      headers: { "content-type": "text/html" },
+      body,
+    });
+    const result = await fetchAndParseMeta("https://example.com/exc");
+    if (!result.ok) throw new Error("expected ok");
+    expect(result.html).toBeUndefined();
+  });
+
   it("strips script/style/nav/footer/aside before counting words", async () => {
     mockFetch({
       ok: true,

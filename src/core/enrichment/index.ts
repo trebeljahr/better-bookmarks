@@ -13,6 +13,7 @@ export {
   type EnrichResult,
   enrichBookmark,
   mapOgTypeToContentType,
+  type SnapshotCapturer,
 } from "./enrich";
 export {
   _configureEnrichmentQueueForTests,
@@ -36,6 +37,17 @@ export {
   WORDS_PER_MINUTE,
 } from "./fetcher";
 export { detectLanguage, MIN_DETECT_LENGTH, normalizeLangTag } from "./languageDetect";
+export {
+  type CapturePageSnapshotOpts,
+  type CapturePageSnapshotResult,
+  capturePageSnapshot,
+  extractArticleText,
+  maybeCaptureSnapshotFromSettings,
+  PAGE_SNAPSHOT_MAX_BYTES,
+  type PageSnapshotSink,
+  type SettingsReader,
+  truncateOnCodepointBoundary,
+} from "./pageSnapshot";
 export {
   ENRICHMENT_ALARM_NAME,
   installEnrichmentAlarm,

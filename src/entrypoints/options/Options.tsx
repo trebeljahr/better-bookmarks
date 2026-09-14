@@ -353,10 +353,10 @@ export const Options = () => {
 
       <Section title="Import URL list">
         <p className="text-sm text-muted-foreground">
-          Paste a plain list of URLs (one per line) or upload a
-          <code className="mx-1">.txt</code> / <code className="mx-1">.urls</code> file. Lines
-          beginning with <code>#</code> are treated as comments; blank lines are ignored.
-          Titles are not read from the file — enrichment (if enabled) fetches them later.
+          Paste a plain list of URLs (one per line) or upload a<code className="mx-1">.txt</code> /{" "}
+          <code className="mx-1">.urls</code> file. Lines beginning with <code>#</code> are treated
+          as comments; blank lines are ignored. Titles are not read from the file — enrichment (if
+          enabled) fetches them later.
         </p>
         <div className="flex flex-col gap-1.5">
           <Label htmlFor="rawUrlsTextarea">URLs</Label>
@@ -403,6 +403,44 @@ export const Options = () => {
               {rawUrlsStatus}
             </span>
           )}
+        </div>
+      </Section>
+
+      <Section title="Enrichment (network)">
+        <div className="flex items-start gap-2">
+          <Switch
+            id="networkEnrichmentEnabled"
+            checked={settings.networkEnrichmentEnabled}
+            onCheckedChange={(v) => update({ networkEnrichmentEnabled: v })}
+          />
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="networkEnrichmentEnabled">
+              Fetch page metadata (title, description, reading time)
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Off by default. When on, a background sweep visits pages that lack a fetched title,
+              description, language, or reading-time estimate and fills the blanks. Never overwrites
+              fields you filled in yourself.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-start gap-2">
+          <Switch
+            id="pageSnapshotEnabled"
+            checked={settings.pageSnapshotEnabled}
+            disabled={!settings.networkEnrichmentEnabled}
+            onCheckedChange={(v) => update({ pageSnapshotEnabled: v })}
+          />
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="pageSnapshotEnabled">
+              Save a readable-text snapshot of each fetched page
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Requires the network-enrichment toggle above. Stores up to 500 KB of extracted article
+              text per bookmark, keyed by bookmark id. Used later as fuel for full-text search; the
+              snapshot is deleted when you delete the bookmark.
+            </p>
+          </div>
         </div>
       </Section>
 

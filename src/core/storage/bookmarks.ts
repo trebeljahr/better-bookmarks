@@ -110,7 +110,14 @@ export async function getBookmarkByRawUrl(rawUrl: string): Promise<Bookmark | un
 }
 
 export async function deleteBookmark(id: string): Promise<void> {
-  await getDB().bookmarks.delete(id);
+  const db = getDB();
+  // Cascade the per-bookmark page snapshot (D15) so we don't leak
+  // orphaned rows in `pageSnapshots`. Wrapped in one rw transaction
+  // so a delete is atomic across both stores.
+  await db.transaction("rw", db.bookmarks, db.pageSnapshots, async () => {
+    await db.bookmarks.delete(id);
+    await db.pageSnapshots.delete(id);
+  });
 }
 
 export async function updateBookmark(

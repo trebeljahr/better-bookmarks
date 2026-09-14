@@ -21,11 +21,25 @@ export type MetaResult =
       lang?: string;
       wordCount?: number;
       readingTimeMin?: number;
+      // Populated only when `fetchAndParseMeta` is called with
+      // `{ includeHtml: true }`. Consumed by the D15 page-snapshot
+      // pipeline; other callers can ignore it. Kept optional so the
+      // default (meta-only) call path stays byte-for-byte compatible.
+      html?: string;
     }
   | {
       ok: false;
       reason: "network" | "non-html" | "too-large" | "parse-error" | "timeout";
     };
+
+export type FetchAndParseOpts = {
+  /**
+   * When true, the ok result carries the raw HTML string alongside the
+   * parsed meta. Used by the page-snapshot pipeline (D15). Default
+   * false — keeping the extra 5 MB alloc off the meta-only path.
+   */
+  includeHtml?: boolean;
+};
 
 export const FETCH_TIMEOUT_MS = 15_000;
 export const MAX_BYTES = 5 * 1024 * 1024;
@@ -33,7 +47,10 @@ export const WORDS_PER_MINUTE = 250;
 
 const STRIP_SELECTOR = "script, style, nav, footer, aside, noscript, template, iframe";
 
-export async function fetchAndParseMeta(url: string): Promise<MetaResult> {
+export async function fetchAndParseMeta(
+  url: string,
+  opts: FetchAndParseOpts = {},
+): Promise<MetaResult> {
   let response: Response;
   try {
     response = await fetch(url, {
@@ -71,7 +88,11 @@ export async function fetchAndParseMeta(url: string): Promise<MetaResult> {
 
   if (html.length > MAX_BYTES) return { ok: false, reason: "too-large" };
 
-  return parseHtml(html);
+  const result = parseHtml(html);
+  if (result.ok && opts.includeHtml) {
+    result.html = html;
+  }
+  return result;
 }
 
 function isTimeoutError(err: unknown): boolean {
