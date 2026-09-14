@@ -215,6 +215,16 @@ export type Settings = {
   // Default false: fragments are stripped so a page bookmarked twice at
   // different sections collapses to one record.
   keepWikipediaFragments: boolean;
+  // Ranking weights for the `searchIndex`-backed ranker in
+  // `src/core/search/rank.ts`. Each factor is normalised into roughly
+  // [0, 1] before the weighted sum, so the four weights below should be
+  // read as *relative* importance rather than raw score contributions.
+  // Overriding a weight in code via `rank({ weights })` bypasses the
+  // stored value for that one call.
+  searchWeightRecency: number;
+  searchWeightRating: number;
+  searchWeightTagMatch: number;
+  searchWeightTermFreq: number;
 };
 
 export type CanonicalizationOverrides = {
@@ -256,4 +266,8 @@ export const DEFAULT_SETTINGS: Settings = {
   healthBrokenLinkCheckEnabled: false,
   healthDismissedFindings: [],
   keepWikipediaFragments: false,
+  searchWeightRecency: 0.3,
+  searchWeightRating: 0.2,
+  searchWeightTagMatch: 0.3,
+  searchWeightTermFreq: 0.2,
 };
