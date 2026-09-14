@@ -71,6 +71,7 @@ import { useSearch } from "@/hooks/useSearch";
 import { useShortcutHelp } from "@/hooks/useShortcutHelp";
 import { useTags } from "@/hooks/useTags";
 import { readHashParams, writeHashParams } from "@/lib/hash";
+import { formatRelativeTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 import type { ReadStatus } from "@/shared/types";
 
@@ -944,6 +945,7 @@ export const Overview = () => {
             onToggleStatus={onToggleStatus}
             activeChips={activeChips}
             onRemoveChip={removeChip}
+            showSyntaxHint={!loading && displayed.length === 0}
           />
 
           <div className="flex flex-wrap items-center gap-2">
@@ -1200,6 +1202,22 @@ function BookmarkRow({
           {bookmark.tags.length > 4 && (
             <span className="text-xs text-muted-foreground/70">+{bookmark.tags.length - 4}</span>
           )}
+          {bookmark.rating !== null && (
+            <span
+              className="inline-flex items-center gap-0.5 text-xs text-muted-foreground"
+              role="img"
+              aria-label={`rating ${bookmark.rating} of 10`}
+            >
+              <Star className="size-3 fill-amber-400 text-amber-400" aria-hidden="true" />
+              {bookmark.rating}
+            </span>
+          )}
+          <span
+            className="text-xs text-muted-foreground/70"
+            title={new Date(bookmark.updatedAt).toISOString()}
+          >
+            {formatRelativeTime(bookmark.updatedAt)}
+          </span>
         </div>
       </div>
       <div className="flex items-center gap-0.5">

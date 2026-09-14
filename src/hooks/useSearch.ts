@@ -1,7 +1,7 @@
 /**
  * useSearch — React hook over the search subsystem.
  *
- * - Debounces query input by 100ms to avoid spamming the index on every
+ * - Debounces query input by 200ms to avoid spamming the index on every
  *   keystroke.
  * - Re-runs when the underlying bookmarks store changes (Dexie hooks,
  *   same mechanism as useBookmarks).
@@ -18,7 +18,7 @@ import { parseQuery, search } from "../core/search";
 import { getDB } from "../core/storage/db";
 import type { Bookmark } from "../shared/types";
 
-const DEBOUNCE_MS = 100;
+const DEBOUNCE_MS = 200;
 const DEFAULT_LIMIT = 100;
 
 export type UseSearchOptions = {

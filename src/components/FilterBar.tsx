@@ -45,6 +45,11 @@ type Props = {
   onToggleStatus: (s: ReadStatus) => void;
   activeChips: ActiveChip[];
   onRemoveChip: (key: string) => void;
+  /**
+   * When true, the SearchBar renders a syntax cheat sheet below the
+   * input — used when the visible result list is empty.
+   */
+  showSyntaxHint?: boolean;
 };
 
 export function FilterBar({
@@ -58,6 +63,7 @@ export function FilterBar({
   onToggleStatus,
   activeChips,
   onRemoveChip,
+  showSyntaxHint = false,
 }: Props) {
   return (
     <div className="flex flex-col gap-2">
@@ -68,6 +74,7 @@ export function FilterBar({
             setQuery={setQuery}
             resultCount={resultCount}
             parseError={parseError}
+            showSyntaxHint={showSyntaxHint}
           />
         </div>
         <DropdownMenu>
