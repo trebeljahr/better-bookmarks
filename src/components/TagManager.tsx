@@ -18,6 +18,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 import type { Tag } from "@/shared/types";
@@ -35,6 +42,40 @@ type Props = {
 };
 
 type Mode = { kind: "rename"; name: string; draft: string } | { kind: "merge"; from: string };
+
+export type SortMode = "name-asc" | "name-desc" | "count-desc" | "count-asc";
+
+const SORT_OPTIONS: ReadonlyArray<{ value: SortMode; label: string }> = [
+  { value: "name-asc", label: "Name A → Z" },
+  { value: "name-desc", label: "Name Z → A" },
+  { value: "count-desc", label: "Count high → low" },
+  { value: "count-asc", label: "Count low → high" },
+];
+
+export function sortTags(tags: Tag[], counts: Record<string, number>, mode: SortMode): Tag[] {
+  const copy = tags.slice();
+  switch (mode) {
+    case "name-asc":
+      copy.sort((a, b) => a.name.localeCompare(b.name));
+      break;
+    case "name-desc":
+      copy.sort((a, b) => b.name.localeCompare(a.name));
+      break;
+    case "count-desc":
+      copy.sort((a, b) => {
+        const diff = (counts[b.name] ?? 0) - (counts[a.name] ?? 0);
+        return diff !== 0 ? diff : a.name.localeCompare(b.name);
+      });
+      break;
+    case "count-asc":
+      copy.sort((a, b) => {
+        const diff = (counts[a.name] ?? 0) - (counts[b.name] ?? 0);
+        return diff !== 0 ? diff : a.name.localeCompare(b.name);
+      });
+      break;
+  }
+  return copy;
+}
 
 const PRESET_COLORS: { hex: string; name: string }[] = [
   { hex: "#ef5350", name: "Red" },
@@ -164,6 +205,7 @@ export function TagManager({
   onClose,
 }: Props) {
   const [filter, setFilter] = useState("");
+  const [sortMode, setSortMode] = useState<SortMode>("name-asc");
   const [mode, setMode] = useState<Mode | null>(null);
   const [mergeTarget, setMergeTarget] = useState<string>("");
   const [mergeOpen, setMergeOpen] = useState(false);
@@ -174,9 +216,9 @@ export function TagManager({
 
   const filtered = useMemo(() => {
     const needle = filter.trim().toLowerCase();
-    if (!needle) return tags;
-    return tags.filter((t) => t.name.toLowerCase().includes(needle));
-  }, [filter, tags]);
+    const base = needle ? tags.filter((t) => t.name.toLowerCase().includes(needle)) : tags;
+    return sortTags(base, counts, sortMode);
+  }, [filter, tags, counts, sortMode]);
 
   const otherTagNames = useMemo(() => {
     if (mode?.kind !== "merge") return [] as string[];
@@ -197,20 +239,27 @@ export function TagManager({
 
   const handleMergeSubmit = async () => {
     if (mode?.kind !== "merge" || !mergeTarget.trim()) return;
-    const r = await onMerge(mode.from, mergeTarget.trim());
-    setStatus(`merged "${mode.from}" → "${mergeTarget}" (${r.affected} bookmarks)`);
+    const target = mergeTarget.trim();
+    if (target.toLowerCase() === mode.from.toLowerCase()) {
+      setStatus(`"${mode.from}" and "${target}" are the same tag`);
+      return;
+    }
+    const affectedCount = counts[mode.from] ?? 0;
+    const noun = affectedCount === 1 ? "bookmark" : "bookmarks";
+    const message = `${affectedCount} ${noun} will be re-tagged from "${mode.from}" to "${target}". Continue?`;
+    if (!confirm(message)) return;
+    const r = await onMerge(mode.from, target);
+    setStatus(`merged "${mode.from}" → "${target}" (${r.affected} bookmarks)`);
     setMode(null);
     setMergeTarget("");
   };
 
   const handleDelete = async (name: string) => {
-    if (
-      !confirm(
-        `Delete tag "${name}"? It will be removed from ${counts[name] ?? 0} bookmarks. The bookmarks themselves are not deleted.`,
-      )
-    ) {
-      return;
-    }
+    const affectedCount = counts[name] ?? 0;
+    const noun = affectedCount === 1 ? "bookmark" : "bookmarks";
+    const verb = affectedCount === 1 ? "has" : "have";
+    const message = `${affectedCount} ${noun} currently ${verb} this tag; delete anyway? The bookmarks themselves are not deleted.`;
+    if (!confirm(message)) return;
     await onDelete(name);
     setStatus(`deleted "${name}"`);
   };
@@ -251,16 +300,35 @@ export function TagManager({
         </Button>
       </div>
 
-      <div>
-        <Label htmlFor="bb-tag-filter" className="sr-only">
-          Filter
-        </Label>
-        <Input
-          id="bb-tag-filter"
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="search tag names…"
-        />
+      <div className="flex items-center gap-2">
+        <div className="flex-1">
+          <Label htmlFor="bb-tag-filter" className="sr-only">
+            Filter
+          </Label>
+          <Input
+            id="bb-tag-filter"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            placeholder="search tag names…"
+          />
+        </div>
+        <div className="w-[190px]">
+          <Label htmlFor="bb-tag-sort" className="sr-only">
+            Sort tags
+          </Label>
+          <Select value={sortMode} onValueChange={(v) => setSortMode(v as SortMode)}>
+            <SelectTrigger id="bb-tag-sort" aria-label="Sort tags">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SORT_OPTIONS.map((o) => (
+                <SelectItem key={o.value} value={o.value}>
+                  {o.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {status && <p className="text-xs text-emerald-600 dark:text-emerald-500">{status}</p>}
