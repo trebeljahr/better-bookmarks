@@ -41,20 +41,39 @@ export async function handleInputChanged(
 }
 
 export function handleInputEntered(
-  url: string,
+  text: string,
   disposition: "currentTab" | "newForegroundTab" | "newBackgroundTab",
 ): void {
-  if (!url) return;
+  const trimmed = text.trim();
+  if (!trimmed) return;
+  // A selected suggestion arrives here as its `content` — which we set to
+  // the bookmark's http(s) URL. Anything else is a query the user hit Enter
+  // on without picking a suggestion; route those into the overview page with
+  // `#q=` so the search field is pre-populated.
+  const target = isHttpUrl(trimmed)
+    ? trimmed
+    : chrome.runtime.getURL(`overview.html#q=${encodeURIComponent(trimmed)}`);
   switch (disposition) {
     case "currentTab":
-      chrome.tabs.update({ url });
+      chrome.tabs.update({ url: target });
       return;
     case "newForegroundTab":
-      chrome.tabs.create({ url, active: true });
+      chrome.tabs.create({ url: target, active: true });
       return;
     case "newBackgroundTab":
-      chrome.tabs.create({ url, active: false });
+      chrome.tabs.create({ url: target, active: false });
       return;
+  }
+}
+
+/** True iff `s` parses as an http/https URL. Used to tell a picked
+ *  suggestion (whose `content` is a bookmark URL) from a raw query. */
+export function isHttpUrl(s: string): boolean {
+  try {
+    const u = new URL(s);
+    return u.protocol === "http:" || u.protocol === "https:";
+  } catch {
+    return false;
   }
 }
 

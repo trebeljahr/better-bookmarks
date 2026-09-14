@@ -10,6 +10,7 @@ import {
   handleInputChanged,
   handleInputEntered,
   installOmnibox,
+  isHttpUrl,
   OMNIBOX_SUGGESTION_LIMIT,
   xmlEscape,
 } from "./omniboxHandler";
@@ -25,9 +26,14 @@ type FakeTabs = {
   create: ReturnType<typeof vi.fn>;
 };
 
+type FakeRuntime = {
+  getURL: ReturnType<typeof vi.fn>;
+};
+
 type FakeChrome = {
   omnibox: FakeOmnibox;
   tabs: FakeTabs;
+  runtime: FakeRuntime;
 };
 
 function installChrome(): FakeChrome {
@@ -40,6 +46,11 @@ function installChrome(): FakeChrome {
     tabs: {
       update: vi.fn(),
       create: vi.fn(),
+    },
+    runtime: {
+      // Emulate chrome.runtime.getURL by prefixing the fake extension origin
+      // — enough for the handler to build a working overview URL.
+      getURL: vi.fn((path: string) => `chrome-extension://fake-id/${path}`),
     },
   };
   // biome-ignore lint/suspicious/noExplicitAny: test wiring
@@ -199,10 +210,59 @@ describe("handleInputEntered", () => {
     expect(fake.tabs.create).toHaveBeenCalledWith({ url: "https://example.com/", active: false });
   });
 
-  it("no-ops on empty url", () => {
+  it("no-ops on empty input", () => {
     const fake = installChrome();
     handleInputEntered("", "currentTab");
     expect(fake.tabs.update).not.toHaveBeenCalled();
     expect(fake.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("no-ops on whitespace-only input", () => {
+    const fake = installChrome();
+    handleInputEntered("   ", "newForegroundTab");
+    expect(fake.tabs.update).not.toHaveBeenCalled();
+    expect(fake.tabs.create).not.toHaveBeenCalled();
+  });
+
+  it("routes a raw query (no suggestion picked) to the overview with #q=", () => {
+    const fake = installChrome();
+    handleInputEntered("machine learning", "currentTab");
+    expect(fake.runtime.getURL).toHaveBeenCalledWith("overview.html#q=machine%20learning");
+    expect(fake.tabs.update).toHaveBeenCalledWith({
+      url: "chrome-extension://fake-id/overview.html#q=machine%20learning",
+    });
+  });
+
+  it("encodes special characters in the query hash", () => {
+    const fake = installChrome();
+    handleInputEntered("tag:react & hooks", "newBackgroundTab");
+    expect(fake.tabs.create).toHaveBeenCalledWith({
+      url: "chrome-extension://fake-id/overview.html#q=tag%3Areact%20%26%20hooks",
+      active: false,
+    });
+  });
+
+  it("trims surrounding whitespace before routing a raw query", () => {
+    const fake = installChrome();
+    handleInputEntered("  hn  ", "newForegroundTab");
+    expect(fake.runtime.getURL).toHaveBeenCalledWith("overview.html#q=hn");
+    expect(fake.tabs.create).toHaveBeenCalledWith({
+      url: "chrome-extension://fake-id/overview.html#q=hn",
+      active: true,
+    });
+  });
+});
+
+describe("isHttpUrl", () => {
+  it("accepts http and https URLs", () => {
+    expect(isHttpUrl("http://example.com/")).toBe(true);
+    expect(isHttpUrl("https://example.com/path?x=1")).toBe(true);
+  });
+
+  it("rejects non-http schemes and unparseable text", () => {
+    expect(isHttpUrl("ftp://example.com/")).toBe(false);
+    expect(isHttpUrl("javascript:alert(1)")).toBe(false);
+    expect(isHttpUrl("just a query")).toBe(false);
+    expect(isHttpUrl("")).toBe(false);
   });
 });

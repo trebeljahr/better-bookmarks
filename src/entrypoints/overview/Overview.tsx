@@ -164,6 +164,7 @@ export const Overview = () => {
   const fileInput = useRef<HTMLInputElement>(null);
   const listRef = useRef<FixedSizeList | null>(null);
   const selectionHydrated = useRef(false);
+  const queryHydrated = useRef(false);
   // Anchor for shift-click range extension. Reset whenever selection is
   // cleared so the next plain click becomes the new anchor.
   const rangeAnchor = useRef<number | null>(null);
@@ -261,6 +262,18 @@ export const Overview = () => {
     const filtered = raw.split(",").filter((id) => id && known.has(id));
     if (filtered.length > 0) setBulkSelected(new Set(filtered));
   }, [loading, bookmarks]);
+
+  // Seed the search box from `#q=<query>` on first mount. Used by the
+  // omnibox `bb` keyword: when the user hits Enter without picking a
+  // suggestion, the background handler routes them to overview.html#q=…
+  // so the same search runs here. One-shot: after hydration the user is
+  // free to type over it without us clobbering their edit.
+  useEffect(() => {
+    if (queryHydrated.current) return;
+    queryHydrated.current = true;
+    const q = readHashParams().get("q");
+    if (q) setQuery(q);
+  }, [setQuery]);
 
   // Persist the bulk selection back to the URL hash. `writeHashParams` uses
   // `history.replaceState`, so it does not fire a `hashchange` — the edit-id
