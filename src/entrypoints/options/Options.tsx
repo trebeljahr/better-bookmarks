@@ -593,6 +593,22 @@ export const Options = () => {
         </div>
       </Section>
 
+      <Section title="Report a bug">
+        <p className="text-sm text-muted-foreground">
+          Found a bug or want to request a feature?{" "}
+          <a
+            href="https://github.com/trebeljahr/better-bookmarks/issues/new?template=bug-report.yml"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-foreground"
+          >
+            Open an issue on GitHub
+          </a>
+          . Include your extension version (find it at <code>chrome://extensions</code>) and Chrome
+          version (<code>chrome://version</code>).
+        </p>
+      </Section>
+
       <Separator className="my-6" />
 
       <div className="flex items-center gap-2">

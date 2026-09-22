@@ -22,6 +22,14 @@ export function SiteFooter() {
             Press
           </Link>
           <a
+            href={`${REPO_URL}/issues/new?template=bug-report.yml`}
+            target="_blank"
+            rel="noreferrer"
+            className="hover:text-foreground"
+          >
+            Report a bug
+          </a>
+          <a
             href={REPO_URL}
             target="_blank"
             rel="noreferrer"

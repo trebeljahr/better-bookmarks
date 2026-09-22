@@ -39,6 +39,16 @@ unpacked from a local build or a release zip:
 3. Click **Load unpacked** and pick the `./dist` directory (or the
    unpacked release folder).
 
+## Reporting bugs
+
+Bug reports and feature requests go to
+[GitHub Issues](https://github.com/trebeljahr/better-bookmarks/issues/new?template=bug-report.yml).
+
+To help triage, include:
+- **Extension version:** open `chrome://extensions`, find Better Bookmarks, copy the version string.
+- **Chrome version:** open `chrome://version`, copy the first line.
+- **Reproduction steps:** click paths, expected vs actual.
+
 ## Design docs
 
 The design decisions live alongside the code so future-us can read
