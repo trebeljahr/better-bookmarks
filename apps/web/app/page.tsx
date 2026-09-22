@@ -44,7 +44,7 @@ const faqs = [
   },
   {
     q: "Does it work in Firefox?",
-    a: "A Firefox build is available from the GitHub releases page (built with WXT, same codebase). AMO (addons.mozilla.org) submission is pending.",
+    a: "Firefox build from source; AMO (addons.mozilla.org) submission pending. The wxt.config.ts already targets Firefox; pnpm zip:firefox in the repo produces a load-testable .zip.",
   },
   {
     q: "How do I export my bookmarks?",
@@ -56,6 +56,7 @@ const faqs = [
   },
   {
     q: "Do you collect any analytics?",
+    // TODO(Rico): confirm Plausible is actually wired up on this site pre-launch. If not, drop this claim from the answer.
     a: "No. The extension makes no analytics calls. Only this marketing site uses Plausible — cookieless, no cross-site tracking, no personal data.",
   },
   {
@@ -107,7 +108,9 @@ function Hero() {
           </p>
           <div className="mt-10 flex flex-col items-center gap-3 sm:flex-row">
             <Button size="lg" asChild>
-              <a href="#">Add to Chrome</a>
+              <a href="https://github.com/trebeljahr/better-bookmarks#install">
+                Coming to the Chrome Web Store — install from source meanwhile
+              </a>
             </Button>
             <Button size="lg" variant="outline" asChild>
               <a href={REPO_URL} target="_blank" rel="noreferrer">
