@@ -22,7 +22,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "prepare": "husky",
-    "build:favicons": "node scripts/build-favicons.mjs"
+    "build:favicons": "node scripts/build-favicons.mjs",
+    "build:press-kit": "node scripts/build-press-kit.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

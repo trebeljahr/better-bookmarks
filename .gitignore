@@ -48,3 +48,5 @@ venv/
 .env.test
 .envrc.local
 .vercel/
+
+press-kit-*.zip
