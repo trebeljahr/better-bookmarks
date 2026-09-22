@@ -34,7 +34,7 @@ export default defineConfig({
   manifest: {
     name: "Better Bookmarks",
     description:
-      "Better Bookmarks is a Chrome extension that allows you to save your bookmarks in a more organized way.",
+      "Tag-first bookmarks for Chrome. Aggressive URL deduplication. Search that scales to 20,000+. Open source, no account, no cloud.",
     version: "1.0",
     permissions: [
       "storage",
