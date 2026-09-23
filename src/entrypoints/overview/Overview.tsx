@@ -25,6 +25,7 @@ import {
 } from "@/components/ConflictResolverModal";
 import { type ActiveChip, FilterBar, type SortMode } from "@/components/FilterBar";
 import { FolderTreeSidebar } from "@/components/FolderTreeSidebar";
+import { OnboardingModal } from "@/components/OnboardingModal";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { SuggestedConnectionsPanel } from "@/components/SuggestedConnectionsPanel";
 import { TagManager } from "@/components/TagManager";
@@ -71,6 +72,7 @@ import { useAllEdges } from "@/hooks/useAllEdges";
 import { useBookmarkDragSource } from "@/hooks/useBookmarkDnd";
 import { type Bookmark, useBookmarks } from "@/hooks/useBookmarks";
 import { useFolders } from "@/hooks/useFolders";
+import { useOnboarding } from "@/hooks/useOnboarding";
 import { usePendingConflicts } from "@/hooks/usePendingConflicts";
 import { useSearch } from "@/hooks/useSearch";
 import { useSettings } from "@/hooks/useSettings";
@@ -177,6 +179,11 @@ export const Overview = () => {
   const { conflicts: pendingConflicts } = usePendingConflicts();
   const [skippedConflictIds, setSkippedConflictIds] = useState<Set<string>>(new Set());
   const { settings } = useSettings();
+  const {
+    pending: onboardingPending,
+    dismiss: dismissOnboarding,
+    complete: completeOnboarding,
+  } = useOnboarding();
   const graphViewEnabled = settings.graphViewEnabled;
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   // If the setting is turned off while the graph tab is active, fall
@@ -1235,6 +1242,16 @@ export const Overview = () => {
         pendingCount={visibleConflictCount}
         onResolve={handleResolveConflict}
         onSkip={handleSkipConflict}
+      />
+
+      <OnboardingModal
+        pending={onboardingPending}
+        onDismiss={() => {
+          void dismissOnboarding();
+        }}
+        onComplete={() => {
+          void completeOnboarding();
+        }}
       />
     </div>
   );

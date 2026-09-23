@@ -265,6 +265,27 @@ export type Settings = {
   graphViewEnabled: boolean;
 };
 
+/**
+ * First-install onboarding state. Persisted at the top level of
+ * `chrome.storage.local` (NOT nested under `Settings`) so the background
+ * service worker can flip `pending` from `runtime.onInstalled` without
+ * touching the larger settings blob. See `src/core/onboarding/state.ts`.
+ */
+export type OnboardingState = {
+  /** True on a fresh install until the user completes or skips the tour. */
+  pending: boolean;
+  /** Wall-clock ms of the install event that flipped `pending` to true. 0 if unset. */
+  installedAt: number;
+  /** Wall-clock ms of the last complete/dismiss action. 0 if never dismissed. */
+  completedAt: number;
+};
+
+export const DEFAULT_ONBOARDING_STATE: OnboardingState = {
+  pending: false,
+  installedAt: 0,
+  completedAt: 0,
+};
+
 export type CanonicalizationOverrides = {
   extraStrippedParams: string[];
   perDomain: Record<string, { keepFragments?: boolean; stripLocale?: boolean }>;

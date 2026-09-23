@@ -19,6 +19,7 @@ import {
 import { DEAD_LINK_ALARM_NAME, installDeadLinkAlarm, runDeadLinkSweep } from "@/core/maintenance";
 import { migrateLegacyStore } from "@/core/migration/legacyToV1";
 import { installOmnibox } from "@/core/omnibox";
+import { handleInstalledEvent } from "@/core/onboarding/state";
 import {
   ensureInvertedIndexInitialized,
   ensureSearchIndexInitialized,
@@ -81,6 +82,14 @@ async function openOrFocusOverview(): Promise<void> {
 }
 
 export default defineBackground(() => {
+  // First-install onboarding: flip `onboardingPending` on a fresh install
+  // so the overview page knows to render the tour. `handleInstalledEvent`
+  // ignores `update` / `chrome_update` / `shared_module_update` so an
+  // upgrade never re-shows the modal. See src/core/onboarding/state.ts.
+  chrome.runtime.onInstalled.addListener((details) => {
+    void handleInstalledEvent(details);
+  });
+
   chrome.tabs.onActivated.addListener((activeInfo) => {
     setIconToCorrectVersion(activeInfo.tabId);
   });
