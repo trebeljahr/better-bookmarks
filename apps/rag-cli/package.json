@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.json",
     "dev": "tsx src/cli.ts",
     "start": "node dist/cli.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test:security": "tsx --test src/serve.test.ts"
   },
   "engines": {
     "node": ">=24"
@@ -36,6 +37,11 @@
   "pnpm": {
     "onlyBuiltDependencies": [
       "better-sqlite3"
-    ]
+    ],
+    "overrides": {
+      "body-parser": "^2.3.0",
+      "qs": "^6.16.0",
+      "esbuild": "^0.28.1"
+    }
   }
 }

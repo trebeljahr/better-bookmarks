@@ -1,3 +1,4 @@
+import { timingSafeEqual } from "node:crypto";
 import type { Database as Db } from "better-sqlite3";
 import cors from "cors";
 import express from "express";
@@ -5,6 +6,8 @@ import { ingestBookmarks, type SourceBookmark } from "./ingest.js";
 import { type SearchFilters, search } from "./search.js";
 
 export type ServeOpts = {
+  token?: string;
+  origins?: string[];
   port?: number;
   host?: string;
   baseUrl?: string;
@@ -19,10 +22,51 @@ export type ServeHandle = {
 export async function serve(db: Db, opts: ServeOpts = {}): Promise<ServeHandle> {
   const port = opts.port ?? 51847;
   const host = opts.host ?? "127.0.0.1";
+  const token = opts.token ?? process.env.BB_API_TOKEN;
+  if (!token || token.length < 32)
+    throw new Error("BB_API_TOKEN must contain at least 32 characters");
+  if (!["127.0.0.1", "::1", "localhost"].includes(host)) {
+    throw new Error("RAG API must bind to loopback");
+  }
+  const origins = new Set(
+    opts.origins ?? (process.env.BB_API_ORIGINS ?? "").split(",").filter(Boolean),
+  );
   const app = express();
+  app.disable("x-powered-by");
 
-  app.use(cors({ origin: true }));
-  app.use(express.json({ limit: "50mb" }));
+  app.use((req, res, next) => {
+    const actualPort = req.socket.localPort;
+    const allowedHosts = new Set([
+      `127.0.0.1:${actualPort}`,
+      `localhost:${actualPort}`,
+      `[::1]:${actualPort}`,
+    ]);
+    if (
+      !allowedHosts.has(req.headers.host ?? "") ||
+      (req.headers.origin !== undefined && !origins.has(req.headers.origin))
+    ) {
+      res.status(403).json({ error: "Host or origin not allowed" });
+      return;
+    }
+    next();
+  });
+  app.use(
+    cors({
+      origin: (origin, callback) => callback(null, !!origin && origins.has(origin)),
+      methods: ["GET", "POST"],
+      allowedHeaders: ["Authorization", "Content-Type"],
+    }),
+  );
+  app.use((req, res, next) => {
+    const supplied = Buffer.from(req.headers.authorization ?? "");
+    const expected = Buffer.from(`Bearer ${token}`);
+    if (supplied.length !== expected.length || !timingSafeEqual(supplied, expected)) {
+      res.status(401).json({ error: "Bearer token required" });
+      return;
+    }
+    next();
+  });
+  app.use(express.json({ limit: "2mb", inflate: false }));
 
   app.get("/health", (_req, res) => {
     res.json({ ok: true, ts: Date.now() });
@@ -30,7 +74,7 @@ export async function serve(db: Db, opts: ServeOpts = {}): Promise<ServeHandle> 
 
   app.get("/search", async (req, res) => {
     const q = typeof req.query.q === "string" ? req.query.q : "";
-    if (!q.trim()) {
+    if (!q.trim() || q.length > 4096) {
       res.status(400).json({ error: "q is required" });
       return;
     }
@@ -51,7 +95,7 @@ export async function serve(db: Db, opts: ServeOpts = {}): Promise<ServeHandle> 
 
   app.post("/bookmarks", (req, res) => {
     const body = req.body as { bookmarks?: SourceBookmark[] };
-    if (!body || !Array.isArray(body.bookmarks)) {
+    if (!body || !Array.isArray(body.bookmarks) || body.bookmarks.length > 500) {
       res.status(400).json({ error: "body.bookmarks[] required" });
       return;
     }
@@ -63,13 +107,22 @@ export async function serve(db: Db, opts: ServeOpts = {}): Promise<ServeHandle> 
     }
   });
 
+  const handleError: express.ErrorRequestHandler = (error, _req, res, _next) => {
+    const status = error?.status === 413 ? 413 : error?.status === 415 ? 415 : 400;
+    res
+      .status(status)
+      .json({ error: status === 413 ? "Request too large" : "Invalid request body" });
+  };
+  app.use(handleError);
+
   const server = app.listen(port, host);
   await new Promise<void>((resolve, reject) => {
     server.once("listening", () => resolve());
     server.once("error", reject);
   });
 
-  const url = `http://${host}:${port}`;
+  const address = server.address();
+  const url = `http://${host === "::1" ? "[::1]" : host}:${typeof address === "object" && address ? address.port : port}`;
   return {
     url,
     close: () =>
