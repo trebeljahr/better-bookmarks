@@ -1,4 +1,5 @@
 import { getSettings } from "@/core/storage/settings";
+import { isEmbedText, isModelProgressEvent, isRecord, isSemanticSender } from "./messages";
 import type { ModelProgressEvent } from "./model";
 
 const OFFSCREEN_URL = "offscreen.html";
@@ -13,7 +14,19 @@ export type EmbedResponse =
     }
   | { ok: false; error: string };
 
+let offscreenCreation: Promise<void> | null = null;
+
 export async function ensureOffscreen(): Promise<void> {
+  if (!(await getSettings()).semanticSearchEnabled) throw new Error("Semantic search is disabled");
+  if (!offscreenCreation) {
+    offscreenCreation = createOffscreen().finally(() => {
+      offscreenCreation = null;
+    });
+  }
+  await offscreenCreation;
+}
+
+async function createOffscreen(): Promise<void> {
   if (await chrome.offscreen.hasDocument()) return;
   await chrome.offscreen.createDocument({
     url: OFFSCREEN_URL,
@@ -23,8 +36,12 @@ export async function ensureOffscreen(): Promise<void> {
 }
 
 export async function embedViaOffscreen(text: string): Promise<EmbedResponse> {
+  if (!isEmbedText(text)) return { ok: false, error: "Invalid embedding text" };
   await ensureOffscreen();
-  return chrome.runtime.sendMessage({ type: "semantic:embed", text }) as Promise<EmbedResponse>;
+  return chrome.runtime.sendMessage({
+    type: "semantic:embed",
+    text,
+  }) as unknown as Promise<EmbedResponse>;
 }
 
 /**
@@ -50,7 +67,14 @@ export async function ensureOffscreenIfEnabled(): Promise<boolean> {
  */
 export async function warmupSemanticSearch(): Promise<void> {
   await ensureOffscreen();
-  await (chrome.runtime.sendMessage({ type: "semantic:warmup" }) as unknown as Promise<unknown>);
+  const response: unknown = await chrome.runtime.sendMessage({ type: "semantic:warmup" });
+  if (!isRecord(response) || response.ok !== true) {
+    throw new Error(
+      isRecord(response) && typeof response.error === "string"
+        ? response.error
+        : "Semantic warmup failed",
+    );
+  }
 }
 
 /**
@@ -58,11 +82,11 @@ export async function warmupSemanticSearch(): Promise<void> {
  * offscreen document. Returns an unsubscribe function.
  */
 export function subscribeSemanticProgress(fn: (ev: ModelProgressEvent) => void): () => void {
-  const listener = (msg: unknown): void => {
-    if (typeof msg !== "object" || msg === null) return;
-    const m = msg as { type?: unknown; event?: ModelProgressEvent };
-    if (m.type !== "semantic:progress" || !m.event) return;
-    fn(m.event);
+  const listener = (msg: unknown, sender: chrome.runtime.MessageSender): void => {
+    if (!isSemanticSender(sender, [OFFSCREEN_URL])) return;
+    if (!isRecord(msg) || Object.keys(msg).length !== 2 || msg.type !== "semantic:progress") return;
+    if (!isModelProgressEvent(msg.event)) return;
+    fn(msg.event);
   };
   chrome.runtime.onMessage.addListener(listener);
   return () => chrome.runtime.onMessage.removeListener(listener);
