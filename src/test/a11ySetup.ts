@@ -18,7 +18,8 @@
 
 import type { AxeResults, Result, RunOptions } from "axe-core";
 import { expect } from "vitest";
-import { axe as rawAxe, toHaveNoViolations } from "vitest-axe";
+import { axe as rawAxe } from "vitest-axe";
+import { toHaveNoViolations } from "vitest-axe/matchers";
 
 expect.extend({ toHaveNoViolations });
 

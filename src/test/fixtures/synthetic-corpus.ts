@@ -517,7 +517,7 @@ function newFolder(
   parentId: string,
   index: number,
 ): chrome.bookmarks.BookmarkTreeNode {
-  return { id, title, parentId, index, children: [] };
+  return { id, title, parentId, index, children: [], syncing: false };
 }
 
 function buildFolderSkeleton(
@@ -530,6 +530,7 @@ function buildFolderSkeleton(
   maxDepth: number;
 } {
   const bar: chrome.bookmarks.BookmarkTreeNode = {
+    syncing: false,
     id: "1",
     title: "Bookmarks bar",
     parentId: "0",
@@ -537,6 +538,7 @@ function buildFolderSkeleton(
     children: [],
   };
   const other: chrome.bookmarks.BookmarkTreeNode = {
+    syncing: false,
     id: "2",
     title: "Other bookmarks",
     parentId: "0",
@@ -544,6 +546,7 @@ function buildFolderSkeleton(
     children: [],
   };
   const root: chrome.bookmarks.BookmarkTreeNode = {
+    syncing: false,
     id: "0",
     title: "",
     children: [bar, other],
@@ -749,6 +752,7 @@ export function buildSyntheticCorpus(options: SyntheticCorpusOptions = {}): Synt
     const { title, kind } = decorateTitle(rng, sample.titleSeed);
     if (kind !== null) edgeCaseTitles += 1;
     const node: chrome.bookmarks.BookmarkTreeNode = {
+      syncing: false,
       id: nextId(),
       parentId: p.parent.id,
       index: p.parent.children!.length,

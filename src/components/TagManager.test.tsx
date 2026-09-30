@@ -16,11 +16,16 @@
  *    carry the tag; cancelling leaves onDelete untouched.
  */
 
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Tag } from "@/shared/types";
 
 const { render, cleanup, screen, fireEvent, within } = await import("@testing-library/react");
 const { TagManager, sortTags } = await import("@/components/TagManager");
+
+// happy-dom does not implement native confirmation dialogs.
+beforeEach(() => {
+  window.confirm = vi.fn(() => false);
+});
 
 afterEach(() => {
   cleanup();

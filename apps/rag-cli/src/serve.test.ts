@@ -1,16 +1,28 @@
 import assert from "node:assert/strict";
 import { request } from "node:http";
 import { test } from "node:test";
-import type { Database } from "better-sqlite3";
+import { initDb } from "./db.js";
 import { serve } from "./serve.js";
 
 test("local API rejects missing tokens, hostile origins and rebinding hosts", async () => {
   const token = "test-only-token-".repeat(3);
   const origin = "chrome-extension://test-extension";
-  const handle = await serve({} as Database, { port: 0, token, origins: [origin] });
+  const db = initDb(":memory:");
+  const handle = await serve(db, { port: 0, token, origins: [origin] });
   const headers = { Authorization: `Bearer ${token}`, Origin: origin };
   try {
     assert.equal((await fetch(`${handle.url}/health`)).status, 401);
+    assert.equal((await fetch(`${handle.url}/search`)).status, 401);
+    assert.equal(
+      (
+        await fetch(`${handle.url}/bookmarks`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bookmarks: [] }),
+        })
+      ).status,
+      401,
+    );
     assert.equal(
       (
         await fetch(`${handle.url}/health`, {
@@ -52,6 +64,26 @@ test("local API rejects missing tokens, hostile origins and rebinding hosts", as
     assert.equal(preflight.status, 204);
     assert.equal(preflight.headers.get("access-control-allow-origin"), origin);
     const ingestHeaders = { ...headers, "Content-Type": "application/json" };
+    const accepted = await fetch(`${handle.url}/bookmarks`, {
+      method: "POST",
+      headers: ingestHeaders,
+      body: JSON.stringify({
+        bookmarks: [
+          {
+            id: "test-bookmark",
+            canonicalUrl: "https://example.com/",
+            title: "Test bookmark",
+            createdAt: 1,
+            updatedAt: 1,
+          },
+        ],
+      }),
+    });
+    assert.equal(accepted.status, 200);
+    assert.equal(
+      (db.prepare("SELECT COUNT(*) AS count FROM bookmarks").get() as { count: number }).count,
+      1,
+    );
     assert.equal(
       (
         await fetch(`${handle.url}/bookmarks`, {
@@ -74,5 +106,6 @@ test("local API rejects missing tokens, hostile origins and rebinding hosts", as
     );
   } finally {
     await handle.close();
+    db.close();
   }
 });

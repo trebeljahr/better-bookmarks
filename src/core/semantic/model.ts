@@ -1,4 +1,9 @@
-import { env, type FeatureExtractionPipeline, pipeline } from "@huggingface/transformers";
+import {
+  env,
+  type FeatureExtractionPipeline,
+  type ProgressInfo,
+  pipeline,
+} from "@huggingface/transformers";
 
 export const DEFAULT_MODEL = "Xenova/bge-small-en-v1.5";
 
@@ -68,7 +73,10 @@ async function getPipeline(): Promise<FeatureExtractionPipeline> {
   if (pipe) return pipe;
   configureEnv();
   const wantsGPU = typeof (navigator as { gpu?: unknown }).gpu !== "undefined";
-  const progress_callback = (ev: ModelProgressEvent) => emitProgress(ev);
+  const progress_callback = (ev: ProgressInfo) => {
+    // UI tracks per-file bytes; aggregate events would count the same bytes twice.
+    if (ev.status !== "progress_total") emitProgress(ev);
+  };
   try {
     pipe = await pipeline("feature-extraction", DEFAULT_MODEL, {
       device: wantsGPU ? "webgpu" : "wasm",
