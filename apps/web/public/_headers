@@ -1,3 +1,8 @@
 # Content-hashed build output never changes under the same URL.
 /_next/static/*
   Cache-Control: public, max-age=31536000, immutable
+
+# next/og exports the card without a file extension, so the asset server
+# cannot infer a type; social crawlers reject an untyped image.
+/opengraph-image
+  Content-Type: image/png

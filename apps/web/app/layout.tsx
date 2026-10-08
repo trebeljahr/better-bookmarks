@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist } from "next/font/google";
-import Script from "next/script";
 import type * as React from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import "./globals.css";
@@ -34,11 +33,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning className={geist.variable}>
       <head>
         {/* Self-hosted, cookieless Plausible — see app/privacy/page.tsx. */}
-        <Script
+        <script
           defer
           data-domain="bookmarks.trebeljahr.com"
           src="https://plausible.trebeljahr.com/js/script.outbound-links.js"
-          strategy="afterInteractive"
         />
       </head>
       <body className="font-sans">
