@@ -1,0 +1,44 @@
+name: Deploy marketing site
+
+# Builds apps/web (Next static export) and uploads it to the
+# Cloudflare Worker named in wrangler.jsonc, served at
+# bookmarks.trebeljahr.com. Secrets set by `hatchkit cloudflare`.
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/web/**"
+      - "wrangler.jsonc"
+      - ".github/workflows/deploy-web.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+
+      - run: pnpm install --frozen-lockfile
+        working-directory: apps/web
+
+      - run: pnpm build
+        working-directory: apps/web
+
+      # npx keeps wrangler out of both lockfiles; the root install
+      # (wxt postinstall) is not needed to upload a static folder.
+      - run: npx --yes wrangler@4 deploy
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

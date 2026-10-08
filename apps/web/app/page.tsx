@@ -56,7 +56,6 @@ const faqs = [
   },
   {
     q: "Do you collect any analytics?",
-    // TODO(Rico): confirm Plausible is actually wired up on this site pre-launch. If not, drop this claim from the answer.
     a: "No. The extension makes no analytics calls. Only this marketing site uses Plausible — cookieless, no cross-site tracking, no personal data.",
   },
   {
