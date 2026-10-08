@@ -2,7 +2,7 @@
 
 ## Short description (132 chars)
 
-Tag-first bookmarks for Chrome. Aggressive URL deduplication. Search that scales to 20,000+. Open source, no account, no cloud.
+Tag-first bookmarks for Chrome. Aggressive URL deduplication. Designed for 20,000+ bookmarks. Open source, no account, no cloud.
 
 ## Long description
 
@@ -10,7 +10,7 @@ Save the same article twice — once from a tweet with `?s=20`, once from a news
 
 Tags are a projection over Chrome folders. A bookmark can carry every label that applies. The Chrome folder a bookmark sits in becomes one of its tags automatically. Mirroring a tag back to a Chrome folder is opt-in.
 
-Search uses an IndexedDB inverted index. On a 20,000-bookmark synthetic corpus, a bare-word query returns at p95 46.80 ms (`docs/BENCHMARKS.md`). All bookmark data stays in IndexedDB and `chrome.storage`. The extension makes no third-party analytics calls (`docs/PRIVACY.md`).
+Search uses an IndexedDB inverted index designed for 20,000+ bookmarks. All bookmark data stays in IndexedDB and `chrome.storage`. The extension makes no third-party analytics calls (`docs/PRIVACY.md`).
 
 ## Features
 

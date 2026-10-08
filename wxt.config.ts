@@ -34,7 +34,7 @@ export default defineConfig({
   manifest: {
     name: "Better Bookmarks",
     description:
-      "Tag-first bookmarks for Chrome. Aggressive URL deduplication. Search that scales to 20,000+. Open source, no account, no cloud.",
+      "Tag-first bookmarks for Chrome. Aggressive URL deduplication. Designed for 20,000+ bookmarks. Open source, no account, no cloud.",
     version: "1.0",
     permissions: [
       "storage",
