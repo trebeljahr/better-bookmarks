@@ -11,8 +11,8 @@ cd "$REPO_ROOT"
 # --- preflight ---------------------------------------------------------------
 
 branch="$(git rev-parse --abbrev-ref HEAD)"
-if [[ "$branch" != "master" ]]; then
-  echo "error: expected master branch, on '$branch'" >&2
+if [[ "$branch" != "main" ]]; then
+  echo "error: expected main branch, on '$branch'" >&2
   exit 1
 fi
 

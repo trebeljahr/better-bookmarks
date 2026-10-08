@@ -137,7 +137,7 @@ export default function PrivacyPage() {
               of every outbound network call lives in{" "}
               <a
                 className="underline underline-offset-4"
-                href="https://github.com/trebeljahr/better-bookmarks/blob/master/docs/PRIVACY.md"
+                href="https://github.com/trebeljahr/better-bookmarks/blob/main/docs/PRIVACY.md"
                 target="_blank"
                 rel="noreferrer"
               >

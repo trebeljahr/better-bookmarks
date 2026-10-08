@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [master]
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -48,7 +48,7 @@ jobs:
         run: pnpm zip:firefox
 
       - name: Upload Chrome zip
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: better-bookmarks-chrome
@@ -56,7 +56,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Firefox zip
-        if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: better-bookmarks-firefox

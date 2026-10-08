@@ -5,7 +5,7 @@ name: Deploy marketing site
 # bookmarks.trebeljahr.com. Secrets set by `hatchkit cloudflare`.
 on:
   push:
-    branches: [master]
+    branches: [main]
     paths:
       - "apps/web/**"
       - "wrangler.jsonc"
