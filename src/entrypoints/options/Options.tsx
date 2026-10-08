@@ -23,6 +23,7 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { runBackupOnce } from "@/core/backup";
 import { importGoodreadsHtml, importRawUrls } from "@/core/importExport";
+import { requestSiteAccess } from "@/core/permissions/siteAccess";
 import { ensureOffscreen } from "@/core/semantic";
 import { countBookmarks } from "@/core/storage/bookmarks";
 import { getDB } from "@/core/storage/db";
@@ -200,6 +201,24 @@ export const Options = () => {
     const next = await setSettings(patch);
     setLocalSettings(next);
     setSavedAt(Date.now());
+  };
+
+  // Both network features need the optional "<all_urls>" grant. Ask first,
+  // while the click still counts as a user gesture; a refusal leaves the
+  // toggle off. The alarm is (re)installed right away instead of waiting for
+  // the next service-worker boot.
+  const toggleNetworkFeature = async (
+    key: "deadLinkCheckEnabled" | "networkEnrichmentEnabled",
+    on: boolean,
+  ) => {
+    if (on && !(await requestSiteAccess())) return;
+    await update({ [key]: on });
+    // Lazy: the enrichment module drags in the whole sweep queue.
+    const install =
+      key === "deadLinkCheckEnabled"
+        ? import("@/core/maintenance/scheduleAlarm").then((m) => m.installDeadLinkAlarm())
+        : import("@/core/enrichment/scheduleAlarm").then((m) => m.installEnrichmentAlarm());
+    install.catch((err) => console.error(`install alarm for ${key} failed`, err));
   };
 
   const handleExtraStrippedBlur = async () => {
@@ -467,12 +486,32 @@ export const Options = () => {
         <SemanticSearchBanner onSettingsChange={setLocalSettings} />
       </Section>
 
-      <Section title="Enrichment (network)">
+      <Section title="Network features">
+        <p className="text-xs text-muted-foreground">
+          Both features below contact the sites you bookmarked, so Chrome asks you to allow access
+          to all sites when you turn the first one on. You can withdraw that access in
+          chrome://extensions at any time.
+        </p>
+        <div className="flex items-start gap-2">
+          <Switch
+            id="deadLinkCheckEnabled"
+            checked={settings.deadLinkCheckEnabled}
+            onCheckedChange={(v) => void toggleNetworkFeature("deadLinkCheckEnabled", v)}
+          />
+          <div className="flex flex-col gap-0.5">
+            <Label htmlFor="deadLinkCheckEnabled">Check for dead links</Label>
+            <p className="text-xs text-muted-foreground">
+              Off by default. When on, a background sweep sends a HEAD request to each bookmarked
+              URL every few hours and marks a link dead only after it fails on three different days.
+              Only the URL is sent, to the site it points at.
+            </p>
+          </div>
+        </div>
         <div className="flex items-start gap-2">
           <Switch
             id="networkEnrichmentEnabled"
             checked={settings.networkEnrichmentEnabled}
-            onCheckedChange={(v) => update({ networkEnrichmentEnabled: v })}
+            onCheckedChange={(v) => void toggleNetworkFeature("networkEnrichmentEnabled", v)}
           />
           <div className="flex flex-col gap-0.5">
             <Label htmlFor="networkEnrichmentEnabled">

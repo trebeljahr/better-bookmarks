@@ -20,6 +20,7 @@ import { DEAD_LINK_ALARM_NAME, installDeadLinkAlarm, runDeadLinkSweep } from "@/
 import { migrateLegacyStore } from "@/core/migration/legacyToV1";
 import { installOmnibox } from "@/core/omnibox";
 import { handleInstalledEvent } from "@/core/onboarding/state";
+import { hasSiteAccess } from "@/core/permissions/siteAccess";
 import {
   ensureInvertedIndexInitialized,
   ensureSearchIndexInitialized,
@@ -143,9 +144,14 @@ export default defineBackground(() => {
       runBackupOnce().catch((err) => console.error("auto-backup failed", err));
       runChromeTreeBackupOnce().catch((err) => console.error("chrome-tree-backup failed", err));
     } else if (alarm.name === DEAD_LINK_ALARM_NAME) {
-      runDeadLinkSweep().catch((err) => console.error("dead-link sweep failed", err));
+      // Site access is optional and revocable; skip the sweep without it.
+      hasSiteAccess()
+        .then((ok) => (ok ? runDeadLinkSweep() : null))
+        .catch((err) => console.error("dead-link sweep failed", err));
     } else if (alarm.name === ENRICHMENT_ALARM_NAME) {
-      runEnrichmentSweepIfEnabled().catch((err) => console.error("enrichment sweep failed", err));
+      hasSiteAccess()
+        .then((ok) => (ok ? runEnrichmentSweepIfEnabled() : null))
+        .catch((err) => console.error("enrichment sweep failed", err));
     } else if (alarm.name === AUTO_EDGE_SUGGEST_ALARM_NAME) {
       runAutoEdgeSuggestSweepIfEnabled().catch((err) =>
         console.error("auto-edge-suggest sweep failed", err),

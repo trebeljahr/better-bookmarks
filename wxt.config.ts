@@ -47,16 +47,14 @@ export default defineConfig({
       "offscreen",
       "unlimitedStorage",
     ],
-    host_permissions: ["<all_urls>", "https://huggingface.co/*"],
+    // No required host access. The dead-link check and metadata enrichment
+    // request "<all_urls>" when the user turns them on (see
+    // src/core/permissions/siteAccess.ts). The semantic model download needs
+    // none: huggingface.co and its CDN answer extension origins with CORS.
+    optional_host_permissions: ["<all_urls>"],
     content_security_policy: {
       extension_pages: "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';",
     },
-    web_accessible_resources: [
-      {
-        resources: ["transformers/*.wasm", "transformers/*.mjs", "transformers/*.js"],
-        matches: ["<all_urls>"],
-      },
-    ],
     side_panel: {
       default_path: "sidepanel.html",
     },

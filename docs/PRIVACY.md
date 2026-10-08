@@ -29,8 +29,10 @@ commit `e6c7fb7`, 2026-09-09.
 **What:** HTTP HEAD requests to each bookmarked URL's own host to check
 whether the page still exists.
 
-**When:** On the `dead-link` alarm. `deadLinkCheckEnabled` defaults to
-`true` in `src/shared/types.ts` (`DEFAULT_SETTINGS`). Sweep interval defaults
+**When:** Off by default (`deadLinkCheckEnabled: false` in
+`DEFAULT_SETTINGS`, `src/shared/types.ts`, since 2026-10-08). Turning it on in
+Options asks Chrome for optional access to all sites; the sweep runs on the
+`dead-link` alarm only while both the setting and that access are present. Sweep interval defaults
 to 360 minutes (6 h), batch size 50, entries considered stale after 30 days.
 
 **Where the request goes:** the URL the user bookmarked. Requests are HEAD
@@ -41,8 +43,9 @@ headers beyond what `fetch` adds by default.
 by default for extension-origin requests. No bookmark titles, notes, tags,
 or ratings ever leave the browser through this path.
 
-**How to disable:** Options → toggle *Dead-link checking* off (writes
-`deadLinkCheckEnabled: false` to `chrome.storage.local`).
+**How to disable:** Options → Network features → *Check for dead links* off
+(writes `deadLinkCheckEnabled: false`), or withdraw site access in
+chrome://extensions.
 
 ### 2. Opt-in metadata enrichment — `src/core/enrichment/fetcher.ts`
 

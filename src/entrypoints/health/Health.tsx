@@ -40,6 +40,7 @@ import {
   undoSnapshot,
 } from "@/core/health";
 import { runDeadLinkSweep } from "@/core/maintenance";
+import { requestSiteAccess } from "@/core/permissions/siteAccess";
 import { listBookmarks } from "@/core/storage/bookmarks";
 import { getSettings, setSettings } from "@/core/storage/settings";
 import { listTags } from "@/core/storage/tags";
@@ -177,6 +178,11 @@ export const Health = () => {
 
   // -- run dead-link sweep then rescan --
   const runBrokenLinkSweep = useCallback(async () => {
+    // First await in the click handler, so Chrome still sees the gesture.
+    if (!(await requestSiteAccess())) {
+      setStatusMessage("dead-link sweep needs access to your bookmarked sites");
+      return;
+    }
     setScanning(true);
     setStatusMessage("running dead-link sweep…");
     try {

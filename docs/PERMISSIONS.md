@@ -21,8 +21,16 @@ recorded in `CHANGELOG.md`).
 
 ## Manifest `host_permissions`
 
-- **`<all_urls>`** — Required by `src/core/enrichment/fetcher.ts` (opt-in `og:` / reading-time fetch against arbitrary bookmark URLs) and `src/core/maintenance/deadLinkChecker.ts` (HEAD sweep against every bookmark host). Both are disclosed in `docs/PRIVACY.md`.
-- **`https://huggingface.co/*`** — Required by `@huggingface/transformers` in `src/core/semantic/model.ts` to download embedding-model weights on first use.
+None since 2026-10-08. A fresh install cannot contact any website.
+
+## Manifest `optional_host_permissions`
+
+- **`<all_urls>`** — Requested at runtime by `src/core/permissions/siteAccess.ts` when the user turns on the dead-link check or metadata enrichment in Options (or runs "Scan broken links" on the Health page). Used by `src/core/maintenance/deadLinkChecker.ts` (HEAD to each bookmarked URL) and `src/core/enrichment/fetcher.ts` (GET for title, description, reading time). The background alarms re-check `chrome.permissions.contains` before every sweep, because the user can revoke access in chrome://extensions. Both features default to off. Moved out of `host_permissions` 2026-10-08 so the store review does not treat the extension as needing broad host access.
+
+## Removed
+
+- **`https://huggingface.co/*`** — REMOVED 2026-10-08. The semantic-model download in `src/core/semantic/model.ts` runs from the offscreen document; huggingface.co and its CDN (`*.cdn.hf.co`) answer extension origins with `access-control-allow-origin`, so the fetch works without host access. The redirect targets were never covered by this pattern anyway.
+- **`web_accessible_resources` for `transformers/*`** — REMOVED 2026-10-08. Only the extension's own offscreen document loads the ONNX runtime files (`wasm.wasmPaths = chrome.runtime.getURL("transformers/")`); extension pages need no web-accessible entry, and the old entry exposed the files to every website.
 
 ## Grep methodology
 

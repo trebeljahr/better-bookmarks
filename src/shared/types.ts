@@ -312,7 +312,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoBackupEnabled: true,
   autoBackupIntervalMin: 1440,
   autoBackupKeepCount: 7,
-  deadLinkCheckEnabled: true,
+  deadLinkCheckEnabled: false,
   deadLinkSweepIntervalMin: 360,
   deadLinkSweepBatchSize: 50,
   deadLinkStaleAfterDays: 30,
