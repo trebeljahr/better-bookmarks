@@ -89,8 +89,10 @@ browser cache and stay offline. The banner persists a
 `semanticSearchBannerDismissedAt` timestamp so "Not now" silences the
 prompt until the user re-visits Options.
 
-**Where the request goes:** `huggingface.co` (declared in
-`wxt.config.ts` under `host_permissions`). The WASM/JS runtime files
+**Where the request goes:** `huggingface.co` and its CDN
+(`*.cdn.hf.co`). The manifest declares no host permission for them: both
+answer extension origins with CORS headers (see `docs/PERMISSIONS.md`).
+The WASM/JS runtime files
 (`ort-wasm-simd-threaded.*`) are copied into the extension bundle at build
 time (`modules/copy-onnx-wasm.ts`) and served from
 `chrome.runtime.getURL("transformers/")`, so those do **not** hit the

@@ -28,9 +28,13 @@ PLATFORMS:         Chrome and Chromium-based browsers (Edge, Brave,
                    Arc, Opera) at launch. Firefox build planned via
                    the same WXT build path; ship to AMO post-launch.
 PERMISSIONS:       storage, tabs, bookmarks, downloads, alarms,
-                   activeTab, sidePanel, contextMenus, host
-                   permissions for <all_urls>. Justified per-
-                   permission in the Chrome Web Store privacy form.
+                   sidePanel, contextMenus, offscreen,
+                   unlimitedStorage. No website access at install.
+                   The extension asks for access to all sites
+                   (<all_urls>) only when the user turns on the
+                   dead-link check or metadata enrichment.
+                   Justified per-permission in the Chrome Web
+                   Store privacy form.
 DATA HANDLING:     All bookmark data stored locally in IndexedDB and
                    chrome.storage. Nothing transmitted to remote
                    servers by the extension. Chrome's own sync

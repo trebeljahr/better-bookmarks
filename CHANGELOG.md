@@ -7,14 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Unreleased
 
+### Changed
+
+- The install prompt no longer asks for access to every website. `<all_urls>`
+  moved to `optional_host_permissions`. The extension requests it when the
+  user turns on the dead-link check or metadata enrichment in Options, or runs
+  "Scan broken links" on the Health page. The dead-link check now defaults to
+  off.
+
 ### Removed
 
 - Dropped the `activeTab` manifest permission. The permissions audit
   (`docs/PERMISSIONS.md`) found zero callers of any `activeTab`-gated API —
   no `chrome.scripting.*`, no `chrome.tabs.executeScript`, no `insertCSS` — so
   the extension's install prompt no longer asks for it. All tab access still
-  runs through the declared `tabs` permission plus `<all_urls>`
-  host_permissions. Closes trebeljahr/better-bookmarks#1.
+  runs through the declared `tabs` permission. Closes
+  trebeljahr/better-bookmarks#1.
+- Dropped the `https://huggingface.co/*` host permission. The model host and
+  its CDN send CORS headers to extension origins, so the download works
+  without it.
+- Dropped the `web_accessible_resources` entry that exposed the ONNX runtime
+  files to every website. Only the extension's offscreen document loads them.
 
 ## [1.0.0-rc.1] — 2026-09-13
 

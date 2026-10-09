@@ -54,7 +54,7 @@ const factSheet: Array<[string, React.ReactNode]> = [
   ],
   [
     "Permissions",
-    "storage, tabs, bookmarks, downloads, alarms, activeTab, sidePanel, contextMenus, host permissions for <all_urls>. Justified per-permission in the Chrome Web Store privacy form.",
+    "storage, tabs, bookmarks, downloads, alarms, sidePanel, contextMenus, offscreen, unlimitedStorage. No website access at install. The extension asks for access to all sites (<all_urls>) only when the user turns on the dead-link check or metadata enrichment. Justified per-permission in the Chrome Web Store privacy form.",
   ],
   [
     "Data handling",
