@@ -96,7 +96,11 @@ export async function importChromeTree(
     existingByCanonical.set(b.canonicalUrl, b);
   }
 
-  const bookmarksToWrite: Bookmark[] = [];
+  // Keyed by bookmark id: a node that merges into a bookmark created
+  // earlier in this walk replaces the queued row instead of adding a
+  // second write of the same key. Each overwrite inside one bulkPut is
+  // wasted work, and fake-indexeddb scans every index entry per overwrite.
+  const bookmarksToWrite = new Map<string, Bookmark>();
   const mappingsToWrite: ChromeMapping[] = [];
 
   for (const node of Object.values(all)) {
@@ -139,7 +143,7 @@ export async function importChromeTree(
         tags: mergedTags,
         updatedAt: nowTs,
       };
-      bookmarksToWrite.push(merged);
+      bookmarksToWrite.set(merged.id, merged);
       // Keep the Map current so a later node with the same canonical URL
       // merges into our pending write rather than the stale prefetch.
       existingByCanonical.set(c.canonical, merged);
@@ -180,7 +184,7 @@ export async function importChromeTree(
       updatedAt: nowTs,
       capturedFrom: "chrome-import",
     };
-    bookmarksToWrite.push(fresh);
+    bookmarksToWrite.set(fresh.id, fresh);
     existingByCanonical.set(c.canonical, fresh);
     mappingsToWrite.push(
       buildMapping({
@@ -205,8 +209,8 @@ export async function importChromeTree(
   setSearchIndexerSuppressed(true);
   try {
     await db.transaction("rw", db.bookmarks, db.chromeMappings, async () => {
-      if (bookmarksToWrite.length > 0) {
-        await db.bookmarks.bulkPut(bookmarksToWrite);
+      if (bookmarksToWrite.size > 0) {
+        await db.bookmarks.bulkPut([...bookmarksToWrite.values()]);
       }
       if (mappingsToWrite.length > 0) {
         await db.chromeMappings.bulkPut(mappingsToWrite);
@@ -216,7 +220,7 @@ export async function importChromeTree(
     setSearchIndexerSuppressed(false);
   }
 
-  if (bookmarksToWrite.length > 0) {
+  if (bookmarksToWrite.size > 0) {
     try {
       await reindexAll();
     } catch (err) {
