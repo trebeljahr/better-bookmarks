@@ -80,14 +80,14 @@ by their intent.
 The Chrome Web Store listing is pending review. To try the release candidate
 today, download the attached zip for your browser and load it unpacked:
 
-**Chrome / Edge / Brave (`better-bookmarks-1.0.0-rc.1-chrome.zip`)**
+**Chrome / Edge / Brave (`better-bookmarks-1.0-chrome.zip`)**
 
 1. Unzip the archive.
 2. Open `chrome://extensions`.
 3. Turn on Developer mode (top right).
 4. Click Load unpacked and pick the unzipped folder.
 
-**Firefox (`better-bookmarks-1.0.0-rc.1-firefox.zip`)**
+**Firefox (`better-bookmarks-1.0-firefox.zip`)**
 
 1. Unzip the archive.
 2. Open `about:debugging#/runtime/this-firefox`.
