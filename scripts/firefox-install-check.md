@@ -6,7 +6,7 @@ Load-test the build produced by `pnpm zip:firefox`.
 1. Open Firefox → about:debugging.
 2. Click "This Firefox" (left sidebar).
 3. Click "Load Temporary Add-on...".
-4. Pick the .output firefox zip (Firefox 109+ accepts .zip directly; older Firefox: unzip first, pick manifest.json).
+4. Pick `dist/better-bookmarks-<version>-firefox.zip` (Firefox 109+ accepts .zip directly; older Firefox: unzip first, pick manifest.json).
 5. Confirm the extension appears + icon renders.
 6. Open a new tab. Click the extension icon.
 7. Overview page loads without console errors (F12 → Console).

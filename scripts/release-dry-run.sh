@@ -47,15 +47,17 @@ pnpm zip:firefox
 
 # --- locate artifacts --------------------------------------------------------
 
-chrome_zip="$(find .output -maxdepth 2 -type f -name '*chrome*.zip' ! -name '*sources*' | sort | tail -n1)"
-firefox_zip="$(find .output -maxdepth 2 -type f -name '*firefox*.zip' ! -name '*sources*' | sort | tail -n1)"
+# wxt.config.ts sets outDir to dist/. Take the newest zip at the top level
+# only: dist/cws/ holds older zips kept for store uploads.
+chrome_zip="$(ls -t dist/*-chrome.zip 2>/dev/null | head -n1 || true)"
+firefox_zip="$(ls -t dist/*-firefox.zip 2>/dev/null | head -n1 || true)"
 
 if [[ -z "$chrome_zip" || ! -f "$chrome_zip" ]]; then
-  echo "error: could not find chrome zip under .output" >&2
+  echo "error: could not find chrome zip under dist" >&2
   exit 1
 fi
 if [[ -z "$firefox_zip" || ! -f "$firefox_zip" ]]; then
-  echo "error: could not find firefox zip under .output" >&2
+  echo "error: could not find firefox zip under dist" >&2
   exit 1
 fi
 

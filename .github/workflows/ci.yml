@@ -47,12 +47,14 @@ jobs:
       - name: Zip (Firefox)
         run: pnpm zip:firefox
 
+      # wxt.config.ts sets outDir to dist/, so the zips land there, not in
+      # WXT's default .output/.
       - name: Upload Chrome zip
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
         with:
           name: better-bookmarks-chrome
-          path: .output/*-chrome.zip
+          path: dist/*-chrome.zip
           if-no-files-found: error
 
       - name: Upload Firefox zip
@@ -60,5 +62,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: better-bookmarks-firefox
-          path: .output/*-firefox.zip
+          path: dist/*-firefox.zip
           if-no-files-found: error
