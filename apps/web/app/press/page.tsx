@@ -23,10 +23,7 @@ export const metadata: Metadata = {
 
 const factSheet: Array<[string, React.ReactNode]> = [
   ["Project", "Better Bookmarks"],
-  [
-    "Tagline",
-    "Pinboard for the Chrome era — tags, not folders. One URL per page. Scales to twenty thousand.",
-  ],
+  ["Tagline", "Tags, not folders. One URL per page. Scales to twenty thousand."],
   [
     "URL",
     <a
@@ -161,11 +158,6 @@ const hooks = [
     audience: "Hacker News, Lobsters, /r/programming, /r/webdev",
   },
   {
-    title: "Pinboard for the Chrome era",
-    body: "Same first principles (tags, durable export, no cloud lock-in, single-developer project), built for the browser and the corpus size people actually have in 2026.",
-    audience: "Pinboard refugees, /r/pinboard, slow-web blogs",
-  },
-  {
     title: "No lock-in by design",
     body: "The extension is a second store layered onto the native Chrome bookmarks tree. Uninstall it and every bookmark is still in Chrome, still on mobile, still in the omnibox. The architecture makes lock-in structurally impossible.",
     audience: "Privacy-leaning press, FOSS communities, anyone tired of SaaS-trap bookmark apps",
@@ -217,8 +209,8 @@ const faqs = [
     a: "No. Chrome's native sync handles the bookmark tree (URL, title, folder). The extension's added metadata (tags, ratings, notes, connections) syncs only via Chrome's small chrome.storage.sync quota for the settings bits, and stays local in IndexedDB for the rest. Cross-device metadata sync of the full store is a v2 question and would be solved by exporting to a synced folder or a Gist, not by hosting a Better Bookmarks server.",
   },
   {
-    q: "How do I migrate from Raindrop / Pocket / Pinboard / Goodreads?",
-    a: "JSON import for the native format and a CSV importer for Pocket are shipped or in the import roadmap. Pinboard exports as JSON; Raindrop exports as HTML/CSV/JSON; both are supported via the JSON or Netscape HTML import paths. Goodreads ships its own HTML dump and has a dedicated importer. A raw URL list import also exists for the cases where nothing else lines up.",
+    q: "How do I bring bookmarks over from another app?",
+    a: "The extension imports its own JSON format, Pocket CSV exports, Goodreads HTML exports and plain lists of URLs. Bookmarks already in Chrome need no import.",
   },
   {
     q: "Can I export everything?",
@@ -238,22 +230,9 @@ const faqs = [
   },
 ];
 
-const quotes = [
-  "I have twenty thousand bookmarks. Every bookmark manager I tried either pretended that wasn't normal, or charged me for it. I built the one that doesn't.",
-  "The URL canonicalisation pipeline is the part I am most proud of. It's a small set of deterministic rules, but it makes a real bookmark collection feel sane in a way no number of folders ever could.",
-  "Chrome stays the source of truth. The extension is a second store layered on top — bookmarks created in plain Chrome show up here, bookmarks created here appear in the Chrome bar. Uninstall the extension and you've lost nothing. Lock-in is structurally impossible.",
-  "It runs entirely on your device. There is no server. There is no account. Chrome already syncs your bookmark tree across devices; we don't need to re-invent that.",
-];
-
-const history = `Better Bookmarks started because Chrome bookmarks stopped scaling. I had twenty thousand of them — articles, papers, RFCs, talks, weird corners of the web I wanted to find again — sitting in a folder hierarchy that was simultaneously too deep and too flat. The omnibox was the only thing that ever found anything. Folders had become write-only.
-
-I tried Pinboard, Raindrop, GoodLinks, Anybox. Pinboard is exactly right philosophically and exactly the wrong era visually for the people I wanted to share it with. Raindrop's free tier is crippled and the paid tier started slowing past five thousand entries. GoodLinks and Anybox are macOS-shaped and I do not live there.
-
-The thing none of them had: Chrome stays the source of truth. Mobile sync keeps working. The omnibox keeps working. The bookmarks bar keeps working. Better Bookmarks adds what Chrome can't (tags, ratings, notes, connections, deterministic dedup), and it does it as a second store layered on top of the native one, synced both ways.
-
-The URL canonicalisation came out of frustration with how many of those twenty thousand bookmarks were near-duplicates. I'd bookmarked the same paper from arxiv, from a tweet (with ?s=20), from a newsletter (with ?utm_source=…), from a Hacker News comment (with ?utm_medium=email). The fix is small, deterministic, and re-runnable: a rule set per domain plus a stripper for the tracking-param zoo, all documented in docs/URL_NORMALIZATION.md.
-
-I am writing this for me, first. There are a handful of other people in the world who already have this many bookmarks and have already tried the same alternatives. This is for them too.`;
+// Rico adds his own quotes and history sections here if he wants them.
+// Nothing on this page is attributed to him in the first person until he
+// writes it.
 
 const boilerplate =
   "Better Bookmarks is a Chrome extension built by Rico Trebeljahr in Berlin. It adds tags, ratings, notes, and a connection graph to browser bookmarks, and deduplicates URLs aggressively by stripping tracking parameters and applying per-domain canonical rules. The extension layers on top of Chrome's native bookmark tree without replacing it, syncs both ways, runs entirely on-device, and is designed for collections of twenty thousand bookmarks and up. Free, MIT licensed, no account. Available on the Chrome Web Store; source at github.com/trebeljahr/better-bookmarks.";
@@ -268,12 +247,10 @@ export default function PressPage() {
         <FactSheet />
         <OneSentence />
         <Descriptions />
-        <History />
         <Hooks />
         <Features />
         <Engineering />
         <PressFaq />
-        <Quotes />
         <Boilerplate />
         <Contact />
       </main>
@@ -424,22 +401,9 @@ function Descriptions() {
   );
 }
 
-function History() {
-  return (
-    <Section id="history" title="History — how it got built">
-      <div className="space-y-4 text-base leading-7 text-foreground">
-        {history.split("\n\n").map((paragraph, i) => (
-          // biome-ignore lint/suspicious/noArrayIndexKey: static content
-          <p key={i}>{paragraph}</p>
-        ))}
-      </div>
-    </Section>
-  );
-}
-
 function Hooks() {
   return (
-    <Section id="hooks" title="Hooks" subtitle="Four framing angles, each with a suggested venue.">
+    <Section id="hooks" title="Hooks" subtitle="Three framing angles, each with a suggested venue.">
       <div className="grid gap-6 sm:grid-cols-2">
         {hooks.map((h) => (
           <Card key={h.title} className="bg-card/60">
@@ -515,24 +479,6 @@ function PressFaq() {
           </AccordionItem>
         ))}
       </Accordion>
-    </Section>
-  );
-}
-
-function Quotes() {
-  return (
-    <Section id="quotes" title="Quotes" subtitle="Attribute to Rico Trebeljahr.">
-      <div className="space-y-4">
-        {quotes.map((q, i) => (
-          <blockquote
-            // biome-ignore lint/suspicious/noArrayIndexKey: static content
-            key={i}
-            className="border-l-2 border-border/60 pl-4 text-base italic leading-7 text-foreground/90"
-          >
-            &ldquo;{q}&rdquo;
-          </blockquote>
-        ))}
-      </div>
     </Section>
   );
 }
