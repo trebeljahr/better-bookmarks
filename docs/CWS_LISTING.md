@@ -38,8 +38,8 @@ Full source on GitHub: https://github.com/trebeljahr/better-bookmarks — MIT li
 - Per-domain URL rules for YouTube, Twitter/X, Reddit, Wikipedia, GitHub, Amazon — `docs/URL_NORMALIZATION.md:11`, `docs/URL_NORMALIZATION.md:15`, `docs/URL_NORMALIZATION.md:17`, `docs/URL_NORMALIZATION.md:19`, `docs/URL_NORMALIZATION.md:75`, `docs/URL_NORMALIZATION.md:86`, `docs/URL_NORMALIZATION.md:93`, `docs/URL_NORMALIZATION.md:129`
 - Global tracking-parameter stripping (`utm_*`, `fbclid`, `gclid`, `mc_*`) — `docs/URL_NORMALIZATION.md:54`, `docs/URL_NORMALIZATION.md:56`, `docs/URL_NORMALIZATION.md:57`
 - Text-fragment stripping (`#:~:text=`) — `docs/URL_NORMALIZATION.md:43`
-- Tag-first folder-projection model — `press-kit/press-kit.md:117`
-- Chrome folder appears as tag automatically — `press-kit/press-kit.md:117`
+- Tag-first folder-projection model — `press-kit/press-kit.md:81`
+- Chrome folder appears as tag automatically — `press-kit/press-kit.md:81`
 - Two-way Chrome sync architecture — `docs/CHROME_SYNC.md`
 - Bare-word search p95 46.80 ms on 20k corpus — `docs/BENCHMARKS.md:25`
 - No third-party analytics or telemetry SDK — `docs/PRIVACY.md:16`
