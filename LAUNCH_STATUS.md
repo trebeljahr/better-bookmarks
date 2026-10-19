@@ -2,9 +2,9 @@
 
 ## Version
 
-- `package.json`: **1.0.0-rc.1**
-- `CHANGELOG.md`: **[1.0.0-rc.1] — 2026-09-13**
-- Git tag: **not yet** — Rico creates via `scripts/release-dry-run.sh` + `gh release create`.
+- `package.json`: **1.0.0**
+- `CHANGELOG.md`: **[1.0.0] — 2026-10-20**
+- Git tag: **v1.0.0** at `ae4e180`, the commit the Chrome Web Store zip was built from (submitted for review 2026-10-20). GitHub release carries the Chrome zip only; the Firefox zip waits for the Firefox load test.
 
 ## What this workflow produced
 
