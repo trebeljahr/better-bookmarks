@@ -84,9 +84,9 @@ async function openOrFocusOverview(): Promise<void> {
 
 export default defineBackground(() => {
   // First-install onboarding: flip `onboardingPending` on a fresh install
-  // so the overview page knows to render the tour. `handleInstalledEvent`
+  // so the overview page knows to show the first-run hint. `handleInstalledEvent`
   // ignores `update` / `chrome_update` / `shared_module_update` so an
-  // upgrade never re-shows the modal. See src/core/onboarding/state.ts.
+  // upgrade never re-shows it. See src/core/onboarding/state.ts.
   chrome.runtime.onInstalled.addListener((details) => {
     void handleInstalledEvent(details);
   });

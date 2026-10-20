@@ -1,27 +1,27 @@
 /**
- * useOnboarding — read the first-install onboarding flag and expose
- * dismiss/complete actions that clear it.
+ * useOnboarding — show the first-run hint once after a fresh install.
  *
  * The background service worker flips `onboardingPending` to true on a
  * fresh install (`runtime.onInstalled` with `reason === "install"`). The
- * overview page reads it on mount to decide whether to render
- * `OnboardingModal`. Dismiss/Complete both clear the flag so the modal
- * never returns; the hook keeps its local `pending` state in sync so
- * the closed modal doesn't flash back before the storage write finishes.
+ * overview page reads it on mount; when it is set, the hint becomes
+ * visible and the flag is cleared straight away, so the hint shows on
+ * this one visit only, whether or not it is ever closed. `hide` takes it
+ * off the page for the rest of the visit.
  */
 
 import { useCallback, useEffect, useState } from "react";
-import { getOnboardingState, completeOnboarding as writeComplete } from "../core/onboarding/state";
+import { completeOnboarding, getOnboardingState } from "../core/onboarding/state";
 
 export type UseOnboardingResult = {
-  pending: boolean;
+  /** True while the first-run hint is on the page. */
+  visible: boolean;
   loading: boolean;
-  dismiss: () => Promise<void>;
-  complete: () => Promise<void>;
+  /** Close button, or the user started using the overview. */
+  hide: () => void;
 };
 
 export function useOnboarding(): UseOnboardingResult {
-  const [pending, setPending] = useState<boolean>(false);
+  const [visible, setVisible] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
@@ -29,8 +29,10 @@ export function useOnboarding(): UseOnboardingResult {
     getOnboardingState()
       .then((state) => {
         if (cancelled) return;
-        setPending(state.pending);
         setLoading(false);
+        if (!state.pending) return;
+        setVisible(true);
+        void completeOnboarding();
       })
       .catch(() => {
         if (!cancelled) setLoading(false);
@@ -40,13 +42,7 @@ export function useOnboarding(): UseOnboardingResult {
     };
   }, []);
 
-  const clear = useCallback(async () => {
-    // Optimistically hide the modal so React tears it down before the
-    // async storage write resolves — otherwise the close animation
-    // races the promise and can flicker.
-    setPending(false);
-    await writeComplete();
-  }, []);
+  const hide = useCallback(() => setVisible(false), []);
 
-  return { pending, loading, dismiss: clear, complete: clear };
+  return { visible, loading, hide };
 }

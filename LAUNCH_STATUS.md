@@ -50,7 +50,7 @@
 - **60-second walkthrough video** — nice to have on the marketing site and Show HN comments, not blocking. ~2 h.
 - **Five 1920×1080 hero screenshots** for blog post and press outreach. ~1 h.
 - **Press-kit zip hosting** at a stable URL (S3, ricos.site, GitHub release asset). ~30 min once screenshots are done.
-- **Skippable three-step onboarding** shown once after install (dedup / tags vs folders / Chrome sync). ~1 day.
+- **First-run hint**: one inline line on the first overview visit after install (dedup / tags vs folders / Chrome sync). It replaced the three-step onboarding modal on 2026-10-20.
 - **"Report a bug" link** in options page + marketing-site FAQ + README section. ~1 h.
 - **New manual-notes file (`2-better-bookmarks-manual-notes.md`)** once real playtesting + launch-day feedback surfaces the next round.
 

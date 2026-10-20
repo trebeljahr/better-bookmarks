@@ -24,8 +24,8 @@ import {
   ConflictResolverModal,
 } from "@/components/ConflictResolverModal";
 import { type ActiveChip, FilterBar, type SortMode } from "@/components/FilterBar";
+import { FirstRunHint } from "@/components/FirstRunHint";
 import { FolderTreeSidebar } from "@/components/FolderTreeSidebar";
-import { OnboardingModal } from "@/components/OnboardingModal";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { SuggestedConnectionsPanel } from "@/components/SuggestedConnectionsPanel";
 import { TagManager } from "@/components/TagManager";
@@ -179,11 +179,12 @@ export const Overview = () => {
   const { conflicts: pendingConflicts } = usePendingConflicts();
   const [skippedConflictIds, setSkippedConflictIds] = useState<Set<string>>(new Set());
   const { settings } = useSettings();
-  const {
-    pending: onboardingPending,
-    dismiss: dismissOnboarding,
-    complete: completeOnboarding,
-  } = useOnboarding();
+  const { visible: firstRunHintVisible, hide: hideFirstRunHint } = useOnboarding();
+  // The hint has done its job once the overview is in use: a search,
+  // an opened bookmark or an import takes it off the page.
+  useEffect(() => {
+    if (query.trim() !== "" || selectedId !== null) hideFirstRunHint();
+  }, [query, selectedId, hideFirstRunHint]);
   const graphViewEnabled = settings.graphViewEnabled;
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   // If the setting is turned off while the graph tab is active, fall
@@ -323,6 +324,7 @@ export const Overview = () => {
   }, [bulkSelected]);
 
   async function handleFileImport(file: File) {
+    hideFirstRunHint();
     setStatus(`importing ${file.name}…`);
     const text = await file.text();
     const fmt = detectFormat(file);
@@ -987,6 +989,8 @@ export const Overview = () => {
           : `${bookmarks.length} bookmarks total, ${displayed.length} showing · /focus, j/k move, Enter/e open, n new, x select, a select all, t tag, d delete, o open URL, Esc clear, ? help`}
       </p>
 
+      {firstRunHintVisible && <FirstRunHint onClose={hideFirstRunHint} />}
+
       <div className="grid grid-cols-1 gap-3 md:grid-cols-[260px_1fr]">
         <div className="hidden md:block md:max-h-[80vh]">{sidebar}</div>
         <div className="flex min-w-0 flex-col gap-3">
@@ -1242,16 +1246,6 @@ export const Overview = () => {
         pendingCount={visibleConflictCount}
         onResolve={handleResolveConflict}
         onSkip={handleSkipConflict}
-      />
-
-      <OnboardingModal
-        pending={onboardingPending}
-        onDismiss={() => {
-          void dismissOnboarding();
-        }}
-        onComplete={() => {
-          void completeOnboarding();
-        }}
       />
     </div>
   );

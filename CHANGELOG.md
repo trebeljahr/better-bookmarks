@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The three-step onboarding modal is gone. The first overview visit after a
+  fresh install shows one inline hint instead: folders become tags, the same
+  page saved twice is one bookmark, and edits sync back to Chrome. Closing it,
+  searching, opening a bookmark or importing a file takes it off the page, and
+  it does not come back.
+
 ## [1.0.0] — 2026-10-20
 
 ### Changed
