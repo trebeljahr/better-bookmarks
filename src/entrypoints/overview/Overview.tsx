@@ -26,6 +26,7 @@ import {
 import { type ActiveChip, FilterBar, type SortMode } from "@/components/FilterBar";
 import { FirstRunHint } from "@/components/FirstRunHint";
 import { FolderTreeSidebar } from "@/components/FolderTreeSidebar";
+import { ImportSupportCard } from "@/components/ImportSupportCard";
 import { ShortcutHelp } from "@/components/ShortcutHelp";
 import { SuggestedConnectionsPanel } from "@/components/SuggestedConnectionsPanel";
 import { TagManager } from "@/components/TagManager";
@@ -52,6 +53,7 @@ import {
   importPocketCsv,
   importRawUrlList,
 } from "@/core/importExport";
+import { claimImportSupportCard } from "@/core/onboarding/supportCard";
 import { ensureSearchIndexInitialized, wireSearchIndexer } from "@/core/search";
 import { parseQuery } from "@/core/search/query";
 import {
@@ -180,6 +182,7 @@ export const Overview = () => {
   const [skippedConflictIds, setSkippedConflictIds] = useState<Set<string>>(new Set());
   const { settings } = useSettings();
   const { visible: firstRunHintVisible, hide: hideFirstRunHint } = useOnboarding();
+  const [importCard, setImportCard] = useState<{ added: number; merged: number } | null>(null);
   // The hint has done its job once the overview is in use: a search,
   // an opened bookmark or an import takes it off the page.
   useEffect(() => {
@@ -328,26 +331,36 @@ export const Overview = () => {
     setStatus(`importing ${file.name}…`);
     const text = await file.text();
     const fmt = detectFormat(file);
+    let done: { added: number; merged: number } | null = null;
     try {
       if (fmt === "json") {
         const report = await importJson(text);
         setStatus(
           `JSON: ${report.bookmarksImported} new + ${report.bookmarksMerged} merged bookmarks, ${report.edgesImported} edges`,
         );
+        done = { added: report.bookmarksImported, merged: report.bookmarksMerged };
       } else if (fmt === "goodreads") {
         const report = await importGoodreadsHtml(text);
         setStatus(`Goodreads: ${report.imported} imported, ${report.merged} merged`);
+        done = { added: report.imported, merged: report.merged };
       } else if (fmt === "pocket") {
         const report = await importPocketCsv(text);
         setStatus(`Pocket: ${report.imported} imported, ${report.merged} merged`);
+        done = { added: report.imported, merged: report.merged };
       } else if (fmt === "raw-url") {
         const report = await importRawUrlList(text);
         setStatus(`Raw URLs: ${report.imported} imported, ${report.merged} merged`);
+        done = { added: report.imported, merged: report.merged };
       } else {
         setStatus(`unknown format for ${file.name}`);
       }
     } catch (err) {
       setStatus(`import failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    // The first import that brought anything in gets the support card,
+    // once per install; later imports keep the status line only.
+    if (done && done.added + done.merged > 0 && (await claimImportSupportCard())) {
+      setImportCard(done);
     }
   }
 
@@ -1040,6 +1053,14 @@ export const Overview = () => {
             )}
             {status && <span className="text-xs text-muted-foreground">{status}</span>}
           </div>
+
+          {importCard && (
+            <ImportSupportCard
+              added={importCard.added}
+              merged={importCard.merged}
+              onClose={() => setImportCard(null)}
+            />
+          )}
 
           <input
             ref={fileInput}

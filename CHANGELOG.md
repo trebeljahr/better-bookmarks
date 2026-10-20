@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   searching, opening a bookmark or importing a file takes it off the page, and
   it does not come back.
 
+### Added
+
+- After the first file import that brings bookmarks in, the overview shows a
+  small card under the import button: what the import did, and a line linking
+  https://ricos.site/donate/better-bookmarks. Closing it hides it, and it never
+  shows again on later imports.
+
 ## [1.0.0] — 2026-10-20
 
 ### Changed
