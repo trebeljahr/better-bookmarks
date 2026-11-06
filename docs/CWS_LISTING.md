@@ -6,11 +6,11 @@ Tag-first bookmarks for Chrome. Aggressive URL deduplication. Designed for 20,00
 
 ## Long description
 
-Save the same article twice — once from a tweet with `?s=20`, once from a newsletter with `?utm_source=...` — and get one bookmark, not two. Per-domain rules cover YouTube, Twitter/X, Reddit, GitHub, Wikipedia, and Amazon. Global rules strip `utm_*`, `fbclid`, `gclid`, `mc_*`, `?si=`, and `#:~:text=` fragments. The full rule set is in `docs/URL_NORMALIZATION.md`.
+Save the same article twice, once from a social post and once from a newsletter link, and get one bookmark, not two. Better Bookmarks removes tracking parameters (utm_*, fbclid, gclid, mc_*, si) and text-highlight fragments before it compares URLs. Extra rules for popular video, social, code, encyclopedia and shopping sites catch the same page under different URLs. The full rule list is in the source repository.
 
-Tags are a projection over Chrome folders. A bookmark can carry every label that applies. The Chrome folder a bookmark sits in becomes one of its tags automatically. Mirroring a tag back to a Chrome folder is opt-in.
+Tags work on top of your Chrome folders. A bookmark can carry every label that applies. The Chrome folder of a bookmark becomes one of its tags automatically. Mirroring a tag back to a Chrome folder is opt-in.
 
-Search uses an IndexedDB inverted index designed for 20,000+ bookmarks. All bookmark data stays in IndexedDB and `chrome.storage`. The extension makes no third-party analytics calls (`docs/PRIVACY.md`).
+Search uses a local index designed for 20,000+ bookmarks. All bookmark data stays in your browser. The extension makes no third-party analytics calls.
 
 ## Features
 
@@ -21,7 +21,7 @@ Search uses an IndexedDB inverted index designed for 20,000+ bookmarks. All book
 - Connection graph for manual edges and auto-suggested links between bookmarks.
 - IndexedDB inverted index sized for 20,000+ bookmarks.
 - Search query language: bare words plus `tag:`, `domain:`, `is:unread`, `rating:>=7`.
-- Import and export: JSON, Netscape HTML, Pocket CSV, Goodreads HTML, raw URL list.
+- Import and export: JSON, standard bookmark HTML, CSV and HTML exports from read-later and book-tracking services, plain URL lists.
 - Opt-in enrichment for `og:` tags, `<title>`, and reading-time estimate.
 - Side panel, action button, and right-click context menu capture surfaces.
 - Dead-link checker that flags a URL only after failures on three distinct days.
@@ -31,6 +31,10 @@ Search uses an IndexedDB inverted index designed for 20,000+ bookmarks. All book
 ## Source
 
 Full source on GitHub: https://github.com/trebeljahr/better-bookmarks — MIT licensed.
+
+## Store review note
+
+v1.0 was rejected on 2026-10-20 (Spam and Placement, ref. "Yellow Argon") for listing third-party site names (YouTube, Twitter/X, Reddit, GitHub, Wikipedia, Amazon) in the description. Keep brand and site names out of the listing text; describe site categories instead. The per-site detail lives in `docs/URL_NORMALIZATION.md`.
 
 ## Verification checklist (for pre-submission review)
 
