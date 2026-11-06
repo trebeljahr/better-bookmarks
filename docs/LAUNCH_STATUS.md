@@ -21,7 +21,7 @@
 | Press kit (`1c67963`) | License | `press-kit/LICENSE` | better-bookmarks (master) |
 | Press kit (`1c67963`) | Changelog snapshot | `press-kit/CHANGELOG.md` | better-bookmarks (master) |
 | Press kit (`1c67963`) | FAQ (7 Q/A) | `press-kit/FAQ.md` | better-bookmarks (master) |
-| Press kit (`1c67963`) | Screenshot placeholders | `press-kit/PLACEHOLDER-SCREENSHOTS.md` | better-bookmarks (master) |
+| Press kit (`1c67963`) | Screenshot placeholders (replaced 2026-11-06 by `press-kit/screenshots/`) | `press-kit/PLACEHOLDER-SCREENSHOTS.md` | better-bookmarks (master) |
 | Press kit (`1c67963`) | Zip builder | `scripts/build-press-kit.mjs` (npm `build:press-kit`) | better-bookmarks (master) |
 | Dark-mode audit (`ea50e09`) | Programmatic WCAG contrast verdicts | `docs/DARK_MODE_AUDIT.md` | better-bookmarks (master) |
 | Release dry-run (`0865d6d`) | Dry-run script | `scripts/release-dry-run.sh` | better-bookmarks (master) |

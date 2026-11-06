@@ -23,13 +23,13 @@ about missing WXT types.
 ## Everyday scripts
 
 ```sh
-pnpm dev      # WXT dev build into ./dist, rebuilds on save
+pnpm dev      # WXT dev build into ./dist/chrome-mv3, rebuilds on save
 pnpm check    # Biome format + lint, writes fixes in place
 pnpm test     # Vitest, single run
-pnpm build    # Production build into ./dist
+pnpm build    # Production build into ./dist/chrome-mv3
 ```
 
-Load `./dist` in Chrome as an unpacked extension the same way the
+Load `./dist/chrome-mv3` in Chrome as an unpacked extension the same way the
 README describes for release zips. Reload the extension in
 `chrome://extensions/` after `pnpm dev` picks up a change — WXT
 rebuilds the assets, but Chrome still needs the reload for background
