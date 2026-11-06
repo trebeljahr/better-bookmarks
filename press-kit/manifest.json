@@ -1,0 +1,68 @@
+{
+  "generated": "2026-11-06",
+  "files": [
+    {
+      "path": "screenshots/detail-light.jpg",
+      "purpose": "Detail sheet of one bookmark: tags, rating, reading time, status, type, connections.",
+      "width": 3200,
+      "height": 2000,
+      "bytes": 350807,
+      "sha256": "203fd7a166b3f60418242bf4119088083a3a415deba5c395ef362cc9e26c7767",
+      "source": "scripts/marketing/capture-screenshots.mjs (real extension build, demo library of public links)"
+    },
+    {
+      "path": "screenshots/import-merged.jpg",
+      "purpose": "Import result: 28 new bookmarks, 6 merged into existing ones, with the support card.",
+      "width": 3200,
+      "height": 2000,
+      "bytes": 340499,
+      "sha256": "068e245811222cca8dbc2999ad32f8bd7aa76a12fbc60bdcee2c6a676f7126eb",
+      "source": "scripts/marketing/capture-screenshots.mjs (real extension build, demo library of public links)"
+    },
+    {
+      "path": "screenshots/overview-light.jpg",
+      "purpose": "Overview with the demo library: folders, tags, ratings. README hero.",
+      "width": 3200,
+      "height": 2000,
+      "bytes": 311091,
+      "sha256": "ef03bd14c83bd7997608e8c6843ec9e363321558e9bd7801bca3d24406b8cd67",
+      "source": "scripts/marketing/capture-screenshots.mjs (real extension build, demo library of public links)"
+    },
+    {
+      "path": "screenshots/search-light.jpg",
+      "purpose": "A filtered search, `tag:papers rating:>=9`.",
+      "width": 3200,
+      "height": 2000,
+      "bytes": 240164,
+      "sha256": "20d0e27fb92ffa04e43a03c33c0e2bd6b7c7a6bdd590ef2a5dec68ebdcbc72e8",
+      "source": "scripts/marketing/capture-screenshots.mjs (real extension build, demo library of public links)"
+    },
+    {
+      "path": "social-preview/social-preview-a.png",
+      "purpose": "GitHub social preview, option A: screenshot-led.",
+      "width": 1280,
+      "height": 640,
+      "bytes": 305546,
+      "sha256": "ed1e7ee403ab325c40453f44c08fe5511fd1ddd6b4e52a1e7fe217fdb46a5b1c",
+      "source": "scripts/marketing/render-social-preview.mjs over social-preview/template.html"
+    },
+    {
+      "path": "social-preview/social-preview-b.png",
+      "purpose": "GitHub social preview, option B: typographic, three tracking URLs merging into one.",
+      "width": 1280,
+      "height": 640,
+      "bytes": 358439,
+      "sha256": "a817c157f00e07005fe9b99ccd057600586f0aa7ecf154b6f27ddce94c7e91c0",
+      "source": "scripts/marketing/render-social-preview.mjs over social-preview/template.html"
+    },
+    {
+      "path": "social-preview/social-preview-c.png",
+      "purpose": "GitHub social preview, option C: light, the filtered search.",
+      "width": 1280,
+      "height": 640,
+      "bytes": 213711,
+      "sha256": "162d0d6e4e836e9d01fbcbd9d827b28ce448223c01e0afb545ff1171b8dcac89",
+      "source": "scripts/marketing/render-social-preview.mjs over social-preview/template.html"
+    }
+  ]
+}

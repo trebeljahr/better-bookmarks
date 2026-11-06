@@ -147,21 +147,19 @@ No, not by default. An optional enrichment pass can be added later as an opt-in.
 
 ## Image kit
 
-Available as part of the launch package. Until the press-kit zip is published, link to the live marketing site or use the shipped storefront assets.
+Every image is a capture of the real extension with a demo library of public links. [README.md](README.md) in this folder says how each one was made.
 
-- `hero-popup.png` — 1920×1080. The capture popup with tags, rating, and the canonical URL field visible. *(in production)*
-- `hero-overview.png` — 1920×1080. The overview page with a search query and tag chips visible. *(in production)*
-- `hero-dedup.png` — 1920×1080. Two saves of the same article (one with `?utm_source=...`, one with `?s=20`) collapsing into a single bookmark with `originalUrl` and `canonicalUrl` shown. *This is the differentiator screenshot — must ship.* *(in production)*
-- `hero-tags.png` — 1920×1080. Tag management UI with hierarchy and colours. *(in production)*
-- `hero-connections.png` — 1920×1080. Per-bookmark detail with connection graph and edge types visible. *(in production)*
-- `cws-promo-tile.png` — 440×280. Chrome Web Store promo tile. Wordmark + "Tags, not folders." on the brand colour. *(in production)*
-- `cws-screenshots/` — five 1280×800 PNGs for the CWS listing. *(in production)*
-- `og-card.png` — 1200×630. Social share card for the marketing site. *(in production)*
-- `walkthrough.mp4` — 60-second screen recording: install → first-run import of a 20k corpus → search → tag → close. Muted, looping-friendly. *(in production)*
+- `screenshots/overview-light.jpg` — 3200×2000. The overview: folder and tag sidebar, ratings, tags.
+- `screenshots/search-light.jpg` — 3200×2000. A filtered search, `tag:papers rating:>=9`.
+- `screenshots/import-merged.jpg` — 3200×2000. An import that merged 6 second saves (tracking parameters, a short YouTube link) into bookmarks already there.
+- `screenshots/detail-light.jpg` — 3200×2000. One bookmark's detail sheet: tags, rating, reading time, status, type and connections.
+- `store/screenshots/` — five 1280×800 JPEGs, as uploaded to the Chrome Web Store.
+- `store/promo-small-440x280.png` and `store/promo-marquee-1400x560.png` — the store promo tiles.
+- `social-preview/social-preview-{a,b,c}.png` — 1280×640 share cards.
 
 ## Video kit
 
-- 60-second walkthrough: install, first-run import showing the dedup pass collapsing duplicates, a couple of searches, a tag operation. No voiceover. *(in production)*
+- 60-second walkthrough: install, first-run import showing the dedup pass collapsing duplicates, a couple of searches, a tag operation. No voiceover. *(not recorded yet)*
 - A longer 3–5 minute developer commentary version may follow; pitch separately.
 
 ## Redistribution
