@@ -26,6 +26,9 @@ const PURPOSE = {
     "GitHub social preview, option B: typographic, three tracking URLs merging into one.",
   "social-preview/social-preview-c.png":
     "GitHub social preview, option C: light, the filtered search.",
+  "social-preview/og-wordmark.png": "og:image, 1200×630: social preview B laid out at 1.91:1.",
+  "social-preview/og-clean.png":
+    "og:image without text, 1200×630: the overview capture on card B's blue (og-clean.html).",
 };
 
 /** Width and height from a PNG IHDR or a JPEG SOFn marker. */
@@ -58,7 +61,7 @@ for (const dir of ["screenshots", "social-preview"]) {
       source:
         dir === "screenshots"
           ? "scripts/marketing/capture-screenshots.mjs (real extension build, demo library of public links)"
-          : "scripts/marketing/render-social-preview.mjs over social-preview/template.html",
+          : `scripts/marketing/render-social-preview.mjs over social-preview/${name === "og-clean.png" ? "og-clean.html" : "template.html"}`,
     });
   }
 }

@@ -1,0 +1,39 @@
+<!doctype html>
+<!--
+  Text-free og:image card for Better Bookmarks, 1280x672 CSS px, rendered at
+  2x and downscaled to 1200x630 (og-clean.png) by
+  scripts/marketing/render-social-preview.mjs.
+  The .blue background of template.html?v=b with the real extension capture
+  (../screenshots/overview-light.jpg) in the template's .frame, centred and
+  running off the bottom edge.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Better Bookmarks og:image, clean</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 1280px; height: 672px; overflow: hidden; }
+  .card { position: relative; width: 1280px; height: 672px; overflow: hidden; }
+  .blue { background: radial-gradient(130% 120% at 0% 0%, #1563e6 0%, #0949ba 48%, #062f7a 100%); }
+  .frame { position: absolute; overflow: hidden; border-radius: 16px; background: #fff;
+    box-shadow: 0 30px 80px rgba(2, 16, 48, .45), 0 0 0 1px rgba(255, 255, 255, .12); }
+  .frame img { position: absolute; display: block; }
+</style>
+</head>
+<body>
+<section class="card blue">
+  <div class="frame" id="frame"><img id="img" src="../screenshots/overview-light.jpg" alt=""></div>
+</section>
+<script>
+  // The capture is 3200x2000; the app column spans x 368..2832 and y 52..1900.
+  // The crop keeps 64 px of the page's white margin left and right. The frame
+  // is 900 px wide, 76 px from the top, and runs 40 px past the bottom edge.
+  const SRC_W = 3200, x0 = 304, x1 = 2896, w = 900, fy = 76;
+  const scale = w / (x1 - x0), h = 672 - fy + 40;
+  const frame = document.getElementById("frame"), img = document.getElementById("img");
+  Object.assign(frame.style, { width: w + "px", height: h + "px", left: (1280 - w) / 2 + "px", top: fy + "px" });
+  Object.assign(img.style, { width: SRC_W * scale + "px", left: -(x0 * scale) + "px", top: "0px" });
+</script>
+</body>
+</html>

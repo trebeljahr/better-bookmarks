@@ -12,6 +12,8 @@ SHA-256.
 | `screenshots/import-merged.jpg` | Import result: 28 new, 6 merged, with the support card | 3200×2000 | `capture-screenshots.mjs` | 2026-11-06 |
 | `screenshots/detail-light.jpg` | Detail sheet of one bookmark | 3200×2000 | `capture-screenshots.mjs` | 2026-11-06 |
 | `social-preview/social-preview-{a,b,c}.png` | GitHub social preview options: A screenshot-led, B typographic, C light | 1280×640 | `render-social-preview.mjs` over `social-preview/template.html` | 2026-11-06 |
+| `social-preview/og-wordmark.png` | og:image: card B laid out at 1.91:1, its background 16 px taller at the top and bottom | 1200×630 | `render-social-preview.mjs` over `social-preview/template.html` | 2026-11-11 |
+| `social-preview/og-clean.png` | og:image without text: the overview capture in a frame on card B's blue, running off the bottom edge | 1200×630 | `render-social-preview.mjs` over `social-preview/og-clean.html` | 2026-11-11 |
 | `store/` | Chrome Web Store icon, five 1280×800 screenshots and two promo tiles, as uploaded ([index](store/README.md)) | various | captured from the 5ef9cd1 build | 2026-10-09 |
 | `press-kit.md`, `FAQ.md`, `CHANGELOG.md`, `LICENSE` | The text that goes into the press-kit zip | — | by hand | — |
 
@@ -20,7 +22,7 @@ SHA-256.
 ```sh
 pnpm build                       # the extension the screenshots show
 pnpm marketing:screenshots       # press-kit/screenshots/*.jpg
-pnpm marketing:social-preview    # press-kit/social-preview/*.png
+pnpm marketing:social-preview    # press-kit/social-preview/*.png (--og: only the og:image cards)
 pnpm marketing:manifest          # press-kit/manifest.json
 pnpm build:press-kit             # press-kit-v<version>.zip of this folder
 ```
@@ -29,6 +31,10 @@ pnpm build:press-kit             # press-kit-v<version>.zip of this folder
 Chromium profile. It seeds three Chrome bookmark folders and imports a demo
 library of 28 public links plus 6 second saves with tracking parameters,
 through the overview's own "Import file…" button. Nothing reads a real profile.
+
+The og:image cards are laid out at 1280×672 CSS px, the same 1.905:1 shape as
+1200×630, shot at 2× and downscaled to exactly 1200×630 with ImageMagick, so
+`magick` must be installed (`brew install imagemagick`).
 
 The extension has no dark mode a person can switch on, so there are no dark
 screenshots. The social preview cards are not uploaded by any script: GitHub

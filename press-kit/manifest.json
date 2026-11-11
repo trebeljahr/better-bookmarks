@@ -1,5 +1,5 @@
 {
-  "generated": "2026-11-06",
+  "generated": "2026-11-11",
   "files": [
     {
       "path": "screenshots/detail-light.jpg",
@@ -36,6 +36,24 @@
       "bytes": 240164,
       "sha256": "20d0e27fb92ffa04e43a03c33c0e2bd6b7c7a6bdd590ef2a5dec68ebdcbc72e8",
       "source": "scripts/marketing/capture-screenshots.mjs (real extension build, demo library of public links)"
+    },
+    {
+      "path": "social-preview/og-clean.png",
+      "purpose": "og:image without text, 1200×630: the overview capture on card B's blue (og-clean.html).",
+      "width": 1200,
+      "height": 630,
+      "bytes": 233875,
+      "sha256": "087fa6c14699b40c89a17b5e24d724f7c19c44110da2f0e524e64a1388091717",
+      "source": "scripts/marketing/render-social-preview.mjs over social-preview/og-clean.html"
+    },
+    {
+      "path": "social-preview/og-wordmark.png",
+      "purpose": "og:image, 1200×630: social preview B laid out at 1.91:1.",
+      "width": 1200,
+      "height": 630,
+      "bytes": 301615,
+      "sha256": "404b4de940ba497fe5d5565797d9bc40909bc179f4fdee2fd1487b5456ccf31a",
+      "source": "scripts/marketing/render-social-preview.mjs over social-preview/template.html"
     },
     {
       "path": "social-preview/social-preview-a.png",
