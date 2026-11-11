@@ -15,6 +15,10 @@
  * and og-clean.png (og-clean.html, no text). They are laid out at 1280×672 CSS
  * px, the same 1.905:1 shape as 1200×630, shot at 2× and downscaled to exactly
  * 1200×630 with ImageMagick (`magick`), which must be installed.
+ *
+ * og-wordmark.png is also the website's link preview: the script re-encodes it
+ * as apps/web/app/opengraph-image.jpg and twitter-image.jpg (JPEG, quality 88,
+ * 4:4:4, progressive, no metadata), which Next serves with their .alt.txt files.
  */
 import { execFileSync } from "node:child_process";
 import { statSync } from "node:fs";
@@ -93,4 +97,22 @@ try {
   }
 } finally {
   await browser.close();
+}
+
+// The website's Open Graph and Twitter card, from og-wordmark.png.
+const app = resolve(import.meta.dirname, "../../apps/web/app");
+for (const name of ["opengraph-image.jpg", "twitter-image.jpg"]) {
+  const out = join(app, name);
+  execFileSync("magick", [
+    join(dir, "og-wordmark.png"),
+    "-strip",
+    "-sampling-factor",
+    "4:4:4",
+    "-interlace",
+    "JPEG",
+    "-quality",
+    "88",
+    out,
+  ]);
+  console.log(`apps/web/app/${name} ${Math.round(statSync(out).size / 1024)} KB`);
 }

@@ -3,8 +3,3 @@
 # browser that asks for a chunk in the seconds after a deploy, or for an
 # old chunk, keeps that 404 for a year (measured 2026-10-12). The default
 # (max-age=0, must-revalidate + ETag) costs only free revalidations.
-
-# next/og exports the card without a file extension, so the asset server
-# cannot infer a type; social crawlers reject an untyped image.
-/opengraph-image
-  Content-Type: image/png

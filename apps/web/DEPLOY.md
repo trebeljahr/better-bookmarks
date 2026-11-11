@@ -25,9 +25,10 @@ Needs `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` in the environment
 
 ## Notes
 
-- `apps/web/public/_headers` sets immutable caching for `/_next/static/*` and
-  `Content-Type: image/png` for `/opengraph-image` (exported without an
-  extension, so the asset server cannot infer it).
+- `apps/web/public/_headers` holds only a note on why hashed build output keeps
+  the default caching. The link preview is a static `app/opengraph-image.jpg`
+  (and `twitter-image.jpg`), so the asset server infers its type from the
+  extension.
 - Analytics: self-hosted Plausible at plausible.trebeljahr.com, site
   `bookmarks.trebeljahr.com`; the script tag is in `app/layout.tsx`.
 - `metadataBase` in `app/layout.tsx` points OG/Twitter image URLs at the
